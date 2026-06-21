@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --canvas-bg: #1A1A2E;
+  --grid-color: #2A2A3E;
+  --ui-bg: #12121F;
+  --ui-border: #2E2E4A;
+  --accent: #4A90E2;
+  --text-primary: #C0C0D8;
+  --text-secondary: #8888A8;
+  --text-muted: #5A5A7A;
+  --danger: #E74C3C;
+  --success: #27AE60;
+  --warning: #F1C40F;
+  --surface: #1E1E32;
+  --surface-hover: #262640;
+  --surface-active: #2E2E4A;
+  --selection: rgba(74, 144, 226, 0.15);
+  --font-mono: 'Roboto Mono', 'Consolas', 'Monaco', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  background: var(--ui-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ui-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ui-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Selection styling */
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Input styling */
+input, select, textarea, button {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* Tooltip */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  background: #000;
+  color: #fff;
+  font-size: 10px;
+  white-space: nowrap;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 1000;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
