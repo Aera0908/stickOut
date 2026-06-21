@@ -1191,7 +1191,7 @@ export default function App() {
       if (key === 'v') setActiveTool(TOOLS.select);
       else if (key === 'w') { setActiveTool(TOOLS.line); setLineStart(null); setLinePreview(null); }
       else if (key === 'p') setActiveTool(TOOLS.via);
-      else if (key === 'l') setActiveTool(TOOLS.label);
+      else if (key === 'l' || key === 't') setActiveTool(TOOLS.label);
       else if (key === 'g') setShowGrid(prev => !prev);
       else if (key === 's') setSnapEnabled(prev => !prev);
     };
@@ -2056,8 +2056,8 @@ export default function App() {
           <button
             className={`tool-btn ${activeTool === TOOLS.label ? 'active' : ''}`}
             onClick={() => { setActiveTool(TOOLS.label); setLineStart(null); setLinePreview(null); }}
-            data-tooltip="Label (L)"
-            title="Label (L)"
+            data-tooltip="Label (L / T)"
+            title="Label (L / T)"
           >
             <Type size={18} />
           </button>
@@ -2175,7 +2175,7 @@ export default function App() {
                   <div className="hud-row"><kbd>V</kbd> <span>Select Tool</span></div>
                   <div className="hud-row"><kbd>W</kbd> <span>Wire Tool</span></div>
                   <div className="hud-row"><kbd>P</kbd> <span>Via Tool</span></div>
-                  <div className="hud-row"><kbd>L</kbd> <span>Label Tool</span></div>
+                  <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
                   <div className="hud-row"><kbd>G</kbd> <span>Toggle Grid</span></div>
                   <div className="hud-row"><kbd>S</kbd> <span>Toggle Snap</span></div>
                   <div className="hud-row"><kbd>Space</kbd> + Drag <span>Pan Canvas</span></div>
