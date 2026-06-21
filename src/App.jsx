@@ -468,6 +468,7 @@ export default function App() {
   const [feedbackName, setFeedbackName] = useState('');
   const [feedbackTitle, setFeedbackTitle] = useState('');
   const [feedbackDesc, setFeedbackDesc] = useState('');
+  const [feedbackStatus, setFeedbackStatus] = useState('idle'); // 'idle' | 'sending' | 'success' | 'error'
 
   // Layer Management state
   const [layers, setLayers] = useState({
@@ -2123,8 +2124,8 @@ export default function App() {
               className={`tool-btn ${activeTool === TOOLS.via ? 'active' : ''}`}
               onClick={() => { setActiveTool(TOOLS.via); setLineStart(null); setLinePreview(null); }}
               onMouseDown={() => setShowViaSubmenu(true)}
-              data-tooltip="Via (P) [Hover/Hold for options]"
-              title="Via (P) [Hover/Hold for options]"
+              data-tooltip={showViaSubmenu ? undefined : "Via (P) [Hover/Hold]"}
+              title={showViaSubmenu ? undefined : "Via (P) [Hover/Hold]"}
             >
               {viaShape === 'x' ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ display: 'block' }}>
@@ -2467,36 +2468,36 @@ export default function App() {
               )}
 
               {/* Via properties */}
-              {selectedElements.length === 1 && selectedElements[0].type === 'via' && (
+              {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'via') && (
                 <>
                   <div className="prop-group">
                     <span className="prop-label">Size</span>
                     <div className="prop-btn-row">
                       <button
-                        className={`prop-btn ${(selectedElements[0].size === 'small' || !selectedElements[0].size) ? 'active' : ''}`}
+                        className={`prop-btn ${selectedElements.every(el => el.size === 'small' || !el.size) ? 'active' : ''}`}
                         style={{
-                          background: (selectedElements[0].size === 'small' || !selectedElements[0].size) ? 'var(--accent)' : 'var(--surface)',
-                          color: (selectedElements[0].size === 'small' || !selectedElements[0].size) ? '#fff' : 'var(--text-primary)'
+                          background: selectedElements.every(el => el.size === 'small' || !el.size) ? 'var(--accent)' : 'var(--surface)',
+                          color: selectedElements.every(el => el.size === 'small' || !el.size) ? '#fff' : 'var(--text-primary)'
                         }}
                         onClick={() => updateProp('size', 'small')}
                       >
                         Small
                       </button>
                       <button
-                        className={`prop-btn ${selectedElements[0].size === 'medium' ? 'active' : ''}`}
+                        className={`prop-btn ${selectedElements.every(el => el.size === 'medium') ? 'active' : ''}`}
                         style={{
-                          background: selectedElements[0].size === 'medium' ? 'var(--accent)' : 'var(--surface)',
-                          color: selectedElements[0].size === 'medium' ? '#fff' : 'var(--text-primary)'
+                          background: selectedElements.every(el => el.size === 'medium') ? 'var(--accent)' : 'var(--surface)',
+                          color: selectedElements.every(el => el.size === 'medium') ? '#fff' : 'var(--text-primary)'
                         }}
                         onClick={() => updateProp('size', 'medium')}
                       >
                         Medium
                       </button>
                       <button
-                        className={`prop-btn ${selectedElements[0].size === 'big' ? 'active' : ''}`}
+                        className={`prop-btn ${selectedElements.every(el => el.size === 'big') ? 'active' : ''}`}
                         style={{
-                          background: selectedElements[0].size === 'big' ? 'var(--accent)' : 'var(--surface)',
-                          color: selectedElements[0].size === 'big' ? '#fff' : 'var(--text-primary)'
+                          background: selectedElements.every(el => el.size === 'big') ? 'var(--accent)' : 'var(--surface)',
+                          color: selectedElements.every(el => el.size === 'big') ? '#fff' : 'var(--text-primary)'
                         }}
                         onClick={() => updateProp('size', 'big')}
                       >
@@ -2509,20 +2510,20 @@ export default function App() {
                     <span className="prop-label">Style</span>
                     <div className="prop-btn-row">
                       <button
-                        className={`prop-btn ${selectedElements[0].shape === 'x' ? 'active' : ''}`}
+                        className={`prop-btn ${selectedElements.every(el => el.shape === 'x') ? 'active' : ''}`}
                         style={{
-                          background: selectedElements[0].shape === 'x' ? 'var(--accent)' : 'var(--surface)',
-                          color: selectedElements[0].shape === 'x' ? '#fff' : 'var(--text-primary)'
+                          background: selectedElements.every(el => el.shape === 'x') ? 'var(--accent)' : 'var(--surface)',
+                          color: selectedElements.every(el => el.shape === 'x') ? '#fff' : 'var(--text-primary)'
                         }}
                         onClick={() => updateProp('shape', 'x')}
                       >
                         X
                       </button>
                       <button
-                        className={`prop-btn ${(selectedElements[0].shape === 'square' || !selectedElements[0].shape) ? 'active' : ''}`}
+                        className={`prop-btn ${selectedElements.every(el => el.shape === 'square' || !el.shape) ? 'active' : ''}`}
                         style={{
-                          background: (selectedElements[0].shape === 'square' || !selectedElements[0].shape) ? 'var(--accent)' : 'var(--surface)',
-                          color: (selectedElements[0].shape === 'square' || !selectedElements[0].shape) ? '#fff' : 'var(--text-primary)'
+                          background: selectedElements.every(el => el.shape === 'square' || !el.shape) ? 'var(--accent)' : 'var(--surface)',
+                          color: selectedElements.every(el => el.shape === 'square' || !el.shape) ? '#fff' : 'var(--text-primary)'
                         }}
                         onClick={() => updateProp('shape', 'square')}
                       >
@@ -2603,9 +2604,30 @@ export default function App() {
           )}
 
           {/* ─── Layers Section ─── */}
-          <div className="layers-section-header">
-            <Layers size={11} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-            Layers
+          <div className="layers-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <Layers size={11} style={{ marginRight: 6 }} />
+              Layers
+            </div>
+            <button
+              className="layers-toggle-all-btn"
+              onClick={() => {
+                const anyVisible = Object.values(layers).some(l => l.visible);
+                setLayers(prev => {
+                  const next = {};
+                  Object.keys(prev).forEach(k => {
+                    next[k] = { ...prev[k], visible: !anyVisible };
+                  });
+                  return next;
+                });
+                if (anyVisible) {
+                  setSelectedIds(new Set());
+                }
+              }}
+              title="Toggle Show/Hide All Layers"
+            >
+              {Object.values(layers).some(l => l.visible) ? "Hide All" : "Show All"}
+            </button>
           </div>
           <div className="layers-list">
             {(() => {
@@ -2903,145 +2925,204 @@ export default function App() {
 
       {/* ─── Feedback / Bug Report Modal ─── */}
       {showFeedbackModal && (
-        <div className="modal-overlay" onClick={() => setShowFeedbackModal(false)}>
+        <div className="modal-overlay" onClick={() => feedbackStatus !== 'sending' && setShowFeedbackModal(false)}>
           <div className="modal feedback-modal" onClick={e => e.stopPropagation()} style={{ width: '450px', maxWidth: '90vw' }}>
             <div className="modal-header">
               <Bug size={20} />
               <h2>Report Bug / Send Feedback</h2>
             </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!feedbackTitle.trim() || !feedbackDesc.trim()) return;
+            {feedbackStatus === 'success' ? (
+              <div className="modal-body" style={{ textAlign: 'center', padding: '30px 20px' }}>
+                <div style={{ color: 'var(--success)', fontSize: '40px', marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '16px' }}>Thank You!</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '12px', lineHeight: '1.5' }}>
+                  Your report has been sent automatically to<br />
+                  <strong style={{ color: 'var(--text-primary)' }}>08airajosh@gmail.com</strong>
+                </p>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!feedbackTitle.trim() || !feedbackDesc.trim()) return;
 
-                const today = new Date().toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
+                  setFeedbackStatus('sending');
 
-                const subject = encodeURIComponent(`[StickDiagram Bug/Feedback] ${feedbackTitle.trim()}`);
-                const body = encodeURIComponent(
-                  `Date: ${today}\n` +
-                  `Name: ${feedbackName.trim() ? feedbackName.trim() : 'Anonymous'}\n\n` +
-                  `Title: ${feedbackTitle.trim()}\n\n` +
-                  `Description:\n${feedbackDesc.trim()}`
-                );
+                  const today = new Date().toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
 
-                window.location.href = `mailto:08airajosh@gmail.com?subject=${subject}&body=${body}`;
-                setShowFeedbackModal(false);
-              }}
-              className="modal-body feedback-form"
-            >
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Date (Automatic)</label>
-                <input
-                  type="text"
-                  className="form-input read-only"
-                  value={new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-                  readOnly
-                  disabled
-                  style={{
-                    width: '100%',
+                  fetch("https://formsubmit.co/ajax/08airajosh@gmail.com", {
+                    method: "POST",
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      name: feedbackName.trim() ? feedbackName.trim() : 'Anonymous',
+                      _subject: `[StickDiagram Bug/Feedback] ${feedbackTitle.trim()}`,
+                      date: today,
+                      message: feedbackDesc.trim()
+                    })
+                  })
+                  .then(res => {
+                    if (res.ok) {
+                      setFeedbackStatus('success');
+                      setFeedbackName('');
+                      setFeedbackTitle('');
+                      setFeedbackDesc('');
+                      setTimeout(() => {
+                        setShowFeedbackModal(false);
+                        setFeedbackStatus('idle');
+                      }, 2500);
+                    } else {
+                      setFeedbackStatus('error');
+                    }
+                  })
+                  .catch(() => {
+                    setFeedbackStatus('error');
+                  });
+                }}
+                className="modal-body feedback-form"
+              >
+                {feedbackStatus === 'error' && (
+                  <div style={{
+                    background: 'rgba(255, 69, 58, 0.1)',
+                    border: '1px solid var(--danger)',
+                    color: 'var(--danger)',
                     padding: '8px 12px',
                     borderRadius: '4px',
-                    border: '1px solid var(--ui-border)',
-                    background: 'var(--ui-border)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '13px',
-                    cursor: 'not-allowed'
-                  }}
-                />
-              </div>
+                    fontSize: '11px',
+                    marginBottom: '12px',
+                    textAlign: 'center'
+                  }}>
+                    Failed to send report. Please try again.
+                  </div>
+                )}
 
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Name (Optional)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={feedbackName}
-                  onChange={e => setFeedbackName(e.target.value)}
-                  placeholder="e.g. John Doe"
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--ui-border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px'
-                  }}
-                />
-              </div>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Date (Automatic)</label>
+                  <input
+                    type="text"
+                    className="form-input read-only"
+                    value={new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                    readOnly
+                    disabled
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--ui-border)',
+                      background: 'var(--ui-border)',
+                      color: 'var(--text-secondary)',
+                      fontSize: '13px',
+                      cursor: 'not-allowed'
+                    }}
+                  />
+                </div>
 
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  Title <span style={{ color: 'var(--danger)' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={feedbackTitle}
-                  onChange={e => setFeedbackTitle(e.target.value)}
-                  placeholder="Short summary of the bug/feedback"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--ui-border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px'
-                  }}
-                />
-              </div>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Name (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={feedbackName}
+                    onChange={e => setFeedbackName(e.target.value)}
+                    placeholder="e.g. John Doe"
+                    disabled={feedbackStatus === 'sending'}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--ui-border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      opacity: feedbackStatus === 'sending' ? 0.6 : 1
+                    }}
+                  />
+                </div>
 
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  Description <span style={{ color: 'var(--danger)' }}>*</span>
-                </label>
-                <textarea
-                  className="form-input"
-                  value={feedbackDesc}
-                  onChange={e => setFeedbackDesc(e.target.value)}
-                  placeholder="Describe the issue or feedback in detail..."
-                  rows="4"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--ui-border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px',
-                    resize: 'vertical',
-                    minHeight: '80px',
-                    fontFamily: 'inherit'
-                  }}
-                />
-              </div>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Title <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={feedbackTitle}
+                    onChange={e => setFeedbackTitle(e.target.value)}
+                    placeholder="Short summary of the bug/feedback"
+                    required
+                    disabled={feedbackStatus === 'sending'}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--ui-border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      opacity: feedbackStatus === 'sending' ? 0.6 : 1
+                    }}
+                  />
+                </div>
 
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button
-                  type="button"
-                  className="export-action-btn secondary"
-                  onClick={() => setShowFeedbackModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="export-action-btn primary"
-                  disabled={!feedbackTitle.trim() || !feedbackDesc.trim()}
-                >
-                  Send Report
-                </button>
-              </div>
-            </form>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label className="form-label" style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Description <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+                  <textarea
+                    className="form-input"
+                    value={feedbackDesc}
+                    onChange={e => setFeedbackDesc(e.target.value)}
+                    placeholder="Describe the issue or feedback in detail..."
+                    rows="4"
+                    required
+                    disabled={feedbackStatus === 'sending'}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--ui-border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      resize: 'vertical',
+                      minHeight: '80px',
+                      fontFamily: 'inherit',
+                      opacity: feedbackStatus === 'sending' ? 0.6 : 1
+                    }}
+                  />
+                </div>
+
+                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    className="export-action-btn secondary"
+                    onClick={() => setShowFeedbackModal(false)}
+                    disabled={feedbackStatus === 'sending'}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="export-action-btn primary"
+                    disabled={feedbackStatus === 'sending' || !feedbackTitle.trim() || !feedbackDesc.trim()}
+                  >
+                    {feedbackStatus === 'sending' ? 'Sending...' : 'Send Report'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
