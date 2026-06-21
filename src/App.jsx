@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   MousePointer2, Minus, Square, Type,
   RotateCw, Trash2, Cpu, Grid3X3, FileText, Layers,
-  Eye, EyeOff, Lock, Unlock, HelpCircle
+  Eye, EyeOff, Lock, Unlock, HelpCircle, Sun, Moon
 } from 'lucide-react';
 import './App.css';
 
@@ -22,7 +22,7 @@ const COLORS = {
   poly:     { label: 'Polysilicon',      hex: '#9B59B6' },
 };
 
-const VIA_COLOR = '#111111';
+// VIA_COLOR is resolved dynamically per theme in the render code
 
 const TOOLS = {
   select: 'select',
@@ -138,7 +138,7 @@ function drawLabelOnContext(ctx, el, isSelected, options = {}) {
   const r = 4;
 
   if (hasBg) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
     ctx.beginPath();
     ctx.moveTo(rx + r, ry);
     ctx.lineTo(rx + rw - r, ry);
@@ -156,8 +156,10 @@ function drawLabelOnContext(ctx, el, isSelected, options = {}) {
   // Choose text color
   let textColor = forceTextColor;
   if (!textColor) {
-    // If transparent/no background and not overridden, use white/theme text color in editor
-    textColor = '#FFFFFF';
+    // In editor: use white text on pills, otherwise inherit from theme via CSS variable
+    // We check the document theme attribute to pick the right fallback
+    const isDarkTheme = document.documentElement.getAttribute('data-theme') !== 'light';
+    textColor = hasBg ? '#FFFFFF' : (isDarkTheme ? '#FFFFFF' : '#111111');
   }
   ctx.fillStyle = textColor;
   ctx.textBaseline = 'middle';
@@ -183,7 +185,8 @@ function drawLabelOnContext(ctx, el, isSelected, options = {}) {
 
   if (isSelected) {
     ctx.save();
-    ctx.strokeStyle = '#FFFFFF';
+    const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+    ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     ctx.strokeRect(rx - 2, ry - 2, rw + 4, rh + 4);
@@ -231,7 +234,8 @@ function drawElement(ctx, el, isSelected, options = {}) {
 
     if (isSelected && !isExport) {
       ctx.save();
-      ctx.strokeStyle = '#FFFFFF';
+      const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       const b = getElementBounds(el);
@@ -258,7 +262,7 @@ function drawElement(ctx, el, isSelected, options = {}) {
 
       const showPill = exportHasBg !== false;
       if (showPill) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.beginPath();
         ctx.moveTo(rx + r, ry);
         ctx.lineTo(rx + rw - r, ry);
@@ -281,15 +285,16 @@ function drawElement(ctx, el, isSelected, options = {}) {
     }
   } else if (el.type === 'via') {
     const s = VIA_SIZE * GRID_PITCH;
-    ctx.fillStyle = VIA_COLOR;
+    const isDarkForVia = document.documentElement.getAttribute('data-theme') !== 'light';
+    ctx.fillStyle = isDarkForVia ? '#E0E0E0' : '#111111';
     ctx.fillRect(el.x - s / 2, el.y - s / 2, s, s);
-    ctx.strokeStyle = '#FFFFFF';
+    ctx.strokeStyle = isDarkForVia ? '#444444' : '#CCCCCC';
     ctx.lineWidth = 1;
     ctx.strokeRect(el.x - s / 2, el.y - s / 2, s, s);
 
     if (isSelected && !isExport) {
       ctx.save();
-      ctx.strokeStyle = '#FFFFFF';
+      ctx.strokeStyle = isDarkForVia ? '#FFFFFF' : '#000000';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(el.x - s / 2 - 4, el.y - s / 2 - 4, s + 8, s + 8);
@@ -430,6 +435,12 @@ export default function App() {
   // Shortcuts HUD state
   const [showShortcutsHUD, setShowShortcutsHUD] = useState(true);
 
+  // Theme state (dark default)
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('stickdiagram-theme') || 'dark'; }
+    catch { return 'dark'; }
+  });
+
   // Mobile sidebar drawer state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -553,6 +564,16 @@ export default function App() {
     return null;
   }, [elements, zoom, layers]);
 
+  // ─── Theme effect ─────────────────────────────────────────
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('stickdiagram-theme', theme); } catch {}
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
+  }, []);
+
   // ─── Canvas rendering ──────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -569,15 +590,16 @@ export default function App() {
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Clear
-    ctx.fillStyle = '#1A1A2E';
+    // Clear — theme-aware canvas background
+    const isDark = theme === 'dark';
+    ctx.fillStyle = isDark ? '#121214' : '#FAF9F6';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
     // Draw grid
     if (showGrid) {
       const pitch = GRID_PITCH * zoom;
       if (pitch >= 4) {
-        ctx.strokeStyle = '#2A2A3E';
+        ctx.strokeStyle = isDark ? '#222226' : '#E6E2D8';
         ctx.lineWidth = 1;
 
         const startX = pan.x % pitch;
@@ -596,7 +618,7 @@ export default function App() {
 
         // Draw origin crosshair
         const origin = worldToScreen(0, 0, pan, zoom);
-        ctx.strokeStyle = '#3A3A5E';
+        ctx.strokeStyle = isDark ? '#3A3A40' : '#C2BEB5';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(Math.round(origin.x) + 0.5, 0);
@@ -704,16 +726,16 @@ export default function App() {
       const by = Math.min(s1.y, s2.y);
       const bw = Math.abs(s2.x - s1.x);
       const bh = Math.abs(s2.y - s1.y);
-      ctx.strokeStyle = '#4A90E2';
+      ctx.strokeStyle = 'rgba(255, 85, 0, 0.7)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(bx, by, bw, bh);
-      ctx.fillStyle = 'rgba(74, 144, 226, 0.08)';
+      ctx.fillStyle = 'rgba(255, 85, 0, 0.08)';
       ctx.fillRect(bx, by, bw, bh);
       ctx.setLineDash([]);
     }
 
-  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeColor, customColor, jumpOverrides, selectionBox, isDragging, dragOffset, layers]);
+  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeColor, customColor, jumpOverrides, selectionBox, isDragging, dragOffset, layers, theme]);
 
   // ─── Resize observer ───────────────────────────────────────
   useEffect(() => {
@@ -1353,7 +1375,22 @@ export default function App() {
     setUndoStack([]);
     setRedoStack([]);
     setSelectedIds(new Set());
-    setPan({ x: 50, y: 50 });
+
+    // Center template on screen
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const bounds = getContentBounds(templateEls);
+      const contentCenterX = bounds.x + bounds.w / 2;
+      const contentCenterY = bounds.y + bounds.h / 2;
+      setPan({
+        x: rect.width / 2 - contentCenterX,
+        y: rect.height / 2 - contentCenterY
+      });
+    } else {
+      setPan({ x: 50, y: 50 });
+    }
+    setZoom(1);
     setShowModal(false);
   }, []);
 
@@ -1676,6 +1713,15 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* Theme toggle */}
+        <button
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
 
       {/* ─── Main Area ─── */}
@@ -2130,7 +2176,7 @@ export default function App() {
         <div className="status-right">
           <span>Created by <a href="https://www.linkedin.com/in/aira-josh-ynte/" target="_blank" rel="noopener noreferrer" className="credit-link">Aira Josh Ynte</a></span>
           <span className="status-separator" />
-          <a href="https://aera0908.github.io" target="_blank" rel="noopener noreferrer" className="credit-icon" title="Web Resume">Resume</a>
+          <a href="https://aera0908.github.io" target="_blank" rel="noopener noreferrer" className="credit-icon" title="Web Resume">Portfolio</a>
           <span className="status-separator" />
           <a href="https://github.com/Aera0908" target="_blank" rel="noopener noreferrer" className="credit-icon" title="GitHub">GitHub</a>
           <span className="status-separator" />
