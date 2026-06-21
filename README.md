@@ -135,6 +135,7 @@ stick-diagram/
 
 Developed with ❤️ by **Aira Josh Ynte**:
 - 🌐 **LinkedIn**: [aira-josh-ynte](https://www.linkedin.com/in/aira-josh-ynte/)
+- 📄 **Web Resume**: [aera0908.github.io](https://aera0908.github.io)
 - 💻 **GitHub**: [@Aera0908](https://github.com/Aera0908)
 - 🐦 **X (Twitter)**: [@aera0908](https://x.com/aera0908)
 - 💬 **Discord**: [aeradynamics](https://discord.com/users/aeradynamics)

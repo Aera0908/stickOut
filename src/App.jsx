@@ -746,9 +746,17 @@ export default function App() {
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
 
-    // Right click for toggling connection (crossover override)
+    // Right click
     if (e.button === 2) {
       e.preventDefault();
+      // If drawing a wire, stop the wire drawing continuity
+      if (lineStart) {
+        setLineStart(null);
+        setLinePreview(null);
+        return;
+      }
+
+      // Otherwise, toggle connection override (crossover override)
       const world = getWorldPos(e);
       const crossovers = getCrossovers(elements);
       if (crossovers.length > 0) {
@@ -1904,6 +1912,8 @@ export default function App() {
         </div>
         <div className="status-right">
           <span>Created by <a href="https://www.linkedin.com/in/aira-josh-ynte/" target="_blank" rel="noopener noreferrer" className="credit-link">Aira Josh Ynte</a></span>
+          <span className="status-separator" />
+          <a href="https://aera0908.github.io" target="_blank" rel="noopener noreferrer" className="credit-icon" title="Web Resume">Resume</a>
           <span className="status-separator" />
           <a href="https://github.com/Aera0908" target="_blank" rel="noopener noreferrer" className="credit-icon" title="GitHub">GitHub</a>
           <span className="status-separator" />
