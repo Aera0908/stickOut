@@ -2940,8 +2940,7 @@ export default function App() {
                 </div>
                 <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '16px' }}>Thank You!</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '12px', lineHeight: '1.5' }}>
-                  Your report has been sent automatically to<br />
-                  <strong style={{ color: 'var(--text-primary)' }}>08airajosh@gmail.com</strong>
+                  Your report has been sent successfully!
                 </p>
               </div>
             ) : (
@@ -2960,7 +2959,7 @@ export default function App() {
                     minute: '2-digit'
                   });
 
-                  fetch("https://formsubmit.co/ajax/08airajosh@gmail.com", {
+                  fetch("https://formsubmit.co/ajax/c0c70ee7fc10829bb28cbc968004e253", {
                     method: "POST",
                     headers: {
                       'Content-Type': 'application/json',
