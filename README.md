@@ -1,6 +1,6 @@
 # StickDiagram — VLSI Stick Diagram Editor
 
-StickDiagram is a professional-grade, interactive, browser-based EDA (Electronic Design Automation) tool designed for drawing and editing VLSI stick diagrams. Featuring a modern dark-mode interface, a highly responsive pannable/zoomable canvas, and comprehensive layer management, it allows hardware engineers, researchers, and students to quickly map out silicon-level layouts, manage connectivity, and export publication-ready high-resolution assets.
+StickDiagram is an open-source, professional-grade, interactive, browser-based EDA (Electronic Design Automation) tool designed for drawing and editing VLSI stick diagrams. Featuring a modern dark-mode interface, a highly responsive pannable/zoomable canvas, and comprehensive layer management, it allows hardware engineers, researchers, and students to quickly map out silicon-level layouts, manage connectivity, and export publication-ready high-resolution assets.
 
 ![Hero Banner](src/assets/hero.png)
 
@@ -143,4 +143,4 @@ Developed with ❤️ by **Aira Josh Ynte**:
 ---
 
 ## 📜 License
-This project is licensed under the MIT License.
+This project is open-source and licensed under the MIT License.
