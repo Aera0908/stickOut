@@ -703,11 +703,11 @@ export default function App() {
     if (selectedIds.size === 0) return;
     
     // Only delete elements whose layer is not locked
-    const deletableElements = elements.filter(e => selectedIds.has(e.id) && !layers[getElementLayer(e)].locked);
+    const deletableElements = elements.filter(e => selectedIds.has(e.id) && !(layers[getElementLayer(e)]?.locked));
     if (deletableElements.length === 0) return;
 
     pushUndo(JSON.parse(JSON.stringify(elements)));
-    setElements(prev => prev.filter(e => !selectedIds.has(e.id) || layers[getElementLayer(e)].locked));
+    setElements(prev => prev.filter(e => !selectedIds.has(e.id) || layers[getElementLayer(e)]?.locked));
     setSelectedIds(prev => {
       const next = new Set(prev);
       deletableElements.forEach(el => next.delete(el.id));
@@ -722,8 +722,9 @@ export default function App() {
     for (let i = elements.length - 1; i >= 0; i--) {
       const el = elements[i];
       const layerId = getElementLayer(el);
+      const layer = layers[layerId] || { visible: true, locked: false, opacity: 1.0 };
       // Skip if layer is hidden or locked
-      if (!layers[layerId].visible || layers[layerId].locked) continue;
+      if (!layer.visible || layer.locked) continue;
 
       if (el.type === 'line') {
         const d = distPointToSegment(wx, wy, el.x1, el.y1, el.x2, el.y2);
@@ -863,7 +864,7 @@ export default function App() {
       renderElements = elements.map(el => {
         if (!selectedIds.has(el.id)) return el;
         // Do not move if layer is locked
-        if (layers[getElementLayer(el)].locked) return el;
+        if (layers[getElementLayer(el)]?.locked) return el;
         if (el.type === 'line') {
           return { ...el, x1: el.x1 + dragOffset.x, y1: el.y1 + dragOffset.y, x2: el.x2 + dragOffset.x, y2: el.y2 + dragOffset.y };
         }
@@ -990,7 +991,7 @@ export default function App() {
       const originalEl = elements[index];
       const isSelected = selectedIds.has(originalEl.id);
       const layerId = getElementLayer(originalEl);
-      const layer = layers[layerId];
+      const layer = layers[layerId] || { visible: true, locked: false, opacity: 1.0 };
 
       // Skip rendering if layer is hidden
       if (!layer.visible) return;
@@ -1717,7 +1718,7 @@ export default function App() {
       setElements(prev => prev.map(el => {
         if (!selectedIds.has(el.id)) return el;
         // Do not move if the layer is locked
-        if (layers[getElementLayer(el)].locked) return el;
+        if (layers[getElementLayer(el)]?.locked) return el;
         if (el.type === 'line') {
           return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
         }
@@ -1834,7 +1835,7 @@ export default function App() {
         if (e.key === 'a') {
           e.preventDefault();
           const selectable = elements.filter(el => {
-            const layer = layers[getElementLayer(el)];
+            const layer = layers[getElementLayer(el)] || { visible: true, locked: false };
             return layer.visible && !layer.locked;
           });
           setSelectedIds(new Set(selectable.map(el => el.id)));
@@ -2153,23 +2154,23 @@ export default function App() {
   const selectedElements = elements.filter(el => selectedIds.has(el.id));
 
   const updateProp = useCallback((prop, value) => {
-    const editableElements = elements.filter(el => selectedIds.has(el.id) && !layers[getElementLayer(el)].locked);
+    const editableElements = elements.filter(el => selectedIds.has(el.id) && !layers[getElementLayer(el)]?.locked);
     if (editableElements.length === 0) return;
 
     pushUndo(JSON.parse(JSON.stringify(elements)));
     setElements(prev => prev.map(el => {
-      if (!selectedIds.has(el.id) || layers[getElementLayer(el)].locked) return el;
+      if (!selectedIds.has(el.id) || layers[getElementLayer(el)]?.locked) return el;
       return { ...el, [prop]: value };
     }));
   }, [selectedIds, elements, pushUndo, layers]);
 
   const rotateSelected = useCallback(() => {
-    const editableElements = elements.filter(el => selectedIds.has(el.id) && el.type === 'line' && !layers[getElementLayer(el)].locked);
+    const editableElements = elements.filter(el => selectedIds.has(el.id) && el.type === 'line' && !layers[getElementLayer(el)]?.locked);
     if (editableElements.length === 0) return;
 
     pushUndo(JSON.parse(JSON.stringify(elements)));
     setElements(prev => prev.map(el => {
-      if (!selectedIds.has(el.id) || el.type !== 'line' || layers[getElementLayer(el)].locked) return el;
+      if (!selectedIds.has(el.id) || el.type !== 'line' || layers[getElementLayer(el)]?.locked) return el;
       // Rotate 90° around center
       const cx = (el.x1 + el.x2) / 2;
       const cy = (el.y1 + el.y2) / 2;
@@ -2291,7 +2292,7 @@ export default function App() {
           }
           setElements(data.elements || []);
           setJumpOverrides(new Set(data.jumpOverrides || []));
-          if (data.layers) setLayers(data.layers);
+          if (data.layers) setLayers(prev => ({ ...prev, ...data.layers }));
           if (data.pan) setPan(data.pan);
           if (data.zoom) setZoom(data.zoom);
           if (data.showGrid !== undefined) setShowGrid(data.showGrid);
@@ -2516,7 +2517,7 @@ export default function App() {
 
     elements.forEach(el => {
       const layerId = getElementLayer(el);
-      const layer = layers[layerId];
+      const layer = layers[layerId] || { visible: true, locked: false, opacity: 1.0 };
       if (!layer.visible) return;
 
       ctx.save();
@@ -2595,7 +2596,7 @@ export default function App() {
 
     elements.forEach(el => {
       const layerId = getElementLayer(el);
-      const layer = layers[layerId];
+      const layer = layers[layerId] || { visible: true, locked: false, opacity: 1.0 };
       if (!layer.visible) return;
 
       ctx.save();
@@ -3583,7 +3584,7 @@ export default function App() {
               ];
 
               return layerDefs.map(layer => {
-                const layerState = layers[layer.id];
+                const layerState = layers[layer.id] || { visible: true, locked: false, opacity: 1.0 };
                 return (
                   <div key={layer.id} className="layer-row">
                     <div className="layer-info">
@@ -3605,10 +3606,13 @@ export default function App() {
                       <button
                         className={`layer-ctrl-btn ${!layerState.visible ? 'inactive' : ''}`}
                         onClick={() => {
-                          setLayers(prev => ({
-                            ...prev,
-                            [layer.id]: { ...prev[layer.id], visible: !prev[layer.id].visible }
-                          }));
+                          setLayers(prev => {
+                            const current = prev[layer.id] || { visible: true, locked: false, opacity: 1.0 };
+                            return {
+                              ...prev,
+                              [layer.id]: { ...current, visible: !current.visible }
+                            };
+                          });
                           // Clear selection of elements on hidden layer
                           setSelectedIds(prevSelected => {
                             const nextSelected = new Set(prevSelected);
@@ -3629,10 +3633,13 @@ export default function App() {
                       <button
                         className={`layer-ctrl-btn ${layerState.locked ? 'active' : ''}`}
                         onClick={() => {
-                          setLayers(prev => ({
-                            ...prev,
-                            [layer.id]: { ...prev[layer.id], locked: !prev[layer.id].locked }
-                          }));
+                          setLayers(prev => {
+                            const current = prev[layer.id] || { visible: true, locked: false, opacity: 1.0 };
+                            return {
+                              ...prev,
+                              [layer.id]: { ...current, locked: !current.locked }
+                            };
+                          });
                           // Clear selection of elements on locked layer
                           setSelectedIds(prevSelected => {
                             const nextSelected = new Set(prevSelected);
@@ -3659,10 +3666,13 @@ export default function App() {
                           value={Math.round(layerState.opacity * 100)}
                           onChange={e => {
                             const val = parseFloat(e.target.value) / 100;
-                            setLayers(prev => ({
-                              ...prev,
-                              [layer.id]: { ...prev[layer.id], opacity: val }
-                            }));
+                            setLayers(prev => {
+                              const current = prev[layer.id] || { visible: true, locked: false, opacity: 1.0 };
+                              return {
+                                ...prev,
+                                [layer.id]: { ...current, opacity: val }
+                              };
+                            });
                           }}
                           className="layer-opacity-slider"
                         />
