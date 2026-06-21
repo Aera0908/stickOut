@@ -14,6 +14,8 @@ const ZOOM_STEP = 0.1;
 const LINE_WIDTH = 3;
 const VIA_SIZE = 1; // in grid units
 const UNDO_LIMIT = 50;
+const AUTOSAVE_KEY = 'stickdiagram-autosave';
+const AUTOSAVE_EXPIRY_DAYS = 30;
 
 const COLORS = {
   metal:    { label: 'Metal / Net',      hex: '#4A90E2' },
@@ -478,6 +480,13 @@ export default function App() {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const labelInputRef = useRef(null);
+  const clipboardRef = useRef(null);
+  const labelReadyRef = useRef(false);
+  const saveProjectFnRef = useRef(null);
+  const loadProjectFnRef = useRef(null);
+
+  // Auto-save state
+  const [hasAutosave, setHasAutosave] = useState(false);
 
   // ─── Undo/Redo helpers ──────────────────────────────────────
   const pushUndo = useCallback((snapshot) => {
@@ -569,6 +578,43 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
     try { localStorage.setItem('stickdiagram-theme', theme); } catch {}
   }, [theme]);
+
+  // ─── Auto-save: check on mount ─────────────────────────────
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        const age = Date.now() - (data.timestamp || 0);
+        const expiryMs = AUTOSAVE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+        if (age < expiryMs && data.elements && data.elements.length > 0) {
+          setHasAutosave(true);
+        } else {
+          localStorage.removeItem(AUTOSAVE_KEY);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // ─── Auto-save: persist on changes (debounced 1s) ──────────
+  useEffect(() => {
+    if (showModal) return;
+    if (elements.length === 0) return;
+    const timer = setTimeout(() => {
+      try {
+        const data = {
+          format: 'stickdiagram',
+          version: 1,
+          timestamp: Date.now(),
+          elements,
+          jumpOverrides: [...jumpOverrides],
+          layers,
+        };
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+      } catch {}
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [elements, jumpOverrides, layers, showModal]);
 
   const toggleTheme = useCallback(() => {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
@@ -889,7 +935,8 @@ export default function App() {
       };
       addElement(via);
     } else if (activeTool === TOOLS.label) {
-      // Show inline input
+      // Prevent default to stop canvas from stealing focus from the label input
+      e.preventDefault();
       const screenPos = worldToScreen(world.x, world.y, pan, zoom);
       setLabelInput({ worldX: world.x, worldY: world.y, screenX: screenPos.x, screenY: screenPos.y, text: '' });
     }
@@ -1061,6 +1108,8 @@ export default function App() {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'z') { e.preventDefault(); doUndo(); return; }
         if (e.key === 'y') { e.preventDefault(); doRedo(); return; }
+        if (e.key === 's') { e.preventDefault(); saveProjectFnRef.current?.(); return; }
+        if (e.key === 'o') { e.preventDefault(); loadProjectFnRef.current?.(); return; }
         if (e.key === 'a') {
           e.preventDefault();
           const selectable = elements.filter(el => {
@@ -1069,6 +1118,70 @@ export default function App() {
           });
           setSelectedIds(new Set(selectable.map(el => el.id)));
           setActiveTool(TOOLS.select);
+          return;
+        }
+        if (e.key === 'c') {
+          e.preventDefault();
+          if (selectedIds.size > 0) {
+            clipboardRef.current = JSON.parse(JSON.stringify(
+              elements.filter(el => selectedIds.has(el.id))
+            ));
+          }
+          return;
+        }
+        if (e.key === 'x') {
+          e.preventDefault();
+          if (selectedIds.size > 0) {
+            clipboardRef.current = JSON.parse(JSON.stringify(
+              elements.filter(el => selectedIds.has(el.id))
+            ));
+            deleteSelected();
+          }
+          return;
+        }
+        if (e.key === 'v') {
+          e.preventDefault();
+          if (clipboardRef.current && clipboardRef.current.length > 0) {
+            const offset = GRID_PITCH;
+            pushUndo(JSON.parse(JSON.stringify(elements)));
+            const newEls = clipboardRef.current.map(el => {
+              const n = JSON.parse(JSON.stringify(el));
+              n.id = uid();
+              if (n.type === 'line') {
+                n.x1 += offset; n.y1 += offset;
+                n.x2 += offset; n.y2 += offset;
+              } else if (n.type === 'via' || n.type === 'label') {
+                n.x += offset; n.y += offset;
+              }
+              return n;
+            });
+            setElements(prev => [...prev, ...newEls]);
+            setSelectedIds(new Set(newEls.map(el => el.id)));
+            setActiveTool(TOOLS.select);
+          }
+          return;
+        }
+        if (e.key === 'd') {
+          e.preventDefault();
+          if (selectedIds.size > 0) {
+            const selected = elements.filter(el => selectedIds.has(el.id));
+            const offset = GRID_PITCH;
+            pushUndo(JSON.parse(JSON.stringify(elements)));
+            const newEls = selected.map(el => {
+              const n = JSON.parse(JSON.stringify(el));
+              n.id = uid();
+              if (n.type === 'line') {
+                n.x1 += offset; n.y1 += offset;
+                n.x2 += offset; n.y2 += offset;
+              } else if (n.type === 'via' || n.type === 'label') {
+                n.x += offset; n.y += offset;
+              }
+              return n;
+            });
+            setElements(prev => [...prev, ...newEls]);
+            setSelectedIds(new Set(newEls.map(el => el.id)));
+            setActiveTool(TOOLS.select);
+          }
           return;
         }
         return;
@@ -1097,7 +1210,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, layers]);
+  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, layers, selectedIds, pushUndo]);
 
   // ─── Touch gesture handlers ──────────────────────────────────
   const handleTouchStart = useCallback((e) => {
@@ -1277,7 +1390,16 @@ export default function App() {
   // ─── Label input ────────────────────────────────────────────
   useEffect(() => {
     if (labelInput && labelInputRef.current) {
-      labelInputRef.current.focus();
+      labelReadyRef.current = false;
+      // Delay focus to next animation frame so the browser's
+      // focus state has settled after the canvas mousedown event
+      const frame = requestAnimationFrame(() => {
+        if (labelInputRef.current) {
+          labelInputRef.current.focus();
+          labelReadyRef.current = true;
+        }
+      });
+      return () => cancelAnimationFrame(frame);
     }
   }, [labelInput]);
 
@@ -1405,6 +1527,106 @@ export default function App() {
     setSelectedIds(new Set());
     setOpenMenu(null);
   }, [elements, pushUndo]);
+
+  // ─── Save / Load Project (.stk) ────────────────────────────
+  const handleSaveProject = useCallback(() => {
+    const data = {
+      format: 'stickdiagram',
+      version: 1,
+      savedAt: new Date().toISOString(),
+      elements,
+      jumpOverrides: [...jumpOverrides],
+      layers,
+      pan,
+      zoom,
+      showGrid,
+      snapEnabled,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.download = 'stick-diagram.stk';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    setOpenMenu(null);
+  }, [elements, jumpOverrides, layers, pan, zoom, showGrid, snapEnabled]);
+
+  const handleLoadProject = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.stk,.json';
+    input.onchange = (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        try {
+          const data = JSON.parse(readerEvent.target.result);
+          if (data.format !== 'stickdiagram') {
+            alert('Invalid file format. Please select a valid .stk file.');
+            return;
+          }
+          setElements(data.elements || []);
+          setJumpOverrides(new Set(data.jumpOverrides || []));
+          if (data.layers) setLayers(data.layers);
+          if (data.pan) setPan(data.pan);
+          if (data.zoom) setZoom(data.zoom);
+          if (data.showGrid !== undefined) setShowGrid(data.showGrid);
+          if (data.snapEnabled !== undefined) setSnapEnabled(data.snapEnabled);
+          const maxId = (data.elements || []).reduce((max, el) => {
+            const num = parseInt(el.id.replace('el-', ''));
+            return isNaN(num) ? max : Math.max(max, num);
+          }, 0);
+          nextId = maxId + 1;
+          setUndoStack([]);
+          setRedoStack([]);
+          setSelectedIds(new Set());
+          setShowModal(false);
+        } catch (err) {
+          alert('Failed to load file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+    setOpenMenu(null);
+  }, []);
+
+  const resumeAutosave = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        setElements(data.elements || []);
+        setJumpOverrides(new Set(data.jumpOverrides || []));
+        if (data.layers) setLayers(prev => ({ ...prev, ...data.layers }));
+        const maxId = (data.elements || []).reduce((max, el) => {
+          const num = parseInt(el.id.replace('el-', ''));
+          return isNaN(num) ? max : Math.max(max, num);
+        }, 0);
+        nextId = maxId + 1;
+        setUndoStack([]);
+        setRedoStack([]);
+        setSelectedIds(new Set());
+        const container = containerRef.current;
+        if (container && data.elements && data.elements.length > 0) {
+          const rect = container.getBoundingClientRect();
+          const bounds = getContentBounds(data.elements);
+          setPan({
+            x: rect.width / 2 - (bounds.x + bounds.w / 2),
+            y: rect.height / 2 - (bounds.y + bounds.h / 2),
+          });
+        }
+        setZoom(1);
+      }
+    } catch {}
+    setShowModal(false);
+    setHasAutosave(false);
+  }, []);
+
+  // Keep refs current for keyboard shortcuts
+  saveProjectFnRef.current = handleSaveProject;
+  loadProjectFnRef.current = handleLoadProject;
 
   // ─── PNG Export Functions ───────────────────────────────────
   const handleExportPNG = useCallback(() => {
@@ -1654,6 +1876,15 @@ export default function App() {
                 <span>Clear Canvas</span>
               </button>
               <div className="separator" />
+              <button onClick={handleSaveProject}>
+                <span>Save Project (.stk)</span>
+                <span className="shortcut">Ctrl+S</span>
+              </button>
+              <button onClick={handleLoadProject}>
+                <span>Open Project…</span>
+                <span className="shortcut">Ctrl+O</span>
+              </button>
+              <div className="separator" />
               <button onClick={handleExportPNG}>
                 <span>Export PNG…</span>
               </button>
@@ -1700,6 +1931,75 @@ export default function App() {
               <button onClick={() => { doRedo(); setOpenMenu(null); }}>
                 <span>Redo</span>
                 <span className="shortcut">Ctrl+Y</span>
+              </button>
+              <div className="separator" />
+              <button onClick={() => {
+                if (selectedIds.size > 0) {
+                  clipboardRef.current = JSON.parse(JSON.stringify(elements.filter(el => selectedIds.has(el.id))));
+                }
+                setOpenMenu(null);
+              }}>
+                <span>Copy</span>
+                <span className="shortcut">Ctrl+C</span>
+              </button>
+              <button onClick={() => {
+                if (selectedIds.size > 0) {
+                  clipboardRef.current = JSON.parse(JSON.stringify(elements.filter(el => selectedIds.has(el.id))));
+                  deleteSelected();
+                }
+                setOpenMenu(null);
+              }}>
+                <span>Cut</span>
+                <span className="shortcut">Ctrl+X</span>
+              </button>
+              <button onClick={() => {
+                if (clipboardRef.current && clipboardRef.current.length > 0) {
+                  const offset = GRID_PITCH;
+                  pushUndo(JSON.parse(JSON.stringify(elements)));
+                  const newEls = clipboardRef.current.map(el => {
+                    const n = JSON.parse(JSON.stringify(el));
+                    n.id = uid();
+                    if (n.type === 'line') {
+                      n.x1 += offset; n.y1 += offset;
+                      n.x2 += offset; n.y2 += offset;
+                    } else if (n.type === 'via' || n.type === 'label') {
+                      n.x += offset; n.y += offset;
+                    }
+                    return n;
+                  });
+                  setElements(prev => [...prev, ...newEls]);
+                  setSelectedIds(new Set(newEls.map(el => el.id)));
+                  setActiveTool(TOOLS.select);
+                }
+                setOpenMenu(null);
+              }}>
+                <span>Paste</span>
+                <span className="shortcut">Ctrl+V</span>
+              </button>
+              <button onClick={() => {
+                if (selectedIds.size > 0) {
+                  const selected = elements.filter(el => selectedIds.has(el.id));
+                  const offset = GRID_PITCH;
+                  pushUndo(JSON.parse(JSON.stringify(elements)));
+                  const newEls = selected.map(el => {
+                    const n = JSON.parse(JSON.stringify(el));
+                    n.id = uid();
+                    if (n.type === 'line') {
+                      n.x1 += offset; n.y1 += offset;
+                      n.x2 += offset; n.y2 += offset;
+                    } else if (n.type === 'via' || n.type === 'label') {
+                      n.x += offset; n.y += offset;
+                    }
+                    return n;
+                  });
+                  setElements(prev => [...prev, ...newEls]);
+                  setSelectedIds(new Set(newEls.map(el => el.id)));
+                  setActiveTool(TOOLS.select);
+                }
+                setOpenMenu(null);
+              }}>
+                <span>Duplicate</span>
+                <span className="shortcut">Ctrl+D</span>
               </button>
               <div className="separator" />
               <button onClick={() => { setSelectedIds(new Set(elements.map(el => el.id))); setActiveTool(TOOLS.select); setOpenMenu(null); }}>
@@ -1848,7 +2148,11 @@ export default function App() {
                 if (e.key === 'Enter') confirmLabel(labelInput.text);
                 if (e.key === 'Escape') setLabelInput(null);
               }}
-              onBlur={() => confirmLabel(labelInput.text)}
+              onBlur={() => {
+                if (labelReadyRef.current) {
+                  confirmLabel(labelInput.text);
+                }
+              }}
               placeholder="Label…"
             />
           )}
@@ -1877,6 +2181,9 @@ export default function App() {
                   <div className="hud-row"><kbd>Del</kbd> / <kbd>Backspace</kbd> <span>Delete</span></div>
                   <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Y</kbd> <span>Undo / Redo</span></div>
                   <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>A</kbd> <span>Select All</span></div>
+                  <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>C</kbd> / <kbd>X</kbd> / <kbd>V</kbd> <span>Copy / Cut / Paste</span></div>
+                  <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>D</kbd> <span>Duplicate</span></div>
+                  <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>S</kbd> / <kbd>O</kbd> <span>Save / Open Project</span></div>
                 </div>
               </div>
             )}
@@ -2195,6 +2502,17 @@ export default function App() {
               <h2>New Stick Diagram</h2>
             </div>
             <div className="modal-body">
+              {hasAutosave && (
+                <div className="template-option" onClick={resumeAutosave} style={{ borderColor: 'var(--accent)' }}>
+                  <div className="tpl-icon" style={{ background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }}>
+                    <Layers size={20} />
+                  </div>
+                  <div className="tpl-info">
+                    <h3>Resume Previous Session</h3>
+                    <p>Your last session was auto-saved. Pick up right where you left off.</p>
+                  </div>
+                </div>
+              )}
               <div className="template-option" onClick={startBlank}>
                 <div className="tpl-icon">
                   <Grid3X3 size={20} />
