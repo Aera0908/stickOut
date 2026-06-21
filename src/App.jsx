@@ -383,7 +383,17 @@ function drawElement(ctx, el, isSelected, options = {}) {
       cache[el.id] = img;
     }
     if (img.complete && img.naturalWidth !== 0) {
-      ctx.drawImage(img, el.x, el.y, el.w, el.h);
+      const cx = el.cropX !== undefined ? el.cropX : 0;
+      const cy = el.cropY !== undefined ? el.cropY : 0;
+      const cw = el.cropW !== undefined ? el.cropW : 1.0;
+      const ch = el.cropH !== undefined ? el.cropH : 1.0;
+
+      const sx = cx * img.naturalWidth;
+      const sy = cy * img.naturalHeight;
+      const sw = cw * img.naturalWidth;
+      const sh = ch * img.naturalHeight;
+
+      ctx.drawImage(img, sx, sy, sw, sh, el.x, el.y, el.w, el.h);
     } else {
       ctx.save();
       ctx.strokeStyle = '#cccccc';
@@ -865,11 +875,108 @@ export default function App() {
     } else if (resizeState) {
       renderElements = elements.map(el => {
         if (el.id !== resizeState.id) return el;
-        if (resizeState.handle === 'p1') {
-          return { ...el, x1: resizeState.currentWorldPos.x, y1: resizeState.currentWorldPos.y };
-        } else {
-          return { ...el, x2: resizeState.currentWorldPos.x, y2: resizeState.currentWorldPos.y };
+        if (el.type === 'line') {
+          if (resizeState.handle === 'p1') {
+            return { ...el, x1: resizeState.currentWorldPos.x, y1: resizeState.currentWorldPos.y };
+          } else {
+            return { ...el, x2: resizeState.currentWorldPos.x, y2: resizeState.currentWorldPos.y };
+          }
         }
+        if (el.type === 'image') {
+          const dx = resizeState.currentWorldPos.x - resizeState.startWorld.x;
+          const dy = resizeState.currentWorldPos.y - resizeState.startWorld.y;
+
+          let nextX = resizeState.startX;
+          let nextY = resizeState.startY;
+          let nextW = resizeState.startW;
+          let nextH = resizeState.startH;
+          let nextCropX = resizeState.startCropX;
+          let nextCropY = resizeState.startCropY;
+          let nextCropW = resizeState.startCropW;
+          let nextCropH = resizeState.startCropH;
+
+          // Corner resizing handles
+          if (resizeState.handle === 'br') {
+            nextW = Math.max(10, resizeState.startW + dx);
+            nextH = Math.max(10, resizeState.startH + dy);
+          } else if (resizeState.handle === 'bl') {
+            const possibleW = resizeState.startW - dx;
+            if (possibleW >= 10) {
+              nextX = resizeState.startX + dx;
+              nextW = possibleW;
+            }
+            nextH = Math.max(10, resizeState.startH + dy);
+          } else if (resizeState.handle === 'tr') {
+            nextW = Math.max(10, resizeState.startW + dx);
+            const possibleH = resizeState.startH - dy;
+            if (possibleH >= 10) {
+              nextY = resizeState.startY + dy;
+              nextH = possibleH;
+            }
+          } else if (resizeState.handle === 'tl') {
+            const possibleW = resizeState.startW - dx;
+            if (possibleW >= 10) {
+              nextX = resizeState.startX + dx;
+              nextW = possibleW;
+            }
+            const possibleH = resizeState.startH - dy;
+            if (possibleH >= 10) {
+              nextY = resizeState.startY + dy;
+              nextH = possibleH;
+            }
+          }
+          // Center edge cropping handles
+          else if (resizeState.handle === 'rc') {
+            const possibleW = resizeState.startW + dx;
+            if (possibleW >= 10) {
+              nextW = possibleW;
+              nextCropW = Math.max(0.01, Math.min(1.0, resizeState.startCropW * (nextW / resizeState.startW)));
+              if (nextCropX + nextCropW > 1.0) {
+                nextCropW = 1.0 - nextCropX;
+              }
+            }
+          } else if (resizeState.handle === 'lc') {
+            const possibleW = resizeState.startW - dx;
+            if (possibleW >= 10) {
+              nextX = resizeState.startX + dx;
+              nextW = possibleW;
+              const cropDelta = resizeState.startCropW * (dx / resizeState.startW);
+              nextCropX = Math.max(0.0, Math.min(1.0, resizeState.startCropX + cropDelta));
+              nextCropW = Math.max(0.01, Math.min(1.0 - nextCropX, resizeState.startCropW * (nextW / resizeState.startW)));
+            }
+          } else if (resizeState.handle === 'bc') {
+            const possibleH = resizeState.startH + dy;
+            if (possibleH >= 10) {
+              nextH = possibleH;
+              nextCropH = Math.max(0.01, Math.min(1.0, resizeState.startCropH * (nextH / resizeState.startH)));
+              if (nextCropY + nextCropH > 1.0) {
+                nextCropH = 1.0 - nextCropY;
+              }
+            }
+          } else if (resizeState.handle === 'tc') {
+            const possibleH = resizeState.startH - dy;
+            if (possibleH >= 10) {
+              nextY = resizeState.startY + dy;
+              nextH = possibleH;
+              const cropDelta = resizeState.startCropH * (dy / resizeState.startH);
+              nextCropY = Math.max(0.0, Math.min(1.0, resizeState.startCropY + cropDelta));
+              nextCropH = Math.max(0.01, Math.min(1.0 - nextCropY, resizeState.startCropH * (nextH / resizeState.startH)));
+            }
+          }
+
+          return {
+            ...el,
+            x: nextX,
+            y: nextY,
+            w: nextW,
+            h: nextH,
+            cropX: nextCropX,
+            cropY: nextCropY,
+            cropW: nextCropW,
+            cropH: nextCropH
+          };
+        }
+        return el;
       });
     }
 
@@ -939,6 +1046,63 @@ export default function App() {
         // p2 Handle
         ctx.beginPath();
         ctx.arc(el.x2, el.y2, handleRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      if (isSelected && el.type === 'image' && activeTool === TOOLS.select) {
+        ctx.save();
+        const handleRadius = 5 / zoom;
+        const halfBarW = 5 / zoom;
+        const halfBarH = 1.5 / zoom;
+
+        // Corner resizing handles (orange circles with white borders)
+        ctx.fillStyle = '#FF5500';
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+
+        const corners = [
+          { x: el.x, y: el.y },         // tl
+          { x: el.x + el.w, y: el.y },   // tr
+          { x: el.x, y: el.y + el.h },   // bl
+          { x: el.x + el.w, y: el.y + el.h } // br
+        ];
+
+        corners.forEach(c => {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, handleRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        // Center edge cropping handles (dark gray/black bars with orange borders)
+        ctx.fillStyle = '#111111';
+        ctx.strokeStyle = '#FF5500';
+        ctx.lineWidth = 1.5;
+
+        // tc
+        ctx.beginPath();
+        ctx.rect(el.x + el.w / 2 - halfBarW, el.y - halfBarH, halfBarW * 2, halfBarH * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // bc
+        ctx.beginPath();
+        ctx.rect(el.x + el.w / 2 - halfBarW, el.y + el.h - halfBarH, halfBarW * 2, halfBarH * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // lc
+        ctx.beginPath();
+        ctx.rect(el.x - halfBarH, el.y + el.h / 2 - halfBarW, halfBarH * 2, halfBarW * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // rc
+        ctx.beginPath();
+        ctx.rect(el.x + el.w - halfBarH, el.y + el.h / 2 - halfBarW, halfBarH * 2, halfBarW * 2);
         ctx.fill();
         ctx.stroke();
 
@@ -1101,16 +1265,166 @@ export default function App() {
       if (selectedIds.size > 0) {
         const handleThreshold = 10 / zoom; // 10 screen pixels hit tolerance
         for (const el of elements) {
-          if (selectedIds.has(el.id) && el.type === 'line') {
-            const dist1 = Math.hypot(world.x - el.x1, world.y - el.y1);
-            if (dist1 < handleThreshold) {
-              setResizeState({ id: el.id, handle: 'p1', currentWorldPos: { x: el.x1, y: el.y1 } });
-              return;
-            }
-            const dist2 = Math.hypot(world.x - el.x2, world.y - el.y2);
-            if (dist2 < handleThreshold) {
-              setResizeState({ id: el.id, handle: 'p2', currentWorldPos: { x: el.x2, y: el.y2 } });
-              return;
+          if (selectedIds.has(el.id)) {
+            if (el.type === 'line') {
+              const dist1 = Math.hypot(world.x - el.x1, world.y - el.y1);
+              if (dist1 < handleThreshold) {
+                setResizeState({ id: el.id, handle: 'p1', currentWorldPos: { x: el.x1, y: el.y1 } });
+                return;
+              }
+              const dist2 = Math.hypot(world.x - el.x2, world.y - el.y2);
+              if (dist2 < handleThreshold) {
+                setResizeState({ id: el.id, handle: 'p2', currentWorldPos: { x: el.x2, y: el.y2 } });
+                return;
+              }
+            } else if (el.type === 'image') {
+              // 4 corners (resize)
+              const tlDist = Math.hypot(world.x - el.x, world.y - el.y);
+              if (tlDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'tl',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
+              const trDist = Math.hypot(world.x - (el.x + el.w), world.y - el.y);
+              if (trDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'tr',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
+              const blDist = Math.hypot(world.x - el.x, world.y - (el.y + el.h));
+              if (blDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'bl',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
+              const brDist = Math.hypot(world.x - (el.x + el.w), world.y - (el.y + el.h));
+              if (brDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'br',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
+
+              // 4 center edges (crop)
+              const tcDist = Math.hypot(world.x - (el.x + el.w / 2), world.y - el.y);
+              if (tcDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'tc',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
+              const bcDist = Math.hypot(world.x - (el.x + el.w / 2), world.y - (el.y + el.h));
+              if (bcDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'bc',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
+              const lcDist = Math.hypot(world.x - el.x, world.y - (el.y + el.h / 2));
+              if (lcDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'lc',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
+              const rcDist = Math.hypot(world.x - (el.x + el.w), world.y - (el.y + el.h / 2));
+              if (rcDist < handleThreshold) {
+                setResizeState({
+                  id: el.id,
+                  handle: 'rc',
+                  startWorld: { ...world },
+                  startX: el.x,
+                  startY: el.y,
+                  startW: el.w,
+                  startH: el.h,
+                  startCropX: el.cropX !== undefined ? el.cropX : 0,
+                  startCropY: el.cropY !== undefined ? el.cropY : 0,
+                  startCropW: el.cropW !== undefined ? el.cropW : 1.0,
+                  startCropH: el.cropH !== undefined ? el.cropH : 1.0,
+                  currentWorldPos: { ...world }
+                });
+                return;
+              }
             }
           }
         }
@@ -1209,16 +1523,20 @@ export default function App() {
 
     if (resizeState) {
       const world = getWorldPos(e);
-      const line = elements.find(el => el.id === resizeState.id);
-      if (line) {
-        const isHorizontal = line.y1 === line.y2;
-        let nextPos = { ...world };
-        if (isHorizontal) {
-          nextPos.y = line.y1;
-        } else {
-          nextPos.x = line.x1;
+      const el = elements.find(item => item.id === resizeState.id);
+      if (el) {
+        if (el.type === 'line') {
+          const isHorizontal = el.y1 === el.y2;
+          let nextPos = { ...world };
+          if (isHorizontal) {
+            nextPos.y = el.y1;
+          } else {
+            nextPos.x = el.x1;
+          }
+          setResizeState(prev => prev ? { ...prev, currentWorldPos: nextPos } : null);
+        } else if (el.type === 'image') {
+          setResizeState(prev => prev ? { ...prev, currentWorldPos: world } : null);
         }
-        setResizeState(prev => prev ? { ...prev, currentWorldPos: nextPos } : null);
       }
       return;
     }
@@ -1263,10 +1581,106 @@ export default function App() {
       pushUndo(JSON.parse(JSON.stringify(elements)));
       setElements(prev => prev.map(el => {
         if (el.id === resizeState.id) {
-          if (resizeState.handle === 'p1') {
-            return { ...el, x1: resizeState.currentWorldPos.x, y1: resizeState.currentWorldPos.y };
-          } else {
-            return { ...el, x2: resizeState.currentWorldPos.x, y2: resizeState.currentWorldPos.y };
+          if (el.type === 'line') {
+            if (resizeState.handle === 'p1') {
+              return { ...el, x1: resizeState.currentWorldPos.x, y1: resizeState.currentWorldPos.y };
+            } else {
+              return { ...el, x2: resizeState.currentWorldPos.x, y2: resizeState.currentWorldPos.y };
+            }
+          }
+          if (el.type === 'image') {
+            const dx = resizeState.currentWorldPos.x - resizeState.startWorld.x;
+            const dy = resizeState.currentWorldPos.y - resizeState.startWorld.y;
+
+            let nextX = resizeState.startX;
+            let nextY = resizeState.startY;
+            let nextW = resizeState.startW;
+            let nextH = resizeState.startH;
+            let nextCropX = resizeState.startCropX;
+            let nextCropY = resizeState.startCropY;
+            let nextCropW = resizeState.startCropW;
+            let nextCropH = resizeState.startCropH;
+
+            // Corner resizing handles
+            if (resizeState.handle === 'br') {
+              nextW = Math.max(10, resizeState.startW + dx);
+              nextH = Math.max(10, resizeState.startH + dy);
+            } else if (resizeState.handle === 'bl') {
+              const possibleW = resizeState.startW - dx;
+              if (possibleW >= 10) {
+                nextX = resizeState.startX + dx;
+                nextW = possibleW;
+              }
+              nextH = Math.max(10, resizeState.startH + dy);
+            } else if (resizeState.handle === 'tr') {
+              nextW = Math.max(10, resizeState.startW + dx);
+              const possibleH = resizeState.startH - dy;
+              if (possibleH >= 10) {
+                nextY = resizeState.startY + dy;
+                nextH = possibleH;
+              }
+            } else if (resizeState.handle === 'tl') {
+              const possibleW = resizeState.startW - dx;
+              if (possibleW >= 10) {
+                nextX = resizeState.startX + dx;
+                nextW = possibleW;
+              }
+              const possibleH = resizeState.startH - dy;
+              if (possibleH >= 10) {
+                nextY = resizeState.startY + dy;
+                nextH = possibleH;
+              }
+            }
+            // Center edge cropping handles
+            else if (resizeState.handle === 'rc') {
+              const possibleW = resizeState.startW + dx;
+              if (possibleW >= 10) {
+                nextW = possibleW;
+                nextCropW = Math.max(0.01, Math.min(1.0, resizeState.startCropW * (nextW / resizeState.startW)));
+                if (nextCropX + nextCropW > 1.0) {
+                  nextCropW = 1.0 - nextCropX;
+                }
+              }
+            } else if (resizeState.handle === 'lc') {
+              const possibleW = resizeState.startW - dx;
+              if (possibleW >= 10) {
+                nextX = resizeState.startX + dx;
+                nextW = possibleW;
+                const cropDelta = resizeState.startCropW * (dx / resizeState.startW);
+                nextCropX = Math.max(0.0, Math.min(1.0, resizeState.startCropX + cropDelta));
+                nextCropW = Math.max(0.01, Math.min(1.0 - nextCropX, resizeState.startCropW * (nextW / resizeState.startW)));
+              }
+            } else if (resizeState.handle === 'bc') {
+              const possibleH = resizeState.startH + dy;
+              if (possibleH >= 10) {
+                nextH = possibleH;
+                nextCropH = Math.max(0.01, Math.min(1.0, resizeState.startCropH * (nextH / resizeState.startH)));
+                if (nextCropY + nextCropH > 1.0) {
+                  nextCropH = 1.0 - nextCropY;
+                }
+              }
+            } else if (resizeState.handle === 'tc') {
+              const possibleH = resizeState.startH - dy;
+              if (possibleH >= 10) {
+                nextY = resizeState.startY + dy;
+                nextH = possibleH;
+                const cropDelta = resizeState.startCropH * (dy / resizeState.startH);
+                nextCropY = Math.max(0.0, Math.min(1.0, resizeState.startCropY + cropDelta));
+                nextCropH = Math.max(0.01, Math.min(1.0 - nextCropY, resizeState.startCropH * (nextH / resizeState.startH)));
+              }
+            }
+
+            return {
+              ...el,
+              x: nextX,
+              y: nextY,
+              w: nextW,
+              h: nextH,
+              cropX: nextCropX,
+              cropY: nextCropY,
+              cropW: nextCropW,
+              cropH: nextCropH
+            };
           }
         }
         return el;
@@ -3039,6 +3453,28 @@ export default function App() {
                       value={Math.round(selectedElements[0].y)}
                       onChange={e => updateProp('y', parseInt(e.target.value) || 0)}
                     />
+                  </div>
+                  <div className="prop-group" style={{ marginTop: '4px' }}>
+                    <button
+                      className="prop-btn"
+                      onClick={() => {
+                        pushUndo(JSON.parse(JSON.stringify(elements)));
+                        setElements(prev => prev.map(el => {
+                          if (el.id === selectedElements[0].id) {
+                            return {
+                              ...el,
+                              cropX: 0,
+                              cropY: 0,
+                              cropW: 1.0,
+                              cropH: 1.0
+                            };
+                          }
+                          return el;
+                        }));
+                      }}
+                    >
+                      Reset Crop
+                    </button>
                   </div>
                 </>
               )}
