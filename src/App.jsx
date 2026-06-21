@@ -3,7 +3,7 @@ import {
   MousePointer2, Minus, Square, Type,
   RotateCw, Trash2, Cpu, Grid3X3, FileText, Layers,
   Eye, EyeOff, Lock, Unlock, HelpCircle, Sun, Moon,
-  Bug
+  Bug, Paintbrush, Image as ImageIcon
 } from 'lucide-react';
 import './App.css';
 
@@ -31,6 +31,7 @@ const TOOLS = {
   line:   'line',
   via:    'via',
   label:  'label',
+  brush:  'brush',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -93,6 +94,22 @@ function getElementBounds(el) {
     const align = el.align || 'left';
     const rx = align === 'center' ? el.x - w / 2 : el.x;
     return { x: rx, y: el.y - 8, w, h: 16 };
+  }
+  if (el.type === 'image') {
+    return { x: el.x, y: el.y, w: el.w, h: el.h };
+  }
+  if (el.type === 'brush') {
+    if (!el.points || el.points.length === 0) return { x: el.x, y: el.y, w: 0, h: 0 };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    el.points.forEach(p => {
+      const px = el.x + p.x;
+      const py = el.y + p.y;
+      minX = Math.min(minX, px);
+      minY = Math.min(minY, py);
+      maxX = Math.max(maxX, px);
+      maxY = Math.max(maxY, py);
+    });
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
   return { x: 0, y: 0, w: 0, h: 0 };
 }
@@ -350,6 +367,75 @@ function drawElement(ctx, el, isSelected, options = {}) {
       forceTextColor: exportTextColor,
       forceHasBg: exportHasBg
     });
+  } else if (el.type === 'image') {
+    const cache = options.imageCache || {};
+    let img = cache[el.id] || cache[el.src];
+    if (!img) {
+      img = new Image();
+      img.src = el.src;
+      img.onload = () => {
+        cache[el.id] = img;
+        cache[el.src] = img;
+        if (options.triggerRedraw) {
+          options.triggerRedraw();
+        }
+      };
+      cache[el.id] = img;
+    }
+    if (img.complete && img.naturalWidth !== 0) {
+      ctx.drawImage(img, el.x, el.y, el.w, el.h);
+    } else {
+      ctx.save();
+      ctx.strokeStyle = '#cccccc';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(el.x, el.y, el.w, el.h);
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.2)';
+      ctx.fillRect(el.x, el.y, el.w, el.h);
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = '#888888';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Loading Image...', el.x + el.w / 2, el.y + el.h / 2);
+      ctx.restore();
+    }
+
+    if (isSelected && !isExport) {
+      ctx.save();
+      const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(el.x - 4, el.y - 4, el.w + 8, el.h + 8);
+      ctx.restore();
+    }
+  } else if (el.type === 'brush') {
+    if (!el.points || el.points.length === 0) return;
+    ctx.save();
+    ctx.strokeStyle = el.color || '#FF0000';
+    ctx.lineWidth = el.size || 5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = el.opacity !== undefined ? el.opacity : 0.8;
+
+    ctx.beginPath();
+    ctx.moveTo(el.x + el.points[0].x, el.y + el.points[0].y);
+    for (let i = 1; i < el.points.length; i++) {
+      ctx.lineTo(el.x + el.points[i].x, el.y + el.points[i].y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    if (isSelected && !isExport) {
+      ctx.save();
+      const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      const b = getElementBounds(el);
+      ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
+      ctx.restore();
+    }
   }
 }
 
@@ -400,6 +486,8 @@ function getContentBounds(elementsList) {
 function getElementLayer(el) {
   if (el.type === 'via') return 'via';
   if (el.type === 'label') return 'label';
+  if (el.type === 'image') return 'image';
+  if (el.type === 'brush') return 'brush';
   if (el.type === 'line') {
     if (el.color === COLORS.metal.hex) return 'metal';
     if (el.color === COLORS.pmos.hex) return 'pmos';
@@ -479,10 +567,24 @@ export default function App() {
     via:    { visible: true, locked: false, opacity: 1.0 },
     label:  { visible: true, locked: false, opacity: 1.0 },
     custom: { visible: true, locked: false, opacity: 1.0 },
+    image:  { visible: true, locked: false, opacity: 1.0 },
+    brush:  { visible: true, locked: false, opacity: 1.0 },
   });
 
   // Custom Color State
   const [customColor, setCustomColor] = useState('#E67E22'); // Default orange
+
+  // Brush Tool States
+  const [brushColor, setBrushColor] = useState('#FF453A'); // Default brush color (red)
+  const [brushSize, setBrushSize] = useState(5);           // Default brush size (px)
+  const [brushOpacity, setBrushOpacity] = useState(0.8);   // Default brush opacity
+  const [brushStroke, setBrushStroke] = useState(null);    // Active preview path { points: [{x, y}], color, size, opacity }
+  const brushStrokeRef = useRef(null);
+
+  // Image Cache & Redraw Trigger
+  const imageCacheRef = useRef({});
+  const [, setRedrawTrigger] = useState(0);
+  const triggerRedraw = useCallback(() => setRedrawTrigger(n => n + 1), []);
 
   // Jump Overrides (Connections) state
   const [jumpOverrides, setJumpOverrides] = useState(new Set()); // Stores "${x},${y}" crossover coordinates that are connections (no jump)
@@ -520,6 +622,7 @@ export default function App() {
   const [dragStart, setDragStart] = useState(null);
   const [dragOffset, setDragOffset] = useState(null);
   const [selectionBox, setSelectionBox] = useState(null);
+  const [resizeState, setResizeState] = useState(null); // { id: string, handle: 'p1'|'p2', currentWorldPos: {x,y} }
 
   // Pan state
   const [isPanning, setIsPanning] = useState(false);
@@ -621,6 +724,17 @@ export default function App() {
       } else if (el.type === 'label') {
         const bounds = getElementBounds(el);
         if (pointInRect(wx, wy, bounds.x - 4, bounds.y - 4, bounds.w + 8, bounds.h + 8)) return el;
+      } else if (el.type === 'image') {
+        const bounds = getElementBounds(el);
+        if (pointInRect(wx, wy, bounds.x, bounds.y, bounds.w, bounds.h)) return el;
+      } else if (el.type === 'brush') {
+        const threshold = (el.size || 5) / 2 + 8 / zoom;
+        for (let j = 0; j < el.points.length - 1; j++) {
+          const p1 = el.points[j];
+          const p2 = el.points[j+1];
+          const d = distPointToSegment(wx, wy, el.x + p1.x, el.y + p1.y, el.x + p2.x, el.y + p2.y);
+          if (d < threshold) return el;
+        }
       }
     }
     return null;
@@ -733,15 +847,31 @@ export default function App() {
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
 
-    // Compute crossovers for jump rendering
-    const renderElements = isDragging && dragOffset && (dragOffset.x !== 0 || dragOffset.y !== 0)
-      ? elements.map(el => {
+    // Compute preview elements (with dragging/resizing applied)
+    let renderElements = elements;
+    if (isDragging && dragOffset && (dragOffset.x !== 0 || dragOffset.y !== 0)) {
+      renderElements = elements.map(el => {
         if (!selectedIds.has(el.id)) return el;
-        if (el.type === 'line') return { ...el, x1: el.x1 + dragOffset.x, y1: el.y1 + dragOffset.y, x2: el.x2 + dragOffset.x, y2: el.y2 + dragOffset.y };
-        if (el.type === 'via' || el.type === 'label') return { ...el, x: el.x + dragOffset.x, y: el.y + dragOffset.y };
+        // Do not move if layer is locked
+        if (layers[getElementLayer(el)].locked) return el;
+        if (el.type === 'line') {
+          return { ...el, x1: el.x1 + dragOffset.x, y1: el.y1 + dragOffset.y, x2: el.x2 + dragOffset.x, y2: el.y2 + dragOffset.y };
+        }
+        if (el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush') {
+          return { ...el, x: el.x + dragOffset.x, y: el.y + dragOffset.y };
+        }
         return el;
-      })
-      : elements;
+      });
+    } else if (resizeState) {
+      renderElements = elements.map(el => {
+        if (el.id !== resizeState.id) return el;
+        if (resizeState.handle === 'p1') {
+          return { ...el, x1: resizeState.currentWorldPos.x, y1: resizeState.currentWorldPos.y };
+        } else {
+          return { ...el, x2: resizeState.currentWorldPos.x, y2: resizeState.currentWorldPos.y };
+        }
+      });
+    }
 
     const crossovers = getCrossovers(renderElements);
     const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
@@ -749,57 +879,71 @@ export default function App() {
     const originalCrossovers = getCrossovers(elements);
     const activeOriginalCrossovers = originalCrossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
 
-    elements.forEach(el => {
-      const isSelected = selectedIds.has(el.id);
-      const layerId = getElementLayer(el);
+    renderElements.forEach((el, index) => {
+      const originalEl = elements[index];
+      const isSelected = selectedIds.has(originalEl.id);
+      const layerId = getElementLayer(originalEl);
       const layer = layers[layerId];
 
       // Skip rendering if layer is hidden
       if (!layer.visible) return;
 
-      // Ghosting: Draw original position semi-transparently if dragging
-      if (isDragging && isSelected && dragOffset && (dragOffset.x !== 0 || dragOffset.y !== 0)) {
+      // Ghosting: Draw original position semi-transparently if dragging or resizing
+      const isCurrentlyDragged = isDragging && isSelected && dragOffset && (dragOffset.x !== 0 || dragOffset.y !== 0);
+      const isCurrentlyResized = resizeState && originalEl.id === resizeState.id;
+      if (isCurrentlyDragged || isCurrentlyResized) {
         ctx.save();
         ctx.globalAlpha = 0.35 * layer.opacity;
-        let ghostOptions = {};
-        if (el.type === 'line' && el.y1 === el.y2) {
+        let ghostOptions = {
+          imageCache: imageCacheRef.current,
+          triggerRedraw: triggerRedraw,
+        };
+        if (originalEl.type === 'line' && originalEl.y1 === originalEl.y2) {
           ghostOptions.crossoverXCoords = activeOriginalCrossovers
-            .filter(c => c.hId === el.id)
+            .filter(c => c.hId === originalEl.id)
             .map(c => c.x);
         }
-        drawElement(ctx, el, false, ghostOptions);
+        drawElement(ctx, originalEl, false, ghostOptions);
         ctx.restore();
       }
 
-      // Draw current position (with offset applied if dragging)
+      // Draw current position (with drag/resize preview applied)
       ctx.save();
       ctx.globalAlpha *= layer.opacity;
-      let drawEl = el;
-      if (isDragging && isSelected && dragOffset) {
-        if (el.type === 'line') {
-          drawEl = {
-            ...el,
-            x1: el.x1 + dragOffset.x,
-            y1: el.y1 + dragOffset.y,
-            x2: el.x2 + dragOffset.x,
-            y2: el.y2 + dragOffset.y
-          };
-        } else if (el.type === 'via' || el.type === 'label') {
-          drawEl = {
-            ...el,
-            x: el.x + dragOffset.x,
-            y: el.y + dragOffset.y
-          };
-        }
-      }
-      let options = {};
-      if (drawEl.type === 'line' && drawEl.y1 === drawEl.y2) {
+      let options = {
+        imageCache: imageCacheRef.current,
+        triggerRedraw: triggerRedraw,
+      };
+      if (el.type === 'line' && el.y1 === el.y2) {
         options.crossoverXCoords = activeCrossovers
-          .filter(c => c.hId === drawEl.id)
+          .filter(c => c.hId === el.id)
           .map(c => c.x);
       }
-      drawElement(ctx, drawEl, isSelected, options);
+      drawElement(ctx, el, isSelected, options);
       ctx.restore();
+
+      // Draw extend/resize handles if selected line
+      if (isSelected && el.type === 'line' && activeTool === TOOLS.select) {
+        ctx.save();
+        ctx.fillStyle = '#FF5500';
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+        const handleRadius = 5 / zoom;
+
+        // p1 Handle
+        ctx.beginPath();
+        ctx.arc(el.x1, el.y1, handleRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // p2 Handle
+        ctx.beginPath();
+        ctx.arc(el.x2, el.y2, handleRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
     });
 
     // Draw line preview
@@ -813,6 +957,23 @@ export default function App() {
       ctx.lineTo(linePreview.x, linePreview.y);
       ctx.stroke();
       ctx.globalAlpha = 1;
+    }
+
+    // Draw brush preview
+    if (brushStroke && brushStroke.points && brushStroke.points.length > 0) {
+      ctx.save();
+      ctx.strokeStyle = brushStroke.color;
+      ctx.lineWidth = brushStroke.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = brushStroke.opacity;
+      ctx.beginPath();
+      ctx.moveTo(brushStroke.points[0].x, brushStroke.points[0].y);
+      for (let i = 1; i < brushStroke.points.length; i++) {
+        ctx.lineTo(brushStroke.points[i].x, brushStroke.points[i].y);
+      }
+      ctx.stroke();
+      ctx.restore();
     }
 
     ctx.restore();
@@ -834,7 +995,7 @@ export default function App() {
       ctx.setLineDash([]);
     }
 
-  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeColor, customColor, jumpOverrides, selectionBox, isDragging, dragOffset, layers, theme]);
+  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeColor, customColor, jumpOverrides, selectionBox, isDragging, dragOffset, layers, theme, brushStroke, resizeState, activeTool]);
 
   // ─── Resize observer ───────────────────────────────────────
   useEffect(() => {
@@ -936,6 +1097,25 @@ export default function App() {
     const world = getWorldPos(e);
 
     if (activeTool === TOOLS.select) {
+      // Check if we hit any endpoint handle of a selected line first
+      if (selectedIds.size > 0) {
+        const handleThreshold = 10 / zoom; // 10 screen pixels hit tolerance
+        for (const el of elements) {
+          if (selectedIds.has(el.id) && el.type === 'line') {
+            const dist1 = Math.hypot(world.x - el.x1, world.y - el.y1);
+            if (dist1 < handleThreshold) {
+              setResizeState({ id: el.id, handle: 'p1', currentWorldPos: { x: el.x1, y: el.y1 } });
+              return;
+            }
+            const dist2 = Math.hypot(world.x - el.x2, world.y - el.y2);
+            if (dist2 < handleThreshold) {
+              setResizeState({ id: el.id, handle: 'p2', currentWorldPos: { x: el.x2, y: el.y2 } });
+              return;
+            }
+          }
+        }
+      }
+
       const hit = hitTest(world.x, world.y);
       if (hit) {
         if (e.shiftKey) {
@@ -994,8 +1174,20 @@ export default function App() {
       e.preventDefault();
       const screenPos = worldToScreen(world.x, world.y, pan, zoom);
       setLabelInput({ worldX: world.x, worldY: world.y, screenX: screenPos.x, screenY: screenPos.y, text: '' });
+    } else if (activeTool === TOOLS.brush) {
+      const rawWorld = screenToWorld(sx, sy, pan, zoom);
+      const stroke = {
+        x: 0,
+        y: 0,
+        points: [{ x: rawWorld.x, y: rawWorld.y }],
+        color: brushColor,
+        size: brushSize,
+        opacity: brushOpacity,
+      };
+      brushStrokeRef.current = stroke;
+      setBrushStroke(stroke);
     }
-  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeColor, customColor, addElement, getOrthoEnd, elements, jumpOverrides, sidebarOpen, viaSize, viaShape]);
+  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeColor, customColor, addElement, getOrthoEnd, elements, jumpOverrides, sidebarOpen, viaSize, viaShape, brushColor, brushSize, brushOpacity]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1012,6 +1204,22 @@ export default function App() {
 
     if (isPanning && panStart) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+      return;
+    }
+
+    if (resizeState) {
+      const world = getWorldPos(e);
+      const line = elements.find(el => el.id === resizeState.id);
+      if (line) {
+        const isHorizontal = line.y1 === line.y2;
+        let nextPos = { ...world };
+        if (isHorizontal) {
+          nextPos.y = line.y1;
+        } else {
+          nextPos.x = line.x1;
+        }
+        setResizeState(prev => prev ? { ...prev, currentWorldPos: nextPos } : null);
+      }
       return;
     }
 
@@ -1033,13 +1241,57 @@ export default function App() {
     if (activeTool === TOOLS.line && lineStart) {
       const ortho = getOrthoEnd(lineStart, world);
       setLinePreview(ortho);
+    } else if (activeTool === TOOLS.brush && brushStrokeRef.current) {
+      const rawWorld = screenToWorld(sx, sy, pan, zoom);
+      const lastPt = brushStrokeRef.current.points[brushStrokeRef.current.points.length - 1];
+      const dist = Math.hypot(rawWorld.x - lastPt.x, rawWorld.y - lastPt.y);
+      if (dist > 1.5) {
+        brushStrokeRef.current.points.push({ x: rawWorld.x, y: rawWorld.y });
+        setBrushStroke({ ...brushStrokeRef.current });
+      }
     }
-  }, [isPanning, panStart, pan, zoom, isDragging, dragStart, selectedIds, selectionBox, activeTool, lineStart, getWorldPos, getOrthoEnd]);
+  }, [isPanning, panStart, pan, zoom, isDragging, dragStart, selectedIds, selectionBox, activeTool, lineStart, getWorldPos, getOrthoEnd, resizeState, elements]);
 
   const handleMouseUp = useCallback((e) => {
     if (isPanning) {
       setIsPanning(false);
       setPanStart(null);
+      return;
+    }
+
+    if (resizeState) {
+      pushUndo(JSON.parse(JSON.stringify(elements)));
+      setElements(prev => prev.map(el => {
+        if (el.id === resizeState.id) {
+          if (resizeState.handle === 'p1') {
+            return { ...el, x1: resizeState.currentWorldPos.x, y1: resizeState.currentWorldPos.y };
+          } else {
+            return { ...el, x2: resizeState.currentWorldPos.x, y2: resizeState.currentWorldPos.y };
+          }
+        }
+        return el;
+      }));
+      setResizeState(null);
+      return;
+    }
+
+    if (activeTool === TOOLS.brush && brushStrokeRef.current) {
+      const stroke = brushStrokeRef.current;
+      if (stroke.points.length > 1) {
+        const newBrush = {
+          id: uid(),
+          type: 'brush',
+          x: 0,
+          y: 0,
+          points: stroke.points,
+          color: stroke.color,
+          size: stroke.size,
+          opacity: stroke.opacity,
+        };
+        addElement(newBrush);
+      }
+      brushStrokeRef.current = null;
+      setBrushStroke(null);
       return;
     }
 
@@ -1055,7 +1307,7 @@ export default function App() {
         if (el.type === 'line') {
           return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
         }
-        if (el.type === 'via' || el.type === 'label') {
+        if (el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush') {
           return { ...el, x: el.x + dx, y: el.y + dy };
         }
         return el;
@@ -1086,7 +1338,7 @@ export default function App() {
       }
       setSelectionBox(null);
     }
-  }, [isPanning, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndo, layers]);
+  }, [isPanning, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndo, layers, activeTool, addElement, resizeState]);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
@@ -1195,8 +1447,8 @@ export default function App() {
           return;
         }
         if (e.key === 'v') {
-          e.preventDefault();
           if (clipboardRef.current && clipboardRef.current.length > 0) {
+            e.preventDefault();
             const offset = GRID_PITCH;
             pushUndo(JSON.parse(JSON.stringify(elements)));
             const newEls = clipboardRef.current.map(el => {
@@ -1205,7 +1457,7 @@ export default function App() {
               if (n.type === 'line') {
                 n.x1 += offset; n.y1 += offset;
                 n.x2 += offset; n.y2 += offset;
-              } else if (n.type === 'via' || n.type === 'label') {
+              } else if (n.type === 'via' || n.type === 'label' || n.type === 'image' || n.type === 'brush') {
                 n.x += offset; n.y += offset;
               }
               return n;
@@ -1228,7 +1480,7 @@ export default function App() {
               if (n.type === 'line') {
                 n.x1 += offset; n.y1 += offset;
                 n.x2 += offset; n.y2 += offset;
-              } else if (n.type === 'via' || n.type === 'label') {
+              } else if (n.type === 'via' || n.type === 'label' || n.type === 'image' || n.type === 'brush') {
                 n.x += offset; n.y += offset;
               }
               return n;
@@ -1247,6 +1499,7 @@ export default function App() {
       else if (key === 'w') { setActiveTool(TOOLS.line); setLineStart(null); setLinePreview(null); }
       else if (key === 'p') setActiveTool(TOOLS.via);
       else if (key === 'l' || key === 't') setActiveTool(TOOLS.label);
+      else if (key === 'b') setActiveTool(TOOLS.brush);
       else if (key === 'g') setShowGrid(prev => !prev);
       else if (key === 's') setSnapEnabled(prev => !prev);
     };
@@ -1680,6 +1933,96 @@ export default function App() {
     setHasAutosave(false);
   }, []);
 
+  const triggerImageImport = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const dataUrl = readerEvent.target.result;
+        const img = new window.Image();
+        img.src = dataUrl;
+        img.onload = () => {
+          const canvas = canvasRef.current;
+          let worldX = 0, worldY = 0;
+          if (canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const world = screenToWorld(rect.width / 2, rect.height / 2, pan, zoom);
+            worldX = world.x - img.naturalWidth / 4;
+            worldY = world.y - img.naturalHeight / 4;
+          }
+          const newImageEl = {
+            id: uid(),
+            type: 'image',
+            x: worldX,
+            y: worldY,
+            w: img.naturalWidth / 2 || 200,
+            h: img.naturalHeight / 2 || 200,
+            src: dataUrl,
+          };
+          pushUndo(JSON.parse(JSON.stringify(elements)));
+          setElements(prev => [...prev, newImageEl]);
+          setSelectedIds(new Set([newImageEl.id]));
+          setActiveTool(TOOLS.select);
+        };
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+    setOpenMenu(null);
+  }, [pan, zoom, elements, pushUndo]);
+
+  useEffect(() => {
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const dataUrl = event.target.result;
+              const img = new window.Image();
+              img.src = dataUrl;
+              img.onload = () => {
+                const canvas = canvasRef.current;
+                let worldX = 0, worldY = 0;
+                if (canvas) {
+                  const rect = canvas.getBoundingClientRect();
+                  const world = screenToWorld(rect.width / 2, rect.height / 2, pan, zoom);
+                  worldX = world.x - img.naturalWidth / 4;
+                  worldY = world.y - img.naturalHeight / 4;
+                }
+                const newImageEl = {
+                  id: uid(),
+                  type: 'image',
+                  x: worldX,
+                  y: worldY,
+                  w: img.naturalWidth / 2 || 200,
+                  h: img.naturalHeight / 2 || 200,
+                  src: dataUrl,
+                };
+                pushUndo(JSON.parse(JSON.stringify(elements)));
+                setElements(prev => [...prev, newImageEl]);
+                setSelectedIds(new Set([newImageEl.id]));
+                setActiveTool(TOOLS.select);
+              };
+            };
+            reader.readAsDataURL(file);
+            e.preventDefault();
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [pan, zoom, elements, pushUndo]);
+
   // Keep refs current for keyboard shortcuts
   saveProjectFnRef.current = handleSaveProject;
   loadProjectFnRef.current = handleLoadProject;
@@ -1768,7 +2111,9 @@ export default function App() {
       let options = {
         isExport: true,
         exportTextColor: textColor,
-        exportHasBg: hasPill
+        exportHasBg: hasPill,
+        imageCache: imageCacheRef.current,
+        triggerRedraw: triggerRedraw
       };
       if (el.type === 'line' && el.y1 === el.y2) {
         options.crossoverXCoords = activeCrossovers
@@ -1781,7 +2126,7 @@ export default function App() {
     });
 
     ctx.restore();
-  }, [elements, exportBgType, exportTextColor, exportMargin, layers, jumpOverrides]);
+  }, [elements, exportBgType, exportTextColor, exportMargin, layers, jumpOverrides, triggerRedraw]);
 
   // Update preview when settings change
   useEffect(() => {
@@ -1845,7 +2190,9 @@ export default function App() {
       let options = {
         isExport: true,
         exportTextColor: textColor,
-        exportHasBg: hasPill
+        exportHasBg: hasPill,
+        imageCache: imageCacheRef.current,
+        triggerRedraw: triggerRedraw
       };
       if (el.type === 'line' && el.y1 === el.y2) {
         options.crossoverXCoords = activeCrossovers
@@ -1904,6 +2251,7 @@ export default function App() {
     [TOOLS.line]: 'Wire / Line',
     [TOOLS.via]: 'Via',
     [TOOLS.label]: 'Label',
+    [TOOLS.brush]: 'Brush',
   };
 
   return (
@@ -1943,6 +2291,10 @@ export default function App() {
               <div className="separator" />
               <button onClick={handleExportPNG}>
                 <span>Export PNG…</span>
+              </button>
+              <div className="separator" />
+              <button onClick={triggerImageImport}>
+                <span>Import Image…</span>
               </button>
             </div>
           )}
@@ -2178,6 +2530,22 @@ export default function App() {
           >
             <Type size={18} />
           </button>
+          <button
+            className={`tool-btn ${activeTool === TOOLS.brush ? 'active' : ''}`}
+            onClick={() => { setActiveTool(TOOLS.brush); setLineStart(null); setLinePreview(null); }}
+            data-tooltip="Brush (B)"
+            title="Brush (B)"
+          >
+            <Paintbrush size={18} />
+          </button>
+          <button
+            className="tool-btn"
+            onClick={triggerImageImport}
+            data-tooltip="Import Image"
+            title="Import Image"
+          >
+            <ImageIcon size={18} />
+          </button>
 
           <div className="toolbar-divider" />
 
@@ -2293,6 +2661,7 @@ export default function App() {
                   <div className="hud-row"><kbd>W</kbd> <span>Wire Tool</span></div>
                   <div className="hud-row"><kbd>P</kbd> <span>Via Tool</span></div>
                   <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
+                  <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>
                   <div className="hud-row"><kbd>G</kbd> <span>Toggle Grid</span></div>
                   <div className="hud-row"><kbd>S</kbd> <span>Toggle Snap</span></div>
                   <div className="hud-row"><kbd>Space</kbd> + Drag <span>Pan Canvas</span></div>
@@ -2382,6 +2751,52 @@ export default function App() {
                       Square
                     </button>
                   </div>
+                </div>
+              </div>
+            ) : activeTool === TOOLS.brush ? (
+              <div className="panel-content">
+                <div className="panel-header-sub" style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  Brush Tool Settings
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Brush Color</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                      className="color-swatch active"
+                      style={{ backgroundColor: brushColor, width: '28px', height: '28px', borderRadius: '4px', cursor: 'pointer', border: '2px solid var(--accent)', position: 'relative' }}
+                    >
+                      <input
+                        type="color"
+                        value={brushColor}
+                        onChange={(e) => setBrushColor(e.target.value)}
+                        style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{brushColor}</span>
+                  </div>
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Brush Size: {brushSize}px</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Brush Opacity: {Math.round(brushOpacity * 100)}%</span>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="10"
+                    value={Math.round(brushOpacity * 100)}
+                    onChange={(e) => setBrushOpacity(parseFloat(e.target.value) / 100)}
+                    style={{ width: '100%' }}
+                  />
                 </div>
               </div>
             ) : (
@@ -2586,6 +3001,94 @@ export default function App() {
                 </div>
               )}
 
+              {/* Image properties */}
+              {selectedElements.length === 1 && selectedElements[0].type === 'image' && (
+                <>
+                  <div className="prop-group">
+                    <span className="prop-label">Width (px)</span>
+                    <input
+                      className="prop-input"
+                      type="number"
+                      value={selectedElements[0].w || 100}
+                      onChange={e => updateProp('w', parseInt(e.target.value) || 100)}
+                    />
+                  </div>
+                  <div className="prop-group">
+                    <span className="prop-label">Height (px)</span>
+                    <input
+                      className="prop-input"
+                      type="number"
+                      value={selectedElements[0].h || 100}
+                      onChange={e => updateProp('h', parseInt(e.target.value) || 100)}
+                    />
+                  </div>
+                  <div className="prop-group">
+                    <span className="prop-label">X Position</span>
+                    <input
+                      className="prop-input"
+                      type="number"
+                      value={Math.round(selectedElements[0].x)}
+                      onChange={e => updateProp('x', parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="prop-group">
+                    <span className="prop-label">Y Position</span>
+                    <input
+                      className="prop-input"
+                      type="number"
+                      value={Math.round(selectedElements[0].y)}
+                      onChange={e => updateProp('y', parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Brush properties */}
+              {selectedElements.length === 1 && selectedElements[0].type === 'brush' && (
+                <>
+                  <div className="prop-group">
+                    <span className="prop-label">Brush Color</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div
+                        className="color-swatch active"
+                        style={{ backgroundColor: selectedElements[0].color || '#FF453A', width: '28px', height: '28px', borderRadius: '4px', cursor: 'pointer', border: '2px solid var(--accent)', position: 'relative' }}
+                      >
+                        <input
+                          type="color"
+                          value={selectedElements[0].color || '#FF453A'}
+                          onChange={(e) => updateProp('color', e.target.value)}
+                          style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                        />
+                      </div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{selectedElements[0].color || '#FF453A'}</span>
+                    </div>
+                  </div>
+                  <div className="prop-group">
+                    <span className="prop-label">Brush Size: {selectedElements[0].size || 5}px</span>
+                    <input
+                      type="range"
+                      min="1"
+                      max="50"
+                      value={selectedElements[0].size || 5}
+                      onChange={(e) => updateProp('size', parseInt(e.target.value))}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div className="prop-group">
+                    <span className="prop-label">Brush Opacity: {Math.round((selectedElements[0].opacity !== undefined ? selectedElements[0].opacity : 0.8) * 100)}%</span>
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      step="10"
+                      value={Math.round((selectedElements[0].opacity !== undefined ? selectedElements[0].opacity : 0.8) * 100)}
+                      onChange={(e) => updateProp('opacity', parseFloat(e.target.value) / 100)}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </>
+              )}
+
               {/* Rotate & Delete */}
               <div className="prop-btn-row">
                 {selectedElements.some(el => el.type === 'line') && (
@@ -2638,7 +3141,9 @@ export default function App() {
                 { id: 'poly',  label: 'Polysilicon (Purple)', color: COLORS.poly.hex },
                 { id: 'custom', label: 'Custom Layer', color: customColor },
                 { id: 'via',   label: 'Vias / Contacts', color: '#FFFFFF', isViaSymbol: true },
-                { id: 'label', label: 'Labels / Text', color: '#8888A8', isLabelSymbol: true }
+                { id: 'label', label: 'Labels / Text', color: '#8888A8', isLabelSymbol: true },
+                { id: 'image', label: 'Imported Images', color: '#E74C3C', isImageSymbol: true },
+                { id: 'brush', label: 'Brush Drawings', color: '#1ABC9C', isBrushSymbol: true }
               ];
 
               return layerDefs.map(layer => {
@@ -2650,6 +3155,10 @@ export default function App() {
                         <span className="layer-color-indicator via-symbol" />
                       ) : layer.isLabelSymbol ? (
                         <span className="layer-color-indicator label-symbol">T</span>
+                      ) : layer.isImageSymbol ? (
+                        <span className="layer-color-indicator image-symbol" style={{ fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📷</span>
+                      ) : layer.isBrushSymbol ? (
+                        <span className="layer-color-indicator brush-symbol" style={{ fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🖌️</span>
                       ) : (
                         <span className="layer-color-indicator" style={{ backgroundColor: layer.color }} />
                       )}
