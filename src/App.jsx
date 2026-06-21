@@ -1421,6 +1421,7 @@ export default function App() {
         x: labelInput.worldX,
         y: labelInput.worldY,
         text: text.trim(),
+        hasBg: false,
       });
     }
     setLabelInput(null);
