@@ -1,16 +1,135 @@
-# React + Vite
+# StickDiagram — VLSI Stick Diagram Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+StickDiagram is a professional-grade, interactive, browser-based EDA (Electronic Design Automation) tool designed for drawing and editing VLSI stick diagrams. Featuring a modern dark-mode interface, a highly responsive pannable/zoomable canvas, and comprehensive layer management, it allows hardware engineers, researchers, and students to quickly map out silicon-level layouts, manage connectivity, and export publication-ready high-resolution assets.
 
-Currently, two official plugins are available:
+![Hero Banner](src/assets/hero.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🎨 Premium Dark-Mode User Experience
+- Designed with a clean glassmorphism palette, harmonious slate gradients, and sleek transitions.
+- Interactive, responsive toolbar buttons, collapsible HUD overlays, and sidebar controls.
 
-## Expanding the ESLint configuration
+### 📐 Canvas Workspace & Grid Control
+- **Pannable & Zoomable**: Left-click and drag while holding `Space` (or use middle-mouse button) to pan; mouse wheel to zoom dynamically centered on the cursor.
+- **Grid & Snapping**: Optional visual grid pitch (`G` to toggle) with precise grid snapping (`S` to toggle) to keep wiring aligned.
+- **Interactive Ghosting**: Dragging selected components displays a semi-transparent "ghost" of their original position to help visualize grid offsets before release.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 🔌 Intelligent Wire Jumps & Connections
+- **Same-Layer Jumps**: When orthogonal lines of the *same layer/color* cross, the horizontal line automatically draws a curved bridge arc ("jump") to indicate they are not electrically connected. PMOS and NMOS wires crossing poly, for example, will cross normally (different layers).
+- **Right-Click Connection Overrides**: Right-clicking any active jump point dynamically toggles its electrical state. Overridden crossovers render as solid line intersections (normal crossings), indicating a connection. Right-click again to restore the jump.
+
+### 🌈 Layer Control Sidebar
+Supports full independent control over standard VLSI layout layers:
+- 🔵 **Metal Layer** (Blue)
+- 🟡 **PMOS Active Layer** (Yellow)
+- 🟢 **NMOS Active Layer** (Green)
+- 🟣 **Polysilicon Layer** (Purple)
+- 🔲 **Vias & Contacts** (Black/White Outline)
+- 🔤 **Labels & Text**
+- 🟠 **Custom Color Layer** (user-defined color)
+
+Each layer supports:
+- **Visibility (Eye Icon)**: Toggles rendering. Hidden elements are immune to selection, dragging, and are skipped in PNG exports.
+- **Locking (Lock Icon)**: Toggles selection lock. Locked elements remain visible but cannot be modified, moved, or deleted.
+- **Opacity Slider**: Sets rendering opacity (from 10% to 100%) dynamically reflected on the canvas and in exported files.
+
+### 🧪 Custom Color Swatch
+- Select the custom color swatch to draw wires in any custom color.
+- Houses a native HTML5 color picker to choose any custom color.
+- Automatically places custom-colored elements on the **Custom Layer** for easy grouping.
+
+### 📝 Mathematical Text Subscript Rendering
+- Text labels automatically parse LaTeX-style math subscript formatting. For example, inputs like `V_{DD}`, `V_DD`, `V_{SS}`, and `V_SS` render as elegant, publication-quality serif italic subscript text.
+- Supports left and center alignment toggles, as well as toggling the background pill container off for clean, plain text labeling directly on rails.
+
+### 💾 Content-Aware PNG Export
+- Under **File -> Export PNG...**, crops output dimensions exactly to the boundary of the elements drawn (plus padding).
+- Adjustable margin size (4 grid units, 3 grid units, or none).
+- Background options: **Transparent**, **White**, or **Dark**.
+- Customizable label text styles: Dark text, Light text, or Pill background.
+- Crisp **2x high-resolution** scaling suitable for reports, papers, and presentations.
+
+---
+
+## 🛠️ Technology Stack
+- **Framework**: [React](https://react.dev/) + [Vite](https://vite.dev/) (HMR enabled)
+- **Canvas API**: HTML5 Canvas for high-performance interactive rendering.
+- **Styling**: Pure CSS3 with custom variables for full theme flexibility.
+- **Icons**: [Lucide React](https://lucide.dev/) for crisp, scalable vector graphics.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+Make sure you have Node.js (version 16 or higher) and npm installed.
+
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Aera0908/stick-diagram.git
+   cd stick-diagram
+   ```
+2. Install the dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the local development server:
+   ```bash
+   npm run dev
+   ```
+4. Open your browser and navigate to `http://localhost:5173/`.
+
+### Building for Production
+To build the application for deployment:
+```bash
+npm run build
+```
+The compiled static assets will be located in the `dist/` directory.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+The floating Shortcuts HUD in the bottom-left corner of the canvas displays the active hotkeys:
+
+| Key | Action |
+|---|---|
+| <kbd>V</kbd> | Activate Select / Pointer Tool |
+| <kbd>W</kbd> | Activate Wire / Line Tool |
+| <kbd>P</kbd> | Activate Via / Contact Tool |
+| <kbd>L</kbd> | Activate Label / Text Tool |
+| <kbd>G</kbd> | Toggle Canvas Grid Visibility |
+| <kbd>S</kbd> | Toggle Grid Snapping |
+| <kbd>Space</kbd> + Drag | Pan Canvas (or drag with middle-mouse wheel click) |
+| <kbd>Del</kbd> / <kbd>Backspace</kbd> | Delete Selected Element(s) |
+| <kbd>Ctrl</kbd> + <kbd>Z</kbd> | Undo |
+| <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Redo |
+| <kbd>Ctrl</kbd> + <kbd>A</kbd> | Select All Unlocked Elements |
+| <kbd>Esc</kbd> | Cancel current wire draw or clear selections |
+
+---
+
+## 🗃️ Project Structure
+
+```
+stick-diagram/
+├── public/                 # Static assets (Favicons, SVG graphics)
+├── src/
+│   ├── assets/             # Images, logos, and verification media
+│   ├── App.css             # Modular layout and styling definitions
+│   ├── App.jsx             # React logic, Canvas rendering, and event handlers
+│   ├── index.css           # Global resets and CSS variables (UI themes)
+│   └── main.jsx            # React root application entrypoint
+├── index.html              # HTML5 template wrapper
+├── package.json            # Scripts and dependencies
+└── vite.config.js          # Vite configurations
+```
+
+---
+
+## 📜 License
+This project is licensed under the MIT License.
