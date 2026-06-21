@@ -430,6 +430,20 @@ export default function App() {
   // Shortcuts HUD state
   const [showShortcutsHUD, setShowShortcutsHUD] = useState(true);
 
+  // Mobile sidebar drawer state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Touch gesture refs
+  const touchStartDistRef = useRef(null);
+  const touchStartPanRef = useRef(null);
+  const touchStartZoomRef = useRef(null);
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+  const lastTouchTimeRef = useRef(0);
+  const longPressTimerRef = useRef(null);
+  const isTouchPanningRef = useRef(false);
+  const isTouchDrawingRef = useRef(false);
+
   // Drawing state
   const [lineStart, setLineStart] = useState(null);
   const [linePreview, setLinePreview] = useState(null);
@@ -739,6 +753,7 @@ export default function App() {
   }, []);
 
   const handleMouseDown = useCallback((e) => {
+    if (sidebarOpen) setSidebarOpen(false);
     if (showModal) return;
 
     const canvas = canvasRef.current;
@@ -856,7 +871,7 @@ export default function App() {
       const screenPos = worldToScreen(world.x, world.y, pan, zoom);
       setLabelInput({ worldX: world.x, worldY: world.y, screenX: screenPos.x, screenY: screenPos.y, text: '' });
     }
-  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeColor, customColor, addElement, getOrthoEnd, elements, jumpOverrides]);
+  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeColor, customColor, addElement, getOrthoEnd, elements, jumpOverrides, sidebarOpen]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1061,6 +1076,181 @@ export default function App() {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, layers]);
+
+  // ─── Touch gesture handlers ──────────────────────────────────
+  const handleTouchStart = useCallback((e) => {
+    if (sidebarOpen) setSidebarOpen(false);
+    if (showModal) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Prevent default scroll/zoom behaviors on canvas
+    e.preventDefault();
+
+    const touches = e.touches;
+    if (touches.length === 1) {
+      // Single finger
+      isTouchDrawingRef.current = true;
+      isTouchPanningRef.current = false;
+      const touch = touches[0];
+      
+      touchStartXRef.current = touch.clientX;
+      touchStartYRef.current = touch.clientY;
+
+      // Handle Double Tap for Double Click (Label edit)
+      const now = Date.now();
+      if (now - lastTouchTimeRef.current < 300) {
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+        const fakeEvent = {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+        };
+        handleDoubleClick(fakeEvent);
+        lastTouchTimeRef.current = 0;
+        return;
+      }
+      lastTouchTimeRef.current = now;
+
+      // Setup Long Press for connection toggle (acts as Right Click)
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = setTimeout(() => {
+        const fakeEvent = {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          button: 2,
+          preventDefault: () => {},
+        };
+        handleMouseDown(fakeEvent);
+        isTouchDrawingRef.current = false; // Prevent drawing after long press
+      }, 500);
+
+      // Trigger virtual Mouse Down
+      const fakeEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        button: 0,
+        shiftKey: e.shiftKey,
+        preventDefault: () => {},
+      };
+      handleMouseDown(fakeEvent);
+
+    } else if (touches.length === 2) {
+      // Two fingers: Panning & Zooming
+      isTouchDrawingRef.current = false;
+      isTouchPanningRef.current = true;
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
+      const t1 = touches[0];
+      const t2 = touches[1];
+
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      touchStartDistRef.current = dist;
+      touchStartZoomRef.current = zoom;
+
+      const cx = (t1.clientX + t2.clientX) / 2;
+      const cy = (t1.clientY + t2.clientY) / 2;
+      touchStartPanRef.current = {
+        x: pan.x,
+        y: pan.y,
+        cx,
+        cy
+      };
+    }
+  }, [showModal, handleMouseDown, handleDoubleClick, zoom, pan, sidebarOpen]);
+
+  const handleTouchMove = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    e.preventDefault();
+
+    const touches = e.touches;
+    if (touches.length === 1 && isTouchDrawingRef.current) {
+      const touch = touches[0];
+
+      // If user moves significantly, cancel long press
+      const dx = touch.clientX - touchStartXRef.current;
+      const dy = touch.clientY - touchStartYRef.current;
+      if (Math.hypot(dx, dy) > 8) {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
+
+      const fakeEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        preventDefault: () => {},
+      };
+      handleMouseMove(fakeEvent);
+
+    } else if (touches.length === 2 && isTouchPanningRef.current && touchStartPanRef.current) {
+      const t1 = touches[0];
+      const t2 = touches[1];
+
+      const cx = (t1.clientX + t2.clientX) / 2;
+      const cy = (t1.clientY + t2.clientY) / 2;
+
+      let newZoom = zoom;
+      if (touchStartDistRef.current) {
+        const newDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        const ratio = newDist / touchStartDistRef.current;
+        newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, touchStartZoomRef.current * ratio));
+        setZoom(newZoom);
+      }
+
+      const startPan = touchStartPanRef.current;
+      const wxStart = (startPan.cx - startPan.x) / touchStartZoomRef.current;
+      const wyStart = (startPan.cy - startPan.y) / touchStartZoomRef.current;
+      const panXCalculated = cx - wxStart * newZoom;
+      const panYCalculated = cy - wyStart * newZoom;
+
+      setPan({ x: panXCalculated, y: panYCalculated });
+    }
+  }, [handleMouseMove, zoom]);
+
+  const handleTouchEnd = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    e.preventDefault();
+
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (isTouchDrawingRef.current) {
+      isTouchDrawingRef.current = false;
+      const fakeEvent = {
+        preventDefault: () => {},
+      };
+      handleMouseUp(fakeEvent);
+    }
+
+    isTouchPanningRef.current = false;
+    touchStartDistRef.current = null;
+    touchStartPanRef.current = null;
+    touchStartZoomRef.current = null;
+  }, [handleMouseUp]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   // ─── Label input ────────────────────────────────────────────
   useEffect(() => {
@@ -1570,6 +1760,33 @@ export default function App() {
             onContextMenu={e => e.preventDefault()}
           />
 
+          {/* Floating Sidebar Toggle on Mobile */}
+          <button
+            className="mobile-sidebar-toggle-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSidebarOpen(prev => !prev);
+            }}
+            title="Toggle Sidebar Layers & Properties"
+          >
+            <Layers size={18} />
+          </button>
+
+          {/* Floating Canvas Done Button for wire drawing */}
+          {lineStart && (
+            <button
+              className="canvas-floating-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLineStart(null);
+                setLinePreview(null);
+              }}
+              title="Finish Wire Drawing (Esc)"
+            >
+              Done / Finish Wire
+            </button>
+          )}
+
           {/* Inline label input */}
           {labelInput && (
             <input
@@ -1621,7 +1838,7 @@ export default function App() {
         </div>
 
         {/* ─── Right Panel ─── */}
-        <div className="right-panel">
+        <div className={`right-panel ${sidebarOpen ? 'open' : ''}`}>
           {/* Properties Header */}
           <div className="panel-header">
             <Layers size={11} style={{ marginRight: 6, verticalAlign: 'middle' }} />

@@ -953,3 +953,131 @@
   padding: 0;
   border: none;
 }
+
+/* ===== MOBILE FLOATING ELEMENTS ===== */
+.mobile-sidebar-toggle-btn {
+  display: none;
+}
+
+.canvas-floating-btn {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+  z-index: 100;
+  transition: all 0.15s;
+}
+
+.canvas-floating-btn:hover {
+  background: #357ABD;
+  transform: translateX(-50%) translateY(-1px);
+}
+
+/* ===== RESPONSIVE MEDIA QUERIES ===== */
+@media (max-width: 768px) {
+  .main-area {
+    position: relative;
+  }
+
+  .right-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 240px;
+    z-index: 150;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5);
+  }
+
+  .right-panel.open {
+    transform: translateX(0);
+  }
+
+  .mobile-sidebar-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    color: var(--text-primary);
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: all 0.15s;
+  }
+
+  .mobile-sidebar-toggle-btn:hover {
+    background: var(--surface-hover);
+  }
+
+  .menu-bar {
+    justify-content: space-between;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 4px;
+  }
+  
+  .menu-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .menu-bar .app-title {
+    margin-right: 8px;
+  }
+
+  .shortcuts-hud {
+    display: none; /* Hide shortcut key HUD on mobile to clear screen space */
+  }
+
+  .status-bar {
+    font-size: 8px;
+    padding: 0 6px;
+  }
+
+  .status-left {
+    gap: 8px;
+  }
+
+  .status-right {
+    gap: 6px;
+  }
+
+  .status-separator {
+    margin: 0 2px;
+  }
+  
+  /* Make left-toolbar more touch friendly on mobile */
+  .left-toolbar {
+    width: 44px;
+    min-width: 44px;
+    padding: 6px 2px;
+  }
+
+  .tool-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .color-swatch {
+    width: 24px;
+    height: 24px;
+  }
+}
