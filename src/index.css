@@ -1,22 +1,48 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --canvas-bg: #1A1A2E;
-  --grid-color: #2A2A3E;
-  --ui-bg: #12121F;
-  --ui-border: #2E2E4A;
-  --accent: #4A90E2;
-  --text-primary: #C0C0D8;
-  --text-secondary: #8888A8;
-  --text-muted: #5A5A7A;
-  --danger: #E74C3C;
-  --success: #27AE60;
-  --warning: #F1C40F;
-  --surface: #1E1E32;
-  --surface-hover: #262640;
-  --surface-active: #2E2E4A;
-  --selection: rgba(74, 144, 226, 0.15);
   --font-mono: 'Roboto Mono', 'Consolas', 'Monaco', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Dark Mode (Default) */
+:root, [data-theme="dark"] {
+  --canvas-bg: #121214;          /* Deep matte dark charcoal */
+  --grid-color: #222226;         /* Subtle dark grid lines */
+  --ui-bg: #1A1A1E;              /* Dark panel background */
+  --ui-border: #2E2E35;          /* Clean, flat dark border */
+  --accent: #FF5500;             /* Bauhaus Orange */
+  --text-primary: #FFFFFF;       /* Clean white text */
+  --text-secondary: #A0A0A5;     /* Medium gray secondary text */
+  --text-muted: #606065;         /* Muted gray text */
+  --danger: #FF453A;             /* Clean iOS-style red */
+  --success: #30D158;            /* Crisp green for success */
+  --warning: #FF9F0A;            /* Warm orange-yellow */
+  --surface: #24242A;            /* Surface bg for hover/active/inputs */
+  --surface-hover: #2C2C34;      /* Subtle dark hover */
+  --surface-active: #FF5500;     /* Highlight with orange when active */
+  --selection: rgba(255, 85, 0, 0.2); /* Light orange selection highlight */
+  --shadow-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Light Mode */
+[data-theme="light"] {
+  --canvas-bg: #FAF9F6;          /* Warm designer off-white */
+  --grid-color: #E6E2D8;         /* Subtle warm gray grid lines */
+  --ui-bg: #FFFFFF;              /* Clean white panel backgrounds */
+  --ui-border: #E0E0E6;          /* Clean, thin light gray border */
+  --accent: #FF5500;             /* Bauhaus Orange */
+  --text-primary: #111111;       /* Solid near-pitch-black text */
+  --text-secondary: #555558;     /* Slate gray secondary text */
+  --text-muted: #8E8E93;         /* Light gray muted text */
+  --danger: #FF3B30;             /* Bright clean red */
+  --success: #34C759;            /* Clean green success */
+  --warning: #FF9500;            /* Bright warning orange */
+  --surface: #F5F5F7;            /* Light gray surface */
+  --surface-hover: #EBEBEF;      /* Subtle hover */
+  --surface-active: #FF5500;     /* Orange highlight active */
+  --selection: rgba(255, 85, 0, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.06);
 }
 
 * {
@@ -29,7 +55,7 @@ html, body, #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   background: var(--ui-bg);
   color: var(--text-primary);
   font-size: 12px;
