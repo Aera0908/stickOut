@@ -124,9 +124,34 @@ button, input, select, textarea {
   margin: 4px 0;
 }
 
-/* Theme Toggle Button (Minimalist design) */
-.theme-toggle-btn {
+/* Theme Toggle & Feedback Buttons */
+.feedback-btn {
   margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.feedback-btn:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.feedback-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.theme-toggle-btn {
+  margin-left: 6px;
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -200,6 +225,53 @@ button, input, select, textarea {
 .tool-btn svg {
   width: 16px;
   height: 16px;
+}
+
+/* Via Tool Selector Submenu */
+.via-tool-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.via-submenu-popup {
+  position: absolute;
+  left: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  padding: 4px;
+  gap: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+.via-submenu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.via-submenu-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.via-submenu-btn.active {
+  background: var(--accent);
+  color: #FFFFFF;
+  border-color: var(--accent);
 }
 
 .toolbar-divider {
