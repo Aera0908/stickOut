@@ -128,6 +128,16 @@ export default function PropertiesPanel({
           </div>
         </div>
       );
+    } else if (activeTool === TOOLS.eraser) {
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Eraser Settings</div>
+          <div className="prop-group">
+            <span className="prop-label">Eraser Size: {brushSize}px</span>
+            <input type="range" min="2" max="100" value={brushSize} onChange={(e) => setBrushSize(parseInt(e.target.value))} style={{ width: '100%' }} />
+          </div>
+        </div>
+      );
     } else {
       const isCustomizable = activeLayerId && allLayers[activeLayerId]?.customizable;
       return (
