@@ -1,0 +1,86 @@
+import { Layers, HelpCircle } from 'lucide-react';
+
+export default function CanvasArea({
+  canvasRef,
+  containerRef,
+  canvasClass,
+  handleMouseDown,
+  handleMouseMove,
+  handleMouseUp,
+  handleDoubleClick,
+  sidebarOpen,
+  setSidebarOpen,
+  lineStart,
+  setLineStart,
+  setLinePreview,
+  labelInput,
+  setLabelInput,
+  labelInputRef,
+  confirmLabel,
+  labelReadyRef,
+  showShortcutsHUD,
+  setShowShortcutsHUD
+}) {
+  return (
+    <div className={canvasClass} ref={containerRef}>
+      <canvas
+        ref={canvasRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={e => e.preventDefault()}
+      />
+
+      <button className="mobile-sidebar-toggle-btn" onClick={(e) => { e.stopPropagation(); setSidebarOpen(prev => !prev); }} title="Toggle Sidebar"><Layers size={18} /></button>
+
+      {lineStart && (
+        <button className="canvas-floating-btn" onClick={(e) => { e.stopPropagation(); setLineStart(null); setLinePreview(null); }} title="Finish Wire Drawing (Esc)">Done / Finish Wire</button>
+      )}
+
+      {labelInput && (
+        <input
+          ref={labelInputRef}
+          className="inline-label-input"
+          style={{ left: labelInput.screenX, top: labelInput.screenY - 10 }}
+          value={labelInput.text}
+          onChange={e => setLabelInput(prev => ({ ...prev, text: e.target.value }))}
+          onKeyDown={e => {
+            if (e.key === 'Enter') confirmLabel(labelInput.text);
+            if (e.key === 'Escape') setLabelInput(null);
+          }}
+          onBlur={() => {
+            if (labelReadyRef.current) confirmLabel(labelInput.text);
+          }}
+          placeholder="Label…"
+        />
+      )}
+
+      {/* Keyboard Shortcuts HUD */}
+      <div className={`shortcuts-hud ${showShortcutsHUD ? 'expanded' : 'collapsed'}`}>
+        <button className="hud-toggle-btn" onClick={() => setShowShortcutsHUD(prev => !prev)} title={showShortcutsHUD ? "Hide Shortcuts" : "Show Keyboard Shortcuts"}>
+          <HelpCircle size={14} />
+          {!showShortcutsHUD && <span style={{ fontSize: '10px', fontWeight: 'bold' }}>Shortcuts</span>}
+        </button>
+        {showShortcutsHUD && (
+          <div className="hud-content">
+            <div className="hud-header">Keyboard Shortcuts</div>
+            <div className="hud-grid">
+              <div className="hud-row"><kbd>V</kbd> <span>Select Tool</span></div>
+              <div className="hud-row"><kbd>W</kbd> <span>Wire Tool</span></div>
+              <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>
+              <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
+              <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>
+              <div className="hud-row"><kbd>G</kbd> <span>Toggle Grid</span></div>
+              <div className="hud-row"><kbd>S</kbd> <span>Toggle Snap</span></div>
+              <div className="hud-row"><kbd>Space</kbd> + Drag <span>Pan Canvas</span></div>
+              <div className="hud-row"><kbd>Del</kbd> / <kbd>Backspace</kbd> <span>Delete</span></div>
+              <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Y</kbd> <span>Undo / Redo</span></div>
+              <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>]</kbd> / <kbd>[</kbd> <span>Layer Forward/Back</span></div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
