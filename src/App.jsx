@@ -114,6 +114,7 @@ export default function App() {
   const [brushOpacity, setBrushOpacity] = useState(0.8);
   const [brushStroke, setBrushStroke] = useState(null);
   const brushStrokeRef = useRef(null);
+  const isErasingRef = useRef(false);
 
   // Image Cache & Redraw
   const imageCacheRef = useRef({});
@@ -228,6 +229,61 @@ export default function App() {
   const pushUndoSnapshot = useCallback(() => {
     pushUndo({ elements: JSON.parse(JSON.stringify(elements)), canvasLayers: JSON.parse(JSON.stringify(canvasLayers)) });
   }, [elements, canvasLayers, pushUndo]);
+
+  const eraseBrushPoints = useCallback((ex, ey, radius) => {
+    let changed = false;
+    let newElements = [];
+    
+    setElements(prev => {
+      prev.forEach(el => {
+        if (el.type !== 'brush') {
+          newElements.push(el);
+          return;
+        }
+        
+        const keptSegments = [];
+        let currentSegment = [];
+        
+        el.points.forEach(pt => {
+          const wx = el.x + pt.x;
+          const wy = el.y + pt.y;
+          const dist = Math.hypot(wx - ex, wy - ey);
+          
+          if (dist > radius) {
+            currentSegment.push(pt);
+          } else {
+            if (currentSegment.length > 0) {
+              keptSegments.push(currentSegment);
+              currentSegment = [];
+            }
+            changed = true;
+          }
+        });
+        
+        if (currentSegment.length > 0) {
+          keptSegments.push(currentSegment);
+        }
+        
+        if (keptSegments.length === 0) {
+          changed = true;
+        } else {
+          keptSegments.forEach((seg, index) => {
+            if (index === 0) {
+              newElements.push({ ...el, points: seg });
+            } else {
+              newElements.push({
+                ...el,
+                id: uid(),
+                points: seg
+              });
+            }
+          });
+        }
+      });
+      
+      return changed ? newElements : prev;
+    });
+  }, []);
 
   // ─── Element operations ─────────────────────────────────────
   const addElement = useCallback((el) => {
@@ -877,8 +933,13 @@ export default function App() {
       const stroke = { x: 0, y: 0, points: [{ x: rawWorld.x, y: rawWorld.y }], color: brushColor, size: brushSize, opacity: brushOpacity };
       brushStrokeRef.current = stroke;
       setBrushStroke(stroke);
+    } else if (activeTool === TOOLS.eraser) {
+      pushUndoSnapshot();
+      isErasingRef.current = true;
+      const rawWorld = screenToWorld(sx, sy, pan, zoom);
+      eraseBrushPoints(rawWorld.x, rawWorld.y, brushSize);
     }
-  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId]);
+  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId, eraseBrushPoints]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1006,11 +1067,18 @@ export default function App() {
         brushStrokeRef.current.points.push({ x: rw.x, y: rw.y });
         setBrushStroke({ ...brushStrokeRef.current });
       }
+    } else if (activeTool === TOOLS.eraser && isErasingRef.current) {
+      const rw = screenToWorld(sx, sy, pan, zoom);
+      eraseBrushPoints(rw.x, rw.y, brushSize);
     }
-  }, [isPanning, panStart, pan, zoom, isDragging, dragStart, selectedIds, selectionBox, activeTool, lineStart, getWorldPos, getOrthoEnd, resizeState, elements, groupScaleState, snapEnabled]);
+  }, [isPanning, panStart, pan, zoom, isDragging, dragStart, selectedIds, selectionBox, activeTool, lineStart, getWorldPos, getOrthoEnd, resizeState, elements, groupScaleState, snapEnabled, eraseBrushPoints, brushSize]);
 
   const handleMouseUp = useCallback((e) => {
     if (isPanning) { setIsPanning(false); setPanStart(null); return; }
+    if (isErasingRef.current) {
+      isErasingRef.current = false;
+      return;
+    }
 
     // Commit group scale
     if (groupScaleState && groupScaleState.scaledPositions) {
@@ -1243,6 +1311,7 @@ export default function App() {
       else if (key === 'p') setActiveTool(TOOLS.contact);
       else if (key === 'l' || key === 't') setActiveTool(TOOLS.label);
       else if (key === 'b') setActiveTool(TOOLS.brush);
+      else if (key === 'e') setActiveTool(TOOLS.eraser);
       else if (key === 'g') setShowGrid(prev => !prev);
       else if (key === 's') setSnapEnabled(prev => !prev);
     };
@@ -1771,28 +1840,32 @@ export default function App() {
     if (activeLayerId === metalId) setActiveLayerId('metal1');
   }, [elements, activeLayerId]);
 
-  // Select VLSI layer and automatically manage canvas layers
+  // Select VLSI layer and automatically manage active layer and active tool
   const selectLayerFromPalette = useCallback((vlsiLayerId) => {
     setActiveLayerId(vlsiLayerId);
     const canvasLayerId = `canvas_vlsi_${vlsiLayerId}`;
-    setCanvasLayers(prev => {
-      if (prev.some(l => l.id === canvasLayerId)) return prev;
-      const layerDef = allLayers[vlsiLayerId] || BASE_LAYERS[vlsiLayerId];
-      const cleanName = layerDef.label.split('(')[0].trim();
-      return [...prev, {
-        id: canvasLayerId,
-        name: cleanName,
-        visible: true,
-        opacity: 1.0,
-        isCustom: false
-      }];
-    });
     setActiveCanvasLayerId(canvasLayerId);
-  }, [allLayers]);
+
+    // Auto-switch tool based on layer type selected
+    if (['via', 'buriedcontact'].includes(vlsiLayerId)) {
+      setActiveTool(TOOLS.contact);
+    } else if (['poly', 'ndiff', 'pdiff', 'metal1', 'metal2'].includes(vlsiLayerId) || vlsiLayerId.startsWith('metal')) {
+      setActiveTool(TOOLS.line);
+    }
+  }, []);
 
   const canvasClass = `canvas-container ${activeTool === TOOLS.select ? 'tool-select' : ''} ${isPanning || spaceHeld ? 'panning' : ''}`;
 
   useEffect(() => { if (isDragging) setPan(p => ({ ...p })); }, [isDragging, dragOffset]);
+
+  useEffect(() => {
+    if (activeTool === TOOLS.contact) {
+      if (activeLayerId !== 'via' && activeLayerId !== 'buriedcontact' && activeLayerId !== 'contact') {
+        setActiveLayerId('contact');
+        setActiveCanvasLayerId('canvas_vlsi_contact');
+      }
+    }
+  }, [activeTool, activeLayerId]);
 
   const toolNames = {
     [TOOLS.select]: 'Select',
@@ -1800,6 +1873,7 @@ export default function App() {
     [TOOLS.contact]: 'Contact',
     [TOOLS.label]: 'Label',
     [TOOLS.brush]: 'Brush',
+    [TOOLS.eraser]: 'Eraser',
   };
 
   // Build palette

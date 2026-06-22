@@ -31,7 +31,7 @@ export const HIGHER_METAL_COLORS = [
 
 export const PALETTE_ORDER_BEFORE_METALS = ['poly', 'ndiff', 'pdiff', 'metal1', 'metal2'];
 export const PALETTE_ORDER_AFTER_METALS = [
-  'contact', 'via', 'nwell', 'demarcation', 'nimplant', 'pimplant',
+  'via', 'nwell', 'demarcation', 'nimplant', 'pimplant',
   'buriedcontact', 'silicideblock', 'thickoxide',
 ];
 
@@ -41,4 +41,5 @@ export const TOOLS = {
   contact: 'contact',
   label:   'label',
   brush:   'brush',
+  eraser:  'eraser',
 };
