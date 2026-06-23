@@ -199,6 +199,40 @@ export default function App() {
     statusTimerRef.current = setTimeout(() => setStatusMessage(null), duration);
   }, []);
 
+  // Support & Feedback Toast
+  const [showSupportToast, setShowSupportToast] = useState(false);
+  const supportTimerRef = useRef(null);
+
+  const startSupportTimer = useCallback((delay = 300000) => {
+    if (supportTimerRef.current) clearTimeout(supportTimerRef.current);
+    supportTimerRef.current = setTimeout(() => {
+      setShowSupportToast(true);
+    }, delay);
+  }, []);
+
+  const handleSupportRemindLater = useCallback(() => {
+    setShowSupportToast(false);
+    startSupportTimer(300000);
+  }, [startSupportTimer]);
+
+  const handleSupportFeedback = useCallback(() => {
+    setShowSupportToast(false);
+    setFeedbackName('');
+    setFeedbackTitle('');
+    setFeedbackDesc('');
+    setShowFeedbackModal(true);
+  }, []);
+
+  const handleSupportGank = useCallback(() => {
+    setShowSupportToast(false);
+    window.open('https://ganknow.com/Aera0908', '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const handleSupportClose = useCallback(() => {
+    setShowSupportToast(false);
+  }, []);
+
+
   // ─── Computed: Resolve all layers ───────────────────────────
   const allLayers = { ...BASE_LAYERS };
   extraMetalLayers.forEach(ml => {
@@ -486,6 +520,14 @@ export default function App() {
     }, 500);
     return () => clearTimeout(timer);
   }, [elements, jumpOverrides, canvasLayers, extraMetalLayers, customLayerColors, showModal]);
+
+  // Support & Feedback Timer Effect
+  useEffect(() => {
+    startSupportTimer(300000);
+    return () => {
+      if (supportTimerRef.current) clearTimeout(supportTimerRef.current);
+    };
+  }, [startSupportTimer]);
 
   const toggleTheme = useCallback(() => {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
@@ -2251,6 +2293,32 @@ export default function App() {
       {/* Toast notification */}
       {toastMessage && (
         <div className="autosave-toast">{toastMessage}</div>
+      )}
+
+      {/* Support & Feedback Toast */}
+      {showSupportToast && (
+        <div className="support-toast">
+          <button className="support-toast-close" onClick={handleSupportClose} aria-label="Close">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          <div className="support-toast-content">
+            <h4 className="support-toast-title">Enjoying StickOut? 🎨</h4>
+            <p className="support-toast-text">
+              Help keep the project alive by sharing feedback or donating on Gank!
+            </p>
+          </div>
+          <div className="support-toast-actions">
+            <button className="support-btn-action feedback" onClick={handleSupportFeedback}>
+              Feedback
+            </button>
+            <button className="support-btn-action gank" onClick={handleSupportGank}>
+              Support Creator
+            </button>
+            <button className="support-btn-action remind" onClick={handleSupportRemindLater}>
+              Remind later
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { Cpu, Bug, Sun, Moon } from 'lucide-react';
+import { Cpu, Bug, Sun, Moon, Heart } from 'lucide-react';
 
 export default function MenuBar({
   openMenu,
@@ -67,6 +67,7 @@ export default function MenuBar({
       </div>
 
       <button className="feedback-btn" onClick={() => { setFeedbackName(''); setFeedbackTitle(''); setFeedbackDesc(''); setShowFeedbackModal(true); }} title="Report Bug / Send Feedback"><Bug size={16} /></button>
+      <button className="gank-btn" onClick={() => window.open('https://ganknow.com/Aera0908', '_blank', 'noopener,noreferrer')} title="Support Creator on Gank"><Heart size={16} /></button>
       <button className="theme-toggle-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
     </div>
   );
