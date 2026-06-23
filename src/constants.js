@@ -4,7 +4,7 @@ export const ZOOM_MAX = 4;
 export const ZOOM_STEP = 0.1;
 export const LINE_WIDTH = 3;
 export const UNDO_LIMIT = 50;
-export const AUTOSAVE_KEY = 'stickdiagram-autosave';
+export const AUTOSAVE_KEY = 'stickout-autosave';
 export const AUTOSAVE_EXPIRY_DAYS = 30;
 
 export const BASE_LAYERS = {

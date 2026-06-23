@@ -123,7 +123,7 @@ export default function Modals({
                 const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 fetch("https://formsubmit.co/ajax/c0c70ee7fc10829bb28cbc968004e253", {
                   method: "POST", headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                  body: JSON.stringify({ name: feedbackName.trim() || 'Anonymous', _subject: `[StickDiagram Bug/Feedback] ${feedbackTitle.trim()}`, date: today, message: feedbackDesc.trim() })
+                  body: JSON.stringify({ name: feedbackName.trim() || 'Anonymous', _subject: `[StickOut Bug/Feedback] ${feedbackTitle.trim()}`, date: today, message: feedbackDesc.trim() })
                 }).then(res => { if (res.ok) { setFeedbackStatus('success'); setFeedbackName(''); setFeedbackTitle(''); setFeedbackDesc(''); setTimeout(() => { setShowFeedbackModal(false); setFeedbackStatus('idle'); }, 2500); } else setFeedbackStatus('error'); }).catch(() => setFeedbackStatus('error'));
               }} className="modal-body feedback-form">
                 {feedbackStatus === 'error' && <div style={{ background: 'rgba(255, 69, 58, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '8px 12px', borderRadius: '4px', fontSize: '11px', marginBottom: '12px', textAlign: 'center' }}>Failed to send report.</div>}

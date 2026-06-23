@@ -130,7 +130,7 @@ export default function App() {
 
   // Theme
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('stickdiagram-theme') || 'dark'; }
+    try { return localStorage.getItem('stickout-theme') || localStorage.getItem('stickdiagram-theme') || 'dark'; }
     catch { return 'dark'; }
   });
 
@@ -400,13 +400,16 @@ export default function App() {
   // ─── Theme effect ─────────────────────────────────────────
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('stickdiagram-theme', theme); } catch {}
+    try {
+      localStorage.setItem('stickout-theme', theme);
+      localStorage.setItem('stickdiagram-theme', theme);
+    } catch {}
   }, [theme]);
 
   // ─── Auto-save: silent restore on mount ─────────────────────
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      const saved = localStorage.getItem(AUTOSAVE_KEY) || localStorage.getItem('stickdiagram-autosave');
       if (saved) {
         const data = JSON.parse(saved);
         const age = Date.now() - (data.timestamp || 0);
@@ -474,7 +477,7 @@ export default function App() {
     const timer = setTimeout(() => {
       try {
         const data = {
-          format: 'stickdiagram', version: 2, timestamp: Date.now(),
+          format: 'stickout', version: 2, timestamp: Date.now(),
           elements, jumpOverrides: [...jumpOverrides],
           canvasLayers, extraMetalLayers, customLayerColors,
         };
@@ -1355,7 +1358,7 @@ export default function App() {
             const selectedEls = elements.filter(el => selectedIds.has(el.id));
             clipboardRef.current = JSON.parse(JSON.stringify(selectedEls));
             try {
-              navigator.clipboard.writeText("stickdiagram-elements:" + JSON.stringify(selectedEls));
+              navigator.clipboard.writeText("stickout-elements:" + JSON.stringify(selectedEls));
             } catch (err) {
               console.warn("Clipboard write failed", err);
             }
@@ -1368,7 +1371,7 @@ export default function App() {
             const selectedEls = elements.filter(el => selectedIds.has(el.id));
             clipboardRef.current = JSON.parse(JSON.stringify(selectedEls));
             try {
-              navigator.clipboard.writeText("stickdiagram-elements:" + JSON.stringify(selectedEls));
+              navigator.clipboard.writeText("stickout-elements:" + JSON.stringify(selectedEls));
             } catch (err) {
               console.warn("Clipboard write failed", err);
             }
@@ -1600,14 +1603,14 @@ export default function App() {
 
   const handleSaveProject = useCallback(() => {
     const data = {
-      format: 'stickdiagram', version: 2, savedAt: new Date().toISOString(),
+      format: 'stickout', version: 2, savedAt: new Date().toISOString(),
       elements, jumpOverrides: [...jumpOverrides],
       canvasLayers, extraMetalLayers, customLayerColors,
       pan, zoom, showGrid, snapEnabled,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
-    link.download = 'stick-diagram.stk';
+    link.download = 'stickout-project.stk';
     link.href = URL.createObjectURL(blob);
     link.click();
     URL.revokeObjectURL(link.href);
@@ -1625,7 +1628,7 @@ export default function App() {
       reader.onload = (readerEvent) => {
         try {
           const data = JSON.parse(readerEvent.target.result);
-          if (data.format !== 'stickdiagram') { alert('Invalid file format.'); return; }
+          if (data.format !== 'stickout' && data.format !== 'stickdiagram') { alert('Invalid file format.'); return; }
           
           let finalCanvasLayers = data.canvasLayers || [];
           finalCanvasLayers = restoreCanvasLayers(data.elements || [], finalCanvasLayers);
@@ -1744,10 +1747,11 @@ export default function App() {
 
       // 1. Check if the system clipboard has native element JSON data (which takes priority if it was the latest copied item)
       const textData = e.clipboardData?.getData('text/plain');
-      if (textData && textData.startsWith('stickdiagram-elements:')) {
+      if (textData && (textData.startsWith('stickout-elements:') || textData.startsWith('stickdiagram-elements:'))) {
         e.preventDefault();
         try {
-          const jsonStr = textData.substring('stickdiagram-elements:'.length);
+          const prefixLen = textData.startsWith('stickout-elements:') ? 'stickout-elements:'.length : 'stickdiagram-elements:'.length;
+          const jsonStr = textData.substring(prefixLen);
           const parsed = JSON.parse(jsonStr);
           if (Array.isArray(parsed) && parsed.length > 0) {
             const offset = GRID_PITCH;
