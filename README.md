@@ -21,20 +21,29 @@ StickDiagram is an open-source, professional-grade, interactive, browser-based E
 - **Same-Layer Jumps**: When orthogonal lines of the *same layer/color* cross, the horizontal line automatically draws a curved bridge arc ("jump") to indicate they are not electrically connected. PMOS and NMOS wires crossing poly, for example, will cross normally (different layers).
 - **Right-Click Connection Overrides**: Right-clicking any active jump point dynamically toggles its electrical state. Overridden crossovers render as solid line intersections (normal crossings), indicating a connection. Right-click again to restore the jump.
 
-### 🌈 Layer Control Sidebar
-Supports full independent control over standard VLSI layout layers:
-- 🔵 **Metal Layer** (Blue)
-- 🟡 **PMOS Active Layer** (Yellow)
-- 🟢 **NMOS Active Layer** (Green)
-- 🟣 **Polysilicon Layer** (Purple by default, toggleable to Red)
-- 🔲 **Vias & Contacts** (Contact is Dark/Light outline, Via is Magenta by default)
-- 🔤 **Labels & Text**
-- 🟠 **Custom Color Layer** (user-defined color)
+### 🌈 Layer Control Sidebar & Reordering
+Supports full independent control over all standard VLSI layout layers:
+- 🔵 **Metal 1 (M1)**: Blue solid line (`#4A90E2`) for standard metal interconnects.
+- 🔴 **Metal 2 (M2)**: Red solid line (`#C0392B`) for secondary orthogonal routing.
+- 🟡 **P-Diffusion (P-Active)**: Yellow solid line (`#F1C40F`) representing PMOS source/drain regions.
+- 🟢 **N-Diffusion (N-Active)**: Green solid line (`#27AE60`) representing NMOS source/drain regions.
+- 🟣 **Polysilicon (Poly)**: Purple (`#9B59B6`) by default, toggleable to Red (`#E74C3C`) in the Properties panel, representing transistor gate layers.
+- 🔲 **Contacts**: Black outline (light theme) or White outline (dark theme) for M1 to Silicon/Poly connections.
+- 🔲 **Vias**: Magenta solid square (`#FF00FF`) for Metal-to-Metal (M1↔M2) connections.
+- 🟫 **N-Well / P-Well**: Brown dashed boundary (`#795548`) for bulk isolation regions.
+- 🟫 **Demarcation Line**: Thin brown dashed line (`#8D6E63`) separating NMOS and PMOS regions.
+- 🟢 **N+ Implant / P+ Implant**: Dashed green (`#43A047`) and yellow (`#F9A825`) outlines for region doping.
+- 🔲 **Buried Contact**: Specialized silicon-to-gate connection layer (`#111111`).
+- 🔘 **Silicide Block**: Gray dashed pattern (`#9E9E9E`) for resistor/ESD structures.
+- 🟠 **Thick Oxide (High-V)**: Orange dashed outline (`#FF6D00`) for high-voltage transistors.
+- 🎨 **Dynamic Higher Metals (M3, M4, etc.)**: Dynamically add higher metal layers with customizable colors.
 
-Each layer supports:
-- **Visibility (Eye Icon)**: Toggles rendering. Hidden elements are immune to selection, dragging, and are skipped in PNG exports.
-- **Locking (Lock Icon)**: Toggles selection lock. Locked elements remain visible but cannot be modified, moved, or deleted.
-- **Opacity Slider**: Sets rendering opacity (from 10% to 100%) dynamically reflected on the canvas and in exported files.
+#### Photoshop-Style Layer Operations
+- **Visibility (Eye Icon)**: Toggle layer rendering on/off. Hidden elements are immune to selection, dragging, and are skipped in PNG exports.
+- **Locking (Lock Icon)**: Toggle selection lock. Locked elements remain visible but cannot be modified, moved, or deleted.
+- **Opacity Slider**: Control drawing opacity (10% to 100%) dynamically reflected on the canvas and in export images.
+- **Drag-and-Drop Reordering**: Drag and drop layers to rearrange their rendering stack order (bottom to top).
+- **Custom Canvas Layers**: Add, rename, or delete custom drawing layers to group annotation and design elements.
 
 ### 💾 Local Auto-Save (localStorage)
 - Automatically saves the complete workspace layout, layer properties, and canvas state to browser localStorage on any modification.
