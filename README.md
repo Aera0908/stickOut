@@ -106,8 +106,8 @@ Make sure you have Node.js (version 16 or higher) and npm installed.
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Aera0908/stick-diagram.git
-   cd stick-diagram
+   git clone https://github.com/Aera0908/stickOut.git
+   cd stickOut
    ```
 2. Install the dependencies:
    ```bash
