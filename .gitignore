@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Exclude local release notes / LinkedIn post captions documentation
+release_notes.md
