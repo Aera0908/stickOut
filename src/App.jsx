@@ -10,6 +10,7 @@ import {
   LINE_WIDTH,
   UNDO_LIMIT,
   AUTOSAVE_KEY,
+  AUTOSAVE_EXPIRY_DAYS,
   BASE_LAYERS,
   HIGHER_METAL_COLORS,
   PALETTE_ORDER_BEFORE_METALS,
@@ -51,7 +52,7 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [activeTool, setActiveTool] = useState(TOOLS.select);
   const [contactSize, setContactSize] = useState('small');
-  const [contactShape, setContactShape] = useState('x');
+  const [contactShape, setContactShape] = useState('square');
   const [showContactSubmenu, setShowContactSubmenu] = useState(false);
   const [activeLayerId, setActiveLayerId] = useState('metal1');
   const [showGrid, setShowGrid] = useState(true);
@@ -77,7 +78,7 @@ export default function App() {
   const [feedbackStatus, setFeedbackStatus] = useState('idle');
 
   // Custom Layer Colors (for customizable layers like via, higher metals)
-  const [customLayerColors, setCustomLayerColors] = useState({ via: '#9C27B0' });
+  const [customLayerColors, setCustomLayerColors] = useState({ via: '#FF00FF' });
 
   // Extra metal layers (M3, M4, M5, ...)
   const [extraMetalLayers, setExtraMetalLayers] = useState([]);
@@ -175,9 +176,28 @@ export default function App() {
   const labelReadyRef = useRef(false);
   const saveProjectFnRef = useRef(null);
   const loadProjectFnRef = useRef(null);
+  const customLayerCreatingRef = useRef(false);
 
   // Auto-save
   const [hasAutosave, setHasAutosave] = useState(false);
+
+  // Toast notification
+  const [toastMessage, setToastMessage] = useState(null);
+  const toastTimerRef = useRef(null);
+  const showToast = useCallback((msg, duration = 3000) => {
+    setToastMessage(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastMessage(null), duration);
+  }, []);
+
+  // Status bar message (for auto-switch notifications)
+  const [statusMessage, setStatusMessage] = useState(null);
+  const statusTimerRef = useRef(null);
+  const showStatusMessage = useCallback((msg, duration = 2000) => {
+    setStatusMessage(msg);
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    statusTimerRef.current = setTimeout(() => setStatusMessage(null), duration);
+  }, []);
 
   // ─── Computed: Resolve all layers ───────────────────────────
   const allLayers = { ...BASE_LAYERS };
@@ -383,7 +403,7 @@ export default function App() {
     try { localStorage.setItem('stickdiagram-theme', theme); } catch {}
   }, [theme]);
 
-  // ─── Auto-save: check on mount ─────────────────────────────
+  // ─── Auto-save: silent restore on mount ─────────────────────
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AUTOSAVE_KEY);
@@ -392,18 +412,65 @@ export default function App() {
         const age = Date.now() - (data.timestamp || 0);
         const expiryMs = AUTOSAVE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
         if (age < expiryMs && data.elements && data.elements.length > 0) {
-          setHasAutosave(true);
+          // Silently restore the saved state
+          let finalCanvasLayers = data.canvasLayers || [];
+          // Inline layer restoration (can't use restoreCanvasLayers since allLayers depends on state)
+          (data.elements || []).forEach(el => {
+            if (['line', 'contact', 'via'].includes(el.type) && el.layerId) {
+              const canvasLayerId = `canvas_vlsi_${el.layerId}`;
+              if (!finalCanvasLayers.some(l => l.id === canvasLayerId)) {
+                const layerDef = BASE_LAYERS[el.layerId];
+                const cleanName = layerDef?.label.split('(')[0].trim() || el.layerId;
+                finalCanvasLayers.push({ id: canvasLayerId, name: cleanName, visible: true, opacity: 1.0, isCustom: false });
+              }
+            }
+          });
+          setCanvasLayers(finalCanvasLayers);
+          const elementsMapped = (data.elements || []).map(el => {
+            if (['line', 'contact', 'via'].includes(el.type) && el.layerId) {
+              return { ...el, canvasLayerId: `canvas_vlsi_${el.layerId}` };
+            }
+            return el;
+          });
+          setElements(elementsMapped);
+          setJumpOverrides(new Set(data.jumpOverrides || []));
+          if (data.extraMetalLayers) setExtraMetalLayers(data.extraMetalLayers);
+          if (data.customLayerColors) {
+            const restored = { ...data.customLayerColors };
+            // Migrate old via color (purple) to new default (magenta)
+            if (!restored.via || restored.via === '#9C27B0') restored.via = '#FF00FF';
+            setCustomLayerColors(restored);
+          }
+          const maxId = (data.elements || []).reduce((max, el) => {
+            const num = parseInt(el.id.replace('el-', ''));
+            return isNaN(num) ? max : Math.max(max, num);
+          }, 0);
+          setNextId(maxId + 1);
+          // Restore layer IDs
+          const maxLayerId = finalCanvasLayers.reduce((max, l) => {
+            const match = l.id.match(/^layer_(\d+)$/);
+            return match ? Math.max(max, parseInt(match[1])) : max;
+          }, 0);
+          if (maxLayerId > 0) setNextLayerId(maxLayerId + 1);
+          setUndoStack([]); setRedoStack([]); setSelectedIds(new Set());
+          setShowModal(false); setHasAutosave(false);
+          showToast('Session restored');
+          return;
         } else {
           localStorage.removeItem(AUTOSAVE_KEY);
         }
       }
-    } catch {}
-  }, []);
+    } catch {
+      // Corrupt data — discard silently
+      try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
+    }
+    // If we get here, no valid autosave — check flag for modal
+    setHasAutosave(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Auto-save: persist ──────────────────────────────────
+  // ─── Auto-save: persist (debounced 500ms) ───────────────────
   useEffect(() => {
     if (showModal) return;
-    if (elements.length === 0) return;
     const timer = setTimeout(() => {
       try {
         const data = {
@@ -413,7 +480,7 @@ export default function App() {
         };
         localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
       } catch {}
-    }, 1000);
+    }, 500);
     return () => clearTimeout(timer);
   }, [elements, jumpOverrides, canvasLayers, extraMetalLayers, customLayerColors, showModal]);
 
@@ -564,6 +631,21 @@ export default function App() {
       canvasLayers,
     };
 
+    // Detect co-located via+contact pairs for stacked rendering
+    const stackedOffsets = {};
+    const contacts = renderElements.filter(el => el.type === 'contact');
+    const vias = renderElements.filter(el => el.type === 'via');
+    const STACK_OFFSET = 1;
+    contacts.forEach(c => {
+      vias.forEach(v => {
+        if (c.x === v.x && c.y === v.y) {
+          // Contact goes bottom-right, via goes top-left
+          stackedOffsets[c.id] = { x: STACK_OFFSET, y: STACK_OFFSET };
+          stackedOffsets[v.id] = { x: -STACK_OFFSET, y: -STACK_OFFSET };
+        }
+      });
+    });
+
     // Draw in canvas layer order (bottom to top)
     canvasLayers.forEach(cLayer => {
       if (!cLayer.visible) return;
@@ -599,6 +681,10 @@ export default function App() {
         let options = { ...drawOpts };
         if (el.type === 'line' && el.y1 === el.y2) {
           options.crossoverXCoords = activeCrossovers.filter(c => c.hId === el.id).map(c => c.x);
+        }
+        // Apply stacked offset for co-located via+contact pairs
+        if (stackedOffsets[el.id]) {
+          options.stackOffset = stackedOffsets[el.id];
         }
         drawElement(ctx, el, isSelected, options);
         ctx.restore();
@@ -905,7 +991,7 @@ export default function App() {
           };
           addElement(line);
         }
-        setLineStart(end); setLinePreview(end);
+        setLineStart(null); setLinePreview(null);
       }
     } else if (activeTool === TOOLS.contact) {
       let elType = 'contact';
@@ -914,7 +1000,7 @@ export default function App() {
       const layerDef = allLayers[activeLayerId];
       const color = (activeLayerId === 'contact' || activeLayerId === 'buriedcontact')
         ? '#111111'
-        : (customLayerColors[activeLayerId] || layerDef?.hex || '#9C27B0');
+        : (customLayerColors[activeLayerId] || layerDef?.hex || '#FF00FF');
 
       const newEl = {
         id: uid(), type: elType,
@@ -1502,7 +1588,7 @@ export default function App() {
   }, []);
 
   const handleNew = useCallback(() => { setShowModal(true); setOpenMenu(null); }, []);
-  const handleClear = useCallback(() => { pushUndoSnapshot(); setElements([]); setSelectedIds(new Set()); setOpenMenu(null); }, [pushUndoSnapshot]);
+  const handleClear = useCallback(() => { pushUndoSnapshot(); setElements([]); setSelectedIds(new Set()); setOpenMenu(null); try { localStorage.removeItem(AUTOSAVE_KEY); } catch {} }, [pushUndoSnapshot]);
 
   const handleSaveProject = useCallback(() => {
     const data = {
@@ -1547,7 +1633,11 @@ export default function App() {
           
           setJumpOverrides(new Set(data.jumpOverrides || []));
           if (data.extraMetalLayers) setExtraMetalLayers(data.extraMetalLayers);
-          if (data.customLayerColors) setCustomLayerColors(data.customLayerColors);
+          if (data.customLayerColors) {
+            const restored = { ...data.customLayerColors };
+            if (!restored.via || restored.via === '#9C27B0') restored.via = '#FF00FF';
+            setCustomLayerColors(restored);
+          }
           if (data.pan) setPan(data.pan);
           if (data.zoom) setZoom(data.zoom);
           if (data.showGrid !== undefined) setShowGrid(data.showGrid);
@@ -1586,7 +1676,11 @@ export default function App() {
 
         setJumpOverrides(new Set(data.jumpOverrides || []));
         if (data.extraMetalLayers) setExtraMetalLayers(data.extraMetalLayers);
-        if (data.customLayerColors) setCustomLayerColors(data.customLayerColors);
+        if (data.customLayerColors) {
+          const restored = { ...data.customLayerColors };
+          if (!restored.via || restored.via === '#9C27B0') restored.via = '#FF00FF';
+          setCustomLayerColors(restored);
+        }
         const maxId = (data.elements || []).reduce((max, el) => {
           const num = parseInt(el.id.replace('el-', ''));
           return isNaN(num) ? max : Math.max(max, num);
@@ -1708,6 +1802,12 @@ export default function App() {
     const crossovers = getCrossovers(elements);
     const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
     const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
+    // Detect stacked via+contact pairs for export
+    const exportStackedOffsets = {};
+    const exportContacts = elements.filter(el => el.type === 'contact');
+    const exportVias = elements.filter(el => el.type === 'via');
+    const EXPORT_STACK_OFFSET = 1.5;
+    exportContacts.forEach(c => { exportVias.forEach(v => { if (c.x === v.x && c.y === v.y) { exportStackedOffsets[c.id] = { x: EXPORT_STACK_OFFSET, y: EXPORT_STACK_OFFSET }; exportStackedOffsets[v.id] = { x: -EXPORT_STACK_OFFSET, y: -EXPORT_STACK_OFFSET }; } }); });
     canvasLayers.forEach(cLayer => {
       if (!cLayer.visible) return;
       ctx.save();
@@ -1717,6 +1817,7 @@ export default function App() {
         ctx.save();
         let options = { ...drawOpts };
         if (el.type === 'line' && el.y1 === el.y2) options.crossoverXCoords = activeCrossovers.filter(c => c.hId === el.id).map(c => c.x);
+        if (exportStackedOffsets[el.id]) options.stackOffset = exportStackedOffsets[el.id];
         drawElement(ctx, el, false, options);
         ctx.restore();
       });
@@ -1747,6 +1848,11 @@ export default function App() {
     const crossovers = getCrossovers(elements);
     const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
     const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
+    // Detect stacked via+contact pairs for full-res export
+    const dlStackedOffsets = {};
+    const dlContacts = elements.filter(el => el.type === 'contact');
+    const dlVias = elements.filter(el => el.type === 'via');
+    dlContacts.forEach(c => { dlVias.forEach(v => { if (c.x === v.x && c.y === v.y) { dlStackedOffsets[c.id] = { x: 1.5, y: 1.5 }; dlStackedOffsets[v.id] = { x: -1.5, y: -1.5 }; } }); });
     canvasLayers.forEach(cLayer => {
       if (!cLayer.visible) return;
       ctx.save();
@@ -1756,6 +1862,7 @@ export default function App() {
         ctx.save();
         let options = { ...drawOpts };
         if (el.type === 'line' && el.y1 === el.y2) options.crossoverXCoords = activeCrossovers.filter(c => c.hId === el.id).map(c => c.x);
+        if (dlStackedOffsets[el.id]) options.stackOffset = dlStackedOffsets[el.id];
         drawElement(ctx, el, false, options);
         ctx.restore();
       });
@@ -1772,15 +1879,20 @@ export default function App() {
 
   // Canvas layers management
   const addCustomCanvasLayer = useCallback((formData) => {
+    // Guard against double-fire (React strict mode or re-render)
+    if (customLayerCreatingRef.current) return;
+    customLayerCreatingRef.current = true;
     const newId = layerUid();
     const newLayer = {
       id: newId, name: formData.name, visible: true, opacity: 1.0, isCustom: true,
       color: formData.color, lineWidth: formData.lineWidth, strokeStyle: formData.strokeStyle,
     };
+    setCustomLayerForm(null);
     pushUndoSnapshot();
     setCanvasLayers(prev => [...prev, newLayer]);
     setActiveCanvasLayerId(newId);
-    setCustomLayerForm(null);
+    // Release guard after a tick
+    setTimeout(() => { customLayerCreatingRef.current = false; }, 0);
   }, [pushUndoSnapshot]);
 
   const deleteCanvasLayer = useCallback((layerId) => {
@@ -1865,7 +1977,15 @@ export default function App() {
         setActiveCanvasLayerId('canvas_vlsi_contact');
       }
     }
-  }, [activeTool, activeLayerId]);
+    // Patch 3: Auto-switch away from contact/buriedcontact when switching to Wire tool
+    if (activeTool === TOOLS.line) {
+      if (activeLayerId === 'contact' || activeLayerId === 'buriedcontact') {
+        setActiveLayerId('metal1');
+        setActiveCanvasLayerId('canvas_vlsi_metal1');
+        showStatusMessage('Layer auto-set to Metal 1');
+      }
+    }
+  }, [activeTool, activeLayerId, showStatusMessage]);
 
   const toolNames = {
     [TOOLS.select]: 'Select',
@@ -2032,6 +2152,7 @@ export default function App() {
         snapEnabled={snapEnabled}
         showGrid={showGrid}
         groupScaleState={groupScaleState}
+        statusMessage={statusMessage}
       />
 
       {/* Modals Overlay */}
@@ -2062,6 +2183,11 @@ export default function App() {
         feedbackStatus={feedbackStatus}
         setFeedbackStatus={setFeedbackStatus}
       />
+
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="autosave-toast">{toastMessage}</div>
+      )}
     </div>
   );
 }

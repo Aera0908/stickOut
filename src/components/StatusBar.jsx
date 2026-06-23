@@ -5,7 +5,8 @@ export default function StatusBar({
   zoom,
   snapEnabled,
   showGrid,
-  groupScaleState
+  groupScaleState,
+  statusMessage
 }) {
   return (
     <div className="status-bar">
@@ -26,6 +27,12 @@ export default function StatusBar({
               Group Scale: {groupScaleState.integerMode ? `${Math.round(groupScaleState.ratio)}×` : `${Math.round(groupScaleState.ratio * 100)}%`}
               &nbsp;|&nbsp; Lines: {Object.keys(groupScaleState.originalElements || {}).length} selected
             </span>
+          </>
+        )}
+        {statusMessage && (
+          <>
+            <span className="status-separator" />
+            <span className="status-item" style={{ color: '#F1C40F' }}>{statusMessage}</span>
           </>
         )}
       </div>

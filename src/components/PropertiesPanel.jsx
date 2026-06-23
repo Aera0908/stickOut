@@ -269,6 +269,53 @@ export default function PropertiesPanel({
         </div>
       )}
 
+      {/* Poly color toggle (Purple / Red only) */}
+      {selectedElements.some(el => el.type === 'line' && el.layerId === 'poly') && (
+        <div className="prop-group">
+          <span className="prop-label">Poly Color</span>
+          <div className="prop-btn-row">
+            <button
+              className={`prop-btn ${selectedElements.every(el => el.type !== 'line' || el.layerId !== 'poly' || !el.elementColor) ? 'active' : ''}`}
+              style={{
+                background: selectedElements.every(el => el.type !== 'line' || el.layerId !== 'poly' || !el.elementColor) ? '#9B59B6' : 'var(--surface)',
+                color: selectedElements.every(el => el.type !== 'line' || el.layerId !== 'poly' || !el.elementColor) ? '#fff' : 'var(--text-primary)',
+                display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+              onClick={() => {
+                pushUndoSnapshot();
+                setElements(prev => prev.map(el =>
+                  selectedIds.has(el.id) && el.type === 'line' && el.layerId === 'poly'
+                    ? { ...el, elementColor: undefined }
+                    : el
+                ));
+              }}
+            >
+              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#9B59B6', border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0 }} />
+              Purple
+            </button>
+            <button
+              className={`prop-btn ${selectedElements.every(el => el.type !== 'line' || el.layerId !== 'poly' || el.elementColor === '#E74C3C') ? 'active' : ''}`}
+              style={{
+                background: selectedElements.some(el => el.type === 'line' && el.layerId === 'poly' && el.elementColor === '#E74C3C') ? '#E74C3C' : 'var(--surface)',
+                color: selectedElements.some(el => el.type === 'line' && el.layerId === 'poly' && el.elementColor === '#E74C3C') ? '#fff' : 'var(--text-primary)',
+                display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+              onClick={() => {
+                pushUndoSnapshot();
+                setElements(prev => prev.map(el =>
+                  selectedIds.has(el.id) && el.type === 'line' && el.layerId === 'poly'
+                    ? { ...el, elementColor: '#E74C3C' }
+                    : el
+                ));
+              }}
+            >
+              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#E74C3C', border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0 }} />
+              Red
+            </button>
+          </div>
+        </div>
+      )}
+
       {singleLine && (
         <div className="prop-group">
           <span className="prop-label">Length (grid units)</span>
@@ -298,7 +345,7 @@ export default function PropertiesPanel({
           <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '8px' }}>Custom Layer Colors</div>
           {selectedCustomizableLayers.map(lid => {
             const layerDef = allLayers[lid];
-            const currentColor = customLayerColors[lid] || layerDef?.hex || '#9C27B0';
+            const currentColor = customLayerColors[lid] || layerDef?.hex || '#FF00FF';
             return (
               <div className="prop-group" key={lid} style={{ marginBottom: '8px' }}>
                 <span className="prop-label">{layerDef?.label.split('(')[0] || lid} Color</span>
