@@ -550,6 +550,9 @@ button, input, select, textarea {
   color: var(--text-muted);
   text-decoration: none;
   transition: color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .credit-icon:hover {
@@ -1800,6 +1803,12 @@ button, input, select, textarea {
 
   .status-right {
     gap: 6px;
+  }
+
+  .credit-author,
+  .credit-author-sep,
+  .credit-text {
+    display: none;
   }
 
   .status-separator {
