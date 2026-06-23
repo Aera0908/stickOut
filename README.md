@@ -60,6 +60,23 @@ Each layer supports:
 - Customizable label text styles: Dark text, Light text, or Pill background.
 - Crisp **2x high-resolution** scaling suitable for reports, papers, and presentations.
 
+### 🖌️ Freehand Paintbrush & Eraser
+- Switch to the Paintbrush tool to draw freehand markups and annotations directly onto the canvas.
+- Features adjustable brush stroke sizes and opacity percentages.
+- Use the Eraser tool to cleanly erase brush stroke segments.
+
+### 📋 Clipboard & Duplication Operations
+- Full support for standard clipboard commands: **Copy** (`Ctrl + C`), **Cut** (`Ctrl + X`), and **Paste** (`Ctrl + V`).
+- **Duplicate** (`Ctrl + D`) replicates the selected elements with a 1-grid-pitch diagonal offset for modular cell replication.
+
+### 🗂️ Keyboard-Driven Layer Reordering
+- Reorder layer rendering stack on the fly using hotkeys.
+- Selected elements' canvas layers can be sent upward (`Ctrl + ]`), downward (`Ctrl + [`), all the way to the top (`Ctrl + Shift + ]`), or all the way to the bottom (`Ctrl + Shift + [`).
+
+### 📐 Proportional Group Scaling
+- Dragging the endpoint of a selected wire when multiple wires are selected scales all selected wires proportionally.
+- Constrain modifications to clean integer grid multiples by holding the `Shift` key while scaling.
+
 ---
 
 ## 🛠️ Technology Stack
@@ -109,14 +126,26 @@ The floating Shortcuts HUD in the bottom-left corner of the canvas displays the 
 | <kbd>V</kbd> | Activate Select / Pointer Tool |
 | <kbd>W</kbd> | Activate Wire / Line Tool |
 | <kbd>P</kbd> | Activate Via / Contact Tool |
-| <kbd>L</kbd> | Activate Label / Text Tool |
+| <kbd>L</kbd> or <kbd>T</kbd> | Activate Label / Text Tool |
+| <kbd>B</kbd> | Activate Freehand Paintbrush Tool |
+| <kbd>E</kbd> | Activate Eraser Tool |
 | <kbd>G</kbd> | Toggle Canvas Grid Visibility |
 | <kbd>S</kbd> | Toggle Grid Snapping |
 | <kbd>Space</kbd> + Drag | Pan Canvas (or drag with middle-mouse wheel click) |
 | <kbd>Del</kbd> / <kbd>Backspace</kbd> | Delete Selected Element(s) |
 | <kbd>Ctrl</kbd> + <kbd>Z</kbd> | Undo |
 | <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Redo |
+| <kbd>Ctrl</kbd> + <kbd>S</kbd> | Save Project (`.stk` file) |
+| <kbd>Ctrl</kbd> + <kbd>O</kbd> | Open Project (`.stk` file) |
 | <kbd>Ctrl</kbd> + <kbd>A</kbd> | Select All Unlocked Elements |
+| <kbd>Ctrl</kbd> + <kbd>C</kbd> | Copy selected elements |
+| <kbd>Ctrl</kbd> + <kbd>X</kbd> | Cut selected elements |
+| <kbd>Ctrl</kbd> + <kbd>V</kbd> | Paste clipboard contents |
+| <kbd>Ctrl</kbd> + <kbd>D</kbd> | Duplicate selection (offset by 1 grid pitch) |
+| <kbd>Ctrl</kbd> + <kbd>[</kbd> | Move selected element's layer down one step |
+| <kbd>Ctrl</kbd> + <kbd>]</kbd> | Move selected element's layer up one step |
+| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>[</kbd> | Move layer to bottom of rendering stack |
+| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>]</kbd> | Move layer to top of rendering stack |
 | <kbd>Esc</kbd> | Cancel current wire draw or clear selections |
 
 ---
