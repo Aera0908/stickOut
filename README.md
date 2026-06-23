@@ -26,8 +26,8 @@ Supports full independent control over standard VLSI layout layers:
 - 🔵 **Metal Layer** (Blue)
 - 🟡 **PMOS Active Layer** (Yellow)
 - 🟢 **NMOS Active Layer** (Green)
-- 🟣 **Polysilicon Layer** (Purple)
-- 🔲 **Vias & Contacts** (Black/White Outline)
+- 🟣 **Polysilicon Layer** (Purple by default, toggleable to Red)
+- 🔲 **Vias & Contacts** (Contact is Dark/Light outline, Via is Magenta by default)
 - 🔤 **Labels & Text**
 - 🟠 **Custom Color Layer** (user-defined color)
 
@@ -35,6 +35,14 @@ Each layer supports:
 - **Visibility (Eye Icon)**: Toggles rendering. Hidden elements are immune to selection, dragging, and are skipped in PNG exports.
 - **Locking (Lock Icon)**: Toggles selection lock. Locked elements remain visible but cannot be modified, moved, or deleted.
 - **Opacity Slider**: Sets rendering opacity (from 10% to 100%) dynamically reflected on the canvas and in exported files.
+
+### 💾 Local Auto-Save (localStorage)
+- Automatically saves the complete workspace layout, layer properties, and canvas state to browser localStorage on any modification.
+- Debounced auto-save triggers silently to prevent performance stutter, and auto-restores state cleanly on app mount with a UI toast notification.
+
+### 🔀 Stacked Via + Contact Connections
+- Placing a **Via** directly on top of a **Contact** at the same grid point automatically converts both to standard **Square** shapes and applies a small visual offset (1.5px).
+- This creates the industry-standard "stacked squares" visual style used to represent direct Metal 2 to Polysilicon connections.
 
 ### 🧪 Custom Color Swatch
 - Select the custom color swatch to draw wires in any custom color.

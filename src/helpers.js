@@ -85,6 +85,8 @@ export function getElementBounds(el) {
 }
 
 export function resolveLayerColor(el, allLayers, customLayerColors, canvasLayers) {
+  // Per-element color override (e.g. poly purple/red toggle)
+  if (el.elementColor) return el.elementColor;
   // If element is on a custom canvas layer, use that layer's color
   if (el.canvasLayerId) {
     const cLayer = canvasLayers?.find(l => l.id === el.canvasLayerId);
@@ -321,7 +323,11 @@ export function drawElement(ctx, el, isSelected, options = {}) {
     const isDarkForContact = document.documentElement.getAttribute('data-theme') !== 'light';
 
     const isBuried = el.layerId === 'buriedcontact';
-    const shape = el.shape || 'square';
+    const stackOffset = options.stackOffset || null;
+    // When stacked with a via, force square shape
+    const shape = stackOffset ? 'square' : (el.shape || 'square');
+    const drawX = stackOffset ? el.x + stackOffset.x : el.x;
+    const drawY = stackOffset ? el.y + stackOffset.y : el.y;
 
     if (shape === 'x' && !isBuried) {
       const half = s / 2;
@@ -331,28 +337,28 @@ export function drawElement(ctx, el, isSelected, options = {}) {
         ctx.lineWidth = Math.max(2.5, s * 0.25) + 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(el.x - half, el.y - half);
-        ctx.lineTo(el.x + half, el.y + half);
-        ctx.moveTo(el.x + half, el.y - half);
-        ctx.lineTo(el.x - half, el.y + half);
+        ctx.moveTo(drawX - half, drawY - half);
+        ctx.lineTo(drawX + half, drawY + half);
+        ctx.moveTo(drawX + half, drawY - half);
+        ctx.lineTo(drawX - half, drawY + half);
         ctx.stroke();
       }
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = Math.max(2.5, s * 0.25);
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(el.x - half, el.y - half);
-      ctx.lineTo(el.x + half, el.y + half);
-      ctx.moveTo(el.x + half, el.y - half);
-      ctx.lineTo(el.x - half, el.y + half);
+      ctx.moveTo(drawX - half, drawY - half);
+      ctx.lineTo(drawX + half, drawY + half);
+      ctx.moveTo(drawX + half, drawY - half);
+      ctx.lineTo(drawX - half, drawY + half);
       ctx.stroke();
       ctx.restore();
     } else {
       ctx.fillStyle = '#000000';
-      ctx.fillRect(el.x - s / 2, el.y - s / 2, s, s);
+      ctx.fillRect(drawX - s / 2, drawY - s / 2, s, s);
       ctx.strokeStyle = isDarkForContact ? '#FFFFFF' : '#333333';
       ctx.lineWidth = 1;
-      ctx.strokeRect(el.x - s / 2, el.y - s / 2, s, s);
+      ctx.strokeRect(drawX - s / 2, drawY - s / 2, s, s);
 
       if (isBuried) {
         const half = s / 2;
@@ -361,10 +367,10 @@ export function drawElement(ctx, el, isSelected, options = {}) {
         ctx.lineWidth = Math.max(1.5, s * 0.15);
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(el.x - half, el.y - half);
-        ctx.lineTo(el.x + half, el.y + half);
-        ctx.moveTo(el.x + half, el.y - half);
-        ctx.lineTo(el.x - half, el.y + half);
+        ctx.moveTo(drawX - half, drawY - half);
+        ctx.lineTo(drawX + half, drawY + half);
+        ctx.moveTo(drawX + half, drawY - half);
+        ctx.lineTo(drawX - half, drawY + half);
         ctx.stroke();
         ctx.restore();
       }
@@ -382,26 +388,34 @@ export function drawElement(ctx, el, isSelected, options = {}) {
     const s = getContactSize(el);
     const color = resolveLayerColor(el, allLayers, customLayerColors, canvasLayers);
     const isDarkForVia = document.documentElement.getAttribute('data-theme') !== 'light';
+    const stackOffset = options.stackOffset || null;
+    // When stacked with a contact, force square shape
+    const viaShape = stackOffset ? 'square' : (el.shape || 'square');
+    const drawX = stackOffset ? el.x + stackOffset.x : el.x;
+    const drawY = stackOffset ? el.y + stackOffset.y : el.y;
 
-    ctx.fillStyle = color;
-    ctx.fillRect(el.x - s / 2, el.y - s / 2, s, s);
-    ctx.strokeStyle = isDarkForVia ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(el.x - s / 2, el.y - s / 2, s, s);
-
-    const half = s / 2;
-    ctx.save();
-    const xColor = isDarkForVia ? '#FFFFFF' : '#000000';
-    ctx.strokeStyle = xColor;
-    ctx.lineWidth = Math.max(1.5, s * 0.15);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(el.x - half * 0.7, el.y - half * 0.7);
-    ctx.lineTo(el.x + half * 0.7, el.y + half * 0.7);
-    ctx.moveTo(el.x + half * 0.7, el.y - half * 0.7);
-    ctx.lineTo(el.x - half * 0.7, el.y + half * 0.7);
-    ctx.stroke();
-    ctx.restore();
+    if (viaShape === 'x') {
+      // X shape only: two diagonal crossing lines, no square background
+      const half = s / 2;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(2.5, s * 0.25);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(drawX - half, drawY - half);
+      ctx.lineTo(drawX + half, drawY + half);
+      ctx.moveTo(drawX + half, drawY - half);
+      ctx.lineTo(drawX - half, drawY + half);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // Square shape only: filled square, no X
+      ctx.fillStyle = color;
+      ctx.fillRect(drawX - s / 2, drawY - s / 2, s, s);
+      ctx.strokeStyle = isDarkForVia ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(drawX - s / 2, drawY - s / 2, s, s);
+    }
 
     if (isSelected && !isExport) {
       ctx.save();

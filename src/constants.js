@@ -8,13 +8,13 @@ export const AUTOSAVE_KEY = 'stickdiagram-autosave';
 export const AUTOSAVE_EXPIRY_DAYS = 30;
 
 export const BASE_LAYERS = {
-  poly:          { label: 'Polysilicon (Poly)',      hex: '#E74C3C', dash: null,    customizable: false },
+  poly:          { label: 'Polysilicon (Poly)',      hex: '#9B59B6', dash: null,    customizable: false },
   ndiff:         { label: 'N-Diffusion (N-Active)',  hex: '#27AE60', dash: null,    customizable: false },
   pdiff:         { label: 'P-Diffusion (P-Active)',  hex: '#F1C40F', dash: null,    customizable: false },
   metal1:        { label: 'Metal 1 (M1)',            hex: '#4A90E2', dash: null,    customizable: false },
   metal2:        { label: 'Metal 2 (M2)',            hex: '#C0392B', dash: null,    customizable: false },
   contact:       { label: 'Contact (M→Poly/Diff)',   hex: '#111111', dash: null,    customizable: false },
-  via:           { label: 'Via (Metal↔Metal)',        hex: '#9C27B0', dash: null,    customizable: true },
+  via:           { label: 'Via (Metal↔Metal)',        hex: '#FF00FF', dash: null,    customizable: true },
   nwell:         { label: 'N-Well / P-Well',         hex: '#795548', dash: [6,4],   customizable: false },
   demarcation:   { label: 'Demarcation Line',        hex: '#8D6E63', dash: [6,4],   customizable: false },
   nimplant:      { label: 'N+ Implant',              hex: '#43A047', dash: [2,4],   customizable: false },
