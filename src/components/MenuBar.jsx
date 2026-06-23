@@ -25,7 +25,7 @@ export default function MenuBar({
 }) {
   return (
     <div className="menu-bar">
-      <span className="app-title"><Cpu size={14} />StickDiagram</span>
+      <span className="app-title"><Cpu size={14} />StickOut</span>
 
       <div className="menu-item">
         <button className={openMenu === 'file' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'file' ? null : 'file'); }}>File</button>
