@@ -1351,24 +1351,7 @@ export default function App() {
         }
         if (e.key === 'c') { e.preventDefault(); if (selectedIds.size > 0) clipboardRef.current = JSON.parse(JSON.stringify(elements.filter(el => selectedIds.has(el.id)))); return; }
         if (e.key === 'x') { e.preventDefault(); if (selectedIds.size > 0) { clipboardRef.current = JSON.parse(JSON.stringify(elements.filter(el => selectedIds.has(el.id)))); deleteSelected(); } return; }
-        if (e.key === 'v') {
-          if (clipboardRef.current && clipboardRef.current.length > 0) {
-            e.preventDefault();
-            const offset = GRID_PITCH;
-            pushUndoSnapshot();
-            const newEls = clipboardRef.current.map(el => {
-              const n = JSON.parse(JSON.stringify(el));
-              n.id = uid();
-              if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-              else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
-              return n;
-            });
-            setElements(prev => [...prev, ...newEls]);
-            setSelectedIds(new Set(newEls.map(el => el.id)));
-            setActiveTool(TOOLS.select);
-          }
-          return;
-        }
+        // Ctrl+V paste handling moved entirely to the window 'paste' event listener to support priority image pasting.
         if (e.key === 'd') {
           e.preventDefault();
           if (selectedIds.size > 0) {
@@ -1728,48 +1711,66 @@ export default function App() {
       reader.readAsDataURL(file);
     };
     input.click(); setOpenMenu(null);
-  }, [pan, zoom, pushUndoSnapshot, activeCanvasLayerId]);
-
-  useEffect(() => {
+  }, [pan, zoom, pushUndoSnapshot, activeCanvasLayerId]);  useEffect(() => {
     const handlePaste = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
       const items = e.clipboardData?.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          const file = items[i].getAsFile();
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const dataUrl = event.target.result;
-              const img = new window.Image();
-              img.src = dataUrl;
-              img.onload = () => {
-                const canvas = canvasRef.current;
-                let worldX = 0, worldY = 0;
-                if (canvas) {
-                  const rect = canvas.getBoundingClientRect();
-                  const world = screenToWorld(rect.width / 2, rect.height / 2, pan, zoom);
-                  worldX = world.x - img.naturalWidth / 4;
-                  worldY = world.y - img.naturalHeight / 4;
-                }
-                const newImageEl = { id: uid(), type: 'image', x: worldX, y: worldY, w: img.naturalWidth / 2 || 200, h: img.naturalHeight / 2 || 200, src: dataUrl, canvasLayerId: activeCanvasLayerId };
-                pushUndoSnapshot();
-                setElements(prev => [...prev, newImageEl]);
-                setSelectedIds(new Set([newImageEl.id]));
-                setActiveTool(TOOLS.select);
+      let hasImage = false;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            hasImage = true;
+            const file = items[i].getAsFile();
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const dataUrl = event.target.result;
+                const img = new window.Image();
+                img.src = dataUrl;
+                img.onload = () => {
+                  const canvas = canvasRef.current;
+                  let worldX = 0, worldY = 0;
+                  if (canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    const world = screenToWorld(rect.width / 2, rect.height / 2, pan, zoom);
+                    worldX = world.x - img.naturalWidth / 4;
+                    worldY = world.y - img.naturalHeight / 4;
+                  }
+                  const newImageEl = { id: uid(), type: 'image', x: worldX, y: worldY, w: img.naturalWidth / 2 || 200, h: img.naturalHeight / 2 || 200, src: dataUrl, canvasLayerId: activeCanvasLayerId };
+                  pushUndoSnapshot();
+                  setElements(prev => [...prev, newImageEl]);
+                  setSelectedIds(new Set([newImageEl.id]));
+                  setActiveTool(TOOLS.select);
+                };
               };
-            };
-            reader.readAsDataURL(file);
-            e.preventDefault();
-            break;
+              reader.readAsDataURL(file);
+              e.preventDefault();
+              break;
+            }
           }
         }
+      }
+
+      if (!hasImage && clipboardRef.current && clipboardRef.current.length > 0) {
+        e.preventDefault();
+        const offset = GRID_PITCH;
+        pushUndoSnapshot();
+        const newEls = clipboardRef.current.map(el => {
+          const n = JSON.parse(JSON.stringify(el));
+          n.id = uid();
+          if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
+          else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
+          return n;
+        });
+        setElements(prev => [...prev, ...newEls]);
+        setSelectedIds(new Set(newEls.map(el => el.id)));
+        setActiveTool(TOOLS.select);
       }
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
   }, [pan, zoom, pushUndoSnapshot, activeCanvasLayerId]);
-
   saveProjectFnRef.current = handleSaveProject;
   loadProjectFnRef.current = handleLoadProject;
 
