@@ -1349,8 +1349,33 @@ export default function App() {
           setActiveTool(TOOLS.select);
           return;
         }
-        if (e.key === 'c') { e.preventDefault(); if (selectedIds.size > 0) clipboardRef.current = JSON.parse(JSON.stringify(elements.filter(el => selectedIds.has(el.id)))); return; }
-        if (e.key === 'x') { e.preventDefault(); if (selectedIds.size > 0) { clipboardRef.current = JSON.parse(JSON.stringify(elements.filter(el => selectedIds.has(el.id)))); deleteSelected(); } return; }
+        if (e.key === 'c') {
+          e.preventDefault();
+          if (selectedIds.size > 0) {
+            const selectedEls = elements.filter(el => selectedIds.has(el.id));
+            clipboardRef.current = JSON.parse(JSON.stringify(selectedEls));
+            try {
+              navigator.clipboard.writeText("stickdiagram-elements:" + JSON.stringify(selectedEls));
+            } catch (err) {
+              console.warn("Clipboard write failed", err);
+            }
+          }
+          return;
+        }
+        if (e.key === 'x') {
+          e.preventDefault();
+          if (selectedIds.size > 0) {
+            const selectedEls = elements.filter(el => selectedIds.has(el.id));
+            clipboardRef.current = JSON.parse(JSON.stringify(selectedEls));
+            try {
+              navigator.clipboard.writeText("stickdiagram-elements:" + JSON.stringify(selectedEls));
+            } catch (err) {
+              console.warn("Clipboard write failed", err);
+            }
+            deleteSelected();
+          }
+          return;
+        }
         // Ctrl+V paste handling moved entirely to the window 'paste' event listener to support priority image pasting.
         if (e.key === 'd') {
           e.preventDefault();
@@ -1711,10 +1736,40 @@ export default function App() {
       reader.readAsDataURL(file);
     };
     input.click(); setOpenMenu(null);
-  }, [pan, zoom, pushUndoSnapshot, activeCanvasLayerId]);  useEffect(() => {
+  }, [pan, zoom, pushUndoSnapshot, activeCanvasLayerId]);
+
+  useEffect(() => {
     const handlePaste = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
+      // 1. Check if the system clipboard has native element JSON data (which takes priority if it was the latest copied item)
+      const textData = e.clipboardData?.getData('text/plain');
+      if (textData && textData.startsWith('stickdiagram-elements:')) {
+        e.preventDefault();
+        try {
+          const jsonStr = textData.substring('stickdiagram-elements:'.length);
+          const parsed = JSON.parse(jsonStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const offset = GRID_PITCH;
+            pushUndoSnapshot();
+            const newEls = parsed.map(el => {
+              const n = JSON.parse(JSON.stringify(el));
+              n.id = uid();
+              if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
+              else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
+              return n;
+            });
+            setElements(prev => [...prev, ...newEls]);
+            setSelectedIds(new Set(newEls.map(el => el.id)));
+            setActiveTool(TOOLS.select);
+            return;
+          }
+        } catch (err) {
+          console.warn("Failed to parse pasted native elements", err);
+        }
+      }
+
+      // 2. Check if the system clipboard contains an image/screenshot
       const items = e.clipboardData?.items;
       let hasImage = false;
       if (items) {
@@ -1752,20 +1807,24 @@ export default function App() {
         }
       }
 
+      // 3. Fallback: if system clipboard does not have native element data or image, but internal clipboard does,
+      // only use it if system clipboard has no other text (meaning writeText was blocked or it's a pure fallback)
       if (!hasImage && clipboardRef.current && clipboardRef.current.length > 0) {
-        e.preventDefault();
-        const offset = GRID_PITCH;
-        pushUndoSnapshot();
-        const newEls = clipboardRef.current.map(el => {
-          const n = JSON.parse(JSON.stringify(el));
-          n.id = uid();
-          if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-          else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
-          return n;
-        });
-        setElements(prev => [...prev, ...newEls]);
-        setSelectedIds(new Set(newEls.map(el => el.id)));
-        setActiveTool(TOOLS.select);
+        if (!textData) {
+          e.preventDefault();
+          const offset = GRID_PITCH;
+          pushUndoSnapshot();
+          const newEls = clipboardRef.current.map(el => {
+            const n = JSON.parse(JSON.stringify(el));
+            n.id = uid();
+            if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
+            else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
+            return n;
+          });
+          setElements(prev => [...prev, ...newEls]);
+          setSelectedIds(new Set(newEls.map(el => el.id)));
+          setActiveTool(TOOLS.select);
+        }
       }
     };
     window.addEventListener('paste', handlePaste);
