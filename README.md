@@ -2,6 +2,8 @@
 
 StickOut is an open-source, professional-grade, interactive, browser-based EDA (Electronic Design Automation) tool designed for drawing and editing VLSI stick diagrams. Featuring a modern dark-mode interface, a highly responsive pannable/zoomable canvas, and comprehensive layer management, it allows hardware engineers, researchers, and students to quickly map out silicon-level layouts, manage connectivity, and export publication-ready high-resolution assets.
 
+⚡ **Try it online**: [stickout.vercel.app](https://stickout.vercel.app)
+
 ![Hero Banner](src/assets/hero.png)
 
 ---
