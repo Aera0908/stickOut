@@ -60,10 +60,13 @@ export function getElementBounds(el) {
     return { x: el.x - s / 2, y: el.y - s / 2, w: s, h: s };
   }
   if (el.type === 'label') {
-    const w = (el.text?.length || 3) * 8;
+    const fontSize = el.fontSize || 12;
+    const scale = fontSize / 12;
+    const w = (el.text?.length || 3) * 8 * scale;
+    const h = 16 * scale;
     const align = el.align || 'left';
     const rx = align === 'center' ? el.x - w / 2 : el.x;
-    return { x: rx, y: el.y - 8, w, h: 16 };
+    return { x: rx, y: el.y - h / 2, w, h };
   }
   if (el.type === 'image') {
     return { x: el.x, y: el.y, w: el.w, h: el.h };
@@ -108,6 +111,8 @@ export function drawLabelOnContext(ctx, el, isSelected, options = {}) {
   const hasBg = forceHasBg !== null ? forceHasBg : (el.hasBg !== false);
   const text = el.text || '';
   const align = el.align || 'left';
+  const fontSize = el.fontSize || 12;
+  const scale = fontSize / 12;
 
   const subscriptRegex = /^([a-zA-Z0-9]+)_\{([a-zA-Z0-9]+)\}$|^([a-zA-Z0-9]+)_([a-zA-Z0-9]+)$/;
   const match = text.match(subscriptRegex);
@@ -128,24 +133,28 @@ export function drawLabelOnContext(ctx, el, isSelected, options = {}) {
   let baseWidth = 0;
   let subWidth = 0;
 
+  const baseFontSize = Math.round(14 * scale);
+  const subFontSize = Math.round(10 * scale);
+  const monoFontSize = Math.round(12 * scale);
+
   if (isSubscript) {
-    ctx.font = 'italic 14px "Times New Roman", Georgia, serif';
+    ctx.font = `italic ${baseFontSize}px "Times New Roman", Georgia, serif`;
     baseWidth = ctx.measureText(baseText).width;
-    ctx.font = '10px "Times New Roman", Georgia, serif';
+    ctx.font = `${subFontSize}px "Times New Roman", Georgia, serif`;
     subWidth = ctx.measureText(subText).width;
     tw = baseWidth + subWidth + 1;
   } else {
-    ctx.font = '12px "Roboto Mono", monospace';
+    ctx.font = `${monoFontSize}px "Roboto Mono", monospace`;
     tw = ctx.measureText(text).width;
   }
 
-  const th = 14;
-  const pad = 4;
+  const th = 14 * scale;
+  const pad = 4 * scale;
   const rx = align === 'center' ? el.x - tw / 2 - pad : el.x - pad;
   const ry = el.y - th / 2 - pad;
   const rw = tw + pad * 2;
   const rh = th + pad * 2;
-  const r = 4;
+  const r = 4 * scale;
 
   if (hasBg) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -165,20 +174,25 @@ export function drawLabelOnContext(ctx, el, isSelected, options = {}) {
 
   let textColor = forceTextColor;
   if (!textColor) {
-    const isDarkTheme = document.documentElement.getAttribute('data-theme') !== 'light';
-    textColor = hasBg ? '#FFFFFF' : (isDarkTheme ? '#FFFFFF' : '#111111');
+    // Per-element color override
+    if (el.color) {
+      textColor = el.color;
+    } else {
+      const isDarkTheme = document.documentElement.getAttribute('data-theme') !== 'light';
+      textColor = hasBg ? '#FFFFFF' : (isDarkTheme ? '#FFFFFF' : '#111111');
+    }
   }
   ctx.fillStyle = textColor;
   ctx.textBaseline = 'middle';
 
   if (isSubscript) {
     const startX = align === 'center' ? el.x - tw / 2 : el.x;
-    ctx.font = 'italic 14px "Times New Roman", Georgia, serif';
+    ctx.font = `italic ${baseFontSize}px "Times New Roman", Georgia, serif`;
     ctx.fillText(baseText, startX, el.y);
-    ctx.font = '10px "Times New Roman", Georgia, serif';
-    ctx.fillText(subText, startX + baseWidth + 1, el.y + 4);
+    ctx.font = `${subFontSize}px "Times New Roman", Georgia, serif`;
+    ctx.fillText(subText, startX + baseWidth + 1, el.y + 4 * scale);
   } else {
-    ctx.font = '12px "Roboto Mono", monospace';
+    ctx.font = `${monoFontSize}px "Roboto Mono", monospace`;
     if (align === 'center') {
       ctx.textAlign = 'center';
       ctx.fillText(text, el.x, el.y);

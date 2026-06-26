@@ -1,4 +1,4 @@
-import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown } from 'lucide-react';
+import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette } from 'lucide-react';
 import { TOOLS, HIGHER_METAL_COLORS } from '../constants';
 
 export default function PropertiesPanel({
@@ -30,6 +30,15 @@ export default function PropertiesPanel({
   activeLayerId
 }) {
   const renderInlineColorPicker = (currentColor, onChangeHandler) => {
+    const handleEyeDropper = async () => {
+      if (!window.EyeDropper) return;
+      try {
+        const dropper = new window.EyeDropper();
+        const result = await dropper.open();
+        if (result?.sRGBHex) onChangeHandler(result.sRGBHex);
+      } catch {}
+    };
+
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px', alignItems: 'center' }}>
         {HIGHER_METAL_COLORS.map(color => (
@@ -76,6 +85,27 @@ export default function PropertiesPanel({
             title="Custom Color"
           />
         </div>
+        {typeof window !== 'undefined' && window.EyeDropper && (
+          <button
+            onClick={handleEyeDropper}
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: '1px solid var(--ui-border)',
+              background: 'var(--surface)',
+              cursor: 'pointer',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-secondary)'
+            }}
+            title="Pick color from screen"
+          >
+            <Pipette size={12} />
+          </button>
+        )}
       </div>
     );
   };
@@ -198,6 +228,17 @@ export default function PropertiesPanel({
           <div className="prop-group">
             <span className="prop-label">Text</span>
             <input className="prop-input" value={selectedElements[0].text || ''} onChange={e => updateProp('text', e.target.value)} placeholder="Label text" />
+          </div>
+          <div className="prop-group">
+            <span className="prop-label">Font Size: {selectedElements[0].fontSize || 12}px</span>
+            <input type="range" min="8" max="48" value={selectedElements[0].fontSize || 12} onChange={e => updateProp('fontSize', parseInt(e.target.value))} style={{ width: '100%' }} />
+          </div>
+          <div className="prop-group">
+            <span className="prop-label">Text Color</span>
+            {renderInlineColorPicker(selectedElements[0].color || '#FFFFFF', (newColor) => updateProp('color', newColor))}
+            {selectedElements[0].color && (
+              <button className="prop-btn" onClick={() => updateProp('color', undefined)} style={{ marginTop: '4px', fontSize: '10px' }}>Reset to Default</button>
+            )}
           </div>
           <div className="prop-group">
             <span className="prop-label">Alignment</span>

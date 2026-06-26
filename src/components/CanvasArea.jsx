@@ -19,7 +19,8 @@ export default function CanvasArea({
   confirmLabel,
   labelReadyRef,
   showShortcutsHUD,
-  setShowShortcutsHUD
+  setShowShortcutsHUD,
+  zoom
 }) {
   return (
     <div className={canvasClass} ref={containerRef}>
@@ -42,7 +43,12 @@ export default function CanvasArea({
         <input
           ref={labelInputRef}
           className="inline-label-input"
-          style={{ left: labelInput.screenX, top: labelInput.screenY - 10 }}
+          style={{
+            left: labelInput.screenX,
+            top: labelInput.screenY - 10,
+            fontSize: `${Math.round((labelInput.fontSize || 12) * (zoom || 1))}px`,
+            color: labelInput.color || 'var(--text-primary)'
+          }}
           value={labelInput.text}
           onChange={e => setLabelInput(prev => ({ ...prev, text: e.target.value }))}
           onKeyDown={e => {

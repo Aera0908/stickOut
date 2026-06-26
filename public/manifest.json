@@ -1,0 +1,19 @@
+{
+  "name": "StickOut — VLSI Stick Diagram Editor",
+  "short_name": "StickOut",
+  "description": "Free online VLSI stick diagram maker and editor. Draw CMOS layouts with Metal, Poly, Diffusion, Contacts, and Vias. Export high-resolution PNGs for academic papers and presentations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1A1A2E",
+  "theme_color": "#4A90E2",
+  "orientation": "landscape",
+  "categories": ["education", "utilities", "design", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

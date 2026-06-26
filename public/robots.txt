@@ -1,0 +1,7 @@
+# StickOut — VLSI Stick Diagram Editor
+# https://stickout.vercel.app
+
+User-agent: *
+Allow: /
+
+Sitemap: https://stickout.vercel.app/sitemap.xml
