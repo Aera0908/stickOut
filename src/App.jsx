@@ -128,6 +128,14 @@ export default function App() {
   // Shortcuts HUD
   const [showShortcutsHUD, setShowShortcutsHUD] = useState(true);
 
+  // Track last wire-compatible layer for via→wire switching
+  const [lastWireLayerId, setLastWireLayerId] = useState('metal1');
+
+  // Alt-key dropper mode (brush tool only)
+  const [isAltDropperActive, setIsAltDropperActive] = useState(false);
+  const isAltDropperRef = useRef(false);
+  const isDropperSamplingRef = useRef(false);
+
   // Theme
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('stickout-theme') || localStorage.getItem('stickdiagram-theme') || 'dark'; }
@@ -208,6 +216,22 @@ export default function App() {
     supportTimerRef.current = setTimeout(() => {
       setShowSupportToast(true);
     }, delay);
+  }, []);
+
+  // Canvas color sampling helper
+  const sampleCanvasColor = useCallback((clientX, clientY) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const r = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const cx = (clientX - r.left) * dpr;
+    const cy = (clientY - r.top) * dpr;
+    const ctx = canvas.getContext('2d');
+    try {
+      const pixel = ctx.getImageData(Math.round(cx), Math.round(cy), 1, 1).data;
+      const hex = '#' + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+      return hex;
+    } catch { return null; }
   }, []);
 
   const handleSupportRemindLater = useCallback(() => {
@@ -440,7 +464,7 @@ export default function App() {
     } catch {}
   }, [theme]);
 
-  // ─── Auto-save: silent restore on mount ─────────────────────
+  // ─── Auto-save: detect on mount (show modal with resume option) ──
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AUTOSAVE_KEY) || localStorage.getItem('stickdiagram-autosave');
@@ -449,49 +473,9 @@ export default function App() {
         const age = Date.now() - (data.timestamp || 0);
         const expiryMs = AUTOSAVE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
         if (age < expiryMs && data.elements && data.elements.length > 0) {
-          // Silently restore the saved state
-          let finalCanvasLayers = data.canvasLayers || [];
-          // Inline layer restoration (can't use restoreCanvasLayers since allLayers depends on state)
-          (data.elements || []).forEach(el => {
-            if (['line', 'contact', 'via'].includes(el.type) && el.layerId) {
-              const canvasLayerId = `canvas_vlsi_${el.layerId}`;
-              if (!finalCanvasLayers.some(l => l.id === canvasLayerId)) {
-                const layerDef = BASE_LAYERS[el.layerId];
-                const cleanName = layerDef?.label.split('(')[0].trim() || el.layerId;
-                finalCanvasLayers.push({ id: canvasLayerId, name: cleanName, visible: true, opacity: 1.0, isCustom: false });
-              }
-            }
-          });
-          setCanvasLayers(finalCanvasLayers);
-          const elementsMapped = (data.elements || []).map(el => {
-            if (['line', 'contact', 'via'].includes(el.type) && el.layerId) {
-              return { ...el, canvasLayerId: `canvas_vlsi_${el.layerId}` };
-            }
-            return el;
-          });
-          setElements(elementsMapped);
-          setJumpOverrides(new Set(data.jumpOverrides || []));
-          if (data.extraMetalLayers) setExtraMetalLayers(data.extraMetalLayers);
-          if (data.customLayerColors) {
-            const restored = { ...data.customLayerColors };
-            // Migrate old via color (purple) to new default (magenta)
-            if (!restored.via || restored.via === '#9C27B0') restored.via = '#FF00FF';
-            setCustomLayerColors(restored);
-          }
-          const maxId = (data.elements || []).reduce((max, el) => {
-            const num = parseInt(el.id.replace('el-', ''));
-            return isNaN(num) ? max : Math.max(max, num);
-          }, 0);
-          setNextId(maxId + 1);
-          // Restore layer IDs
-          const maxLayerId = finalCanvasLayers.reduce((max, l) => {
-            const match = l.id.match(/^layer_(\d+)$/);
-            return match ? Math.max(max, parseInt(match[1])) : max;
-          }, 0);
-          if (maxLayerId > 0) setNextLayerId(maxLayerId + 1);
-          setUndoStack([]); setRedoStack([]); setSelectedIds(new Set());
-          setShowModal(false); setHasAutosave(false);
-          showToast('Session restored');
+          // Valid autosave found — show modal with resume option
+          setHasAutosave(true);
+          setShowModal(true);
           return;
         } else {
           localStorage.removeItem(AUTOSAVE_KEY);
@@ -501,7 +485,7 @@ export default function App() {
       // Corrupt data — discard silently
       try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
     }
-    // If we get here, no valid autosave — check flag for modal
+    // If we get here, no valid autosave — show modal without resume option
     setHasAutosave(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1058,8 +1042,15 @@ export default function App() {
     } else if (activeTool === TOOLS.label) {
       e.preventDefault();
       const screenPos = worldToScreen(world.x, world.y, pan, zoom);
-      setLabelInput({ worldX: world.x, worldY: world.y, screenX: screenPos.x, screenY: screenPos.y, text: '' });
+      setLabelInput({ worldX: world.x, worldY: world.y, screenX: screenPos.x, screenY: screenPos.y, text: '', fontSize: 12, color: null });
     } else if (activeTool === TOOLS.brush) {
+      // Alt-key dropper: sample canvas color instead of painting
+      if (isAltDropperRef.current) {
+        isDropperSamplingRef.current = true;
+        const color = sampleCanvasColor(e.clientX, e.clientY);
+        if (color) setBrushColor(color);
+        return;
+      }
       const rawWorld = screenToWorld(sx, sy, pan, zoom);
       const stroke = { x: 0, y: 0, points: [{ x: rawWorld.x, y: rawWorld.y }], color: brushColor, size: brushSize, opacity: brushOpacity };
       brushStrokeRef.current = stroke;
@@ -1070,7 +1061,7 @@ export default function App() {
       const rawWorld = screenToWorld(sx, sy, pan, zoom);
       eraseBrushPoints(rawWorld.x, rawWorld.y, brushSize);
     }
-  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId, eraseBrushPoints]);
+  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId, eraseBrushPoints, sampleCanvasColor]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1191,6 +1182,10 @@ export default function App() {
 
     if (activeTool === TOOLS.line && lineStart) {
       setLinePreview(getOrthoEnd(lineStart, world));
+    } else if (activeTool === TOOLS.brush && isDropperSamplingRef.current) {
+      // Alt-key dropper: continuously sample color while dragging
+      const color = sampleCanvasColor(e.clientX, e.clientY);
+      if (color) setBrushColor(color);
     } else if (activeTool === TOOLS.brush && brushStrokeRef.current) {
       const rw = screenToWorld(sx, sy, pan, zoom);
       const lastPt = brushStrokeRef.current.points[brushStrokeRef.current.points.length - 1];
@@ -1206,6 +1201,10 @@ export default function App() {
 
   const handleMouseUp = useCallback((e) => {
     if (isPanning) { setIsPanning(false); setPanStart(null); return; }
+    if (isDropperSamplingRef.current) {
+      isDropperSamplingRef.current = false;
+      return;
+    }
     if (isErasingRef.current) {
       isErasingRef.current = false;
       return;
@@ -1322,7 +1321,7 @@ export default function App() {
     const hit = hitTest(world.x, world.y);
     if (hit && hit.type === 'label') {
       const screenPos = worldToScreen(hit.x, hit.y, pan, zoom);
-      setLabelInput({ worldX: hit.x, worldY: hit.y, screenX: screenPos.x, screenY: screenPos.y, text: hit.text, editId: hit.id });
+      setLabelInput({ worldX: hit.x, worldY: hit.y, screenX: screenPos.x, screenY: screenPos.y, text: hit.text, editId: hit.id, fontSize: hit.fontSize || 12, color: hit.color || null });
     }
   }, [activeTool, getWorldPos, hitTest, pan, zoom]);
 
@@ -1444,6 +1443,16 @@ export default function App() {
         return;
       }
 
+      // Alt key: activate dropper mode in brush tool
+      if (e.key === 'Alt') {
+        e.preventDefault();
+        if (activeTool === TOOLS.brush) {
+          isAltDropperRef.current = true;
+          setIsAltDropperActive(true);
+        }
+        return;
+      }
+
       const key = e.key.toLowerCase();
       if (key === 'v') setActiveTool(TOOLS.select);
       else if (key === 'w') { setActiveTool(TOOLS.line); setLineStart(null); setLinePreview(null); }
@@ -1455,11 +1464,26 @@ export default function App() {
       else if (key === 's') setSnapEnabled(prev => !prev);
     };
 
-    const handleKeyUp = (e) => { if (e.key === ' ') { setSpaceHeld(false); setIsPanning(false); setPanStart(null); } };
+    const handleKeyUp = (e) => {
+      if (e.key === ' ') { setSpaceHeld(false); setIsPanning(false); setPanStart(null); }
+      if (e.key === 'Alt') {
+        isAltDropperRef.current = false;
+        setIsAltDropperActive(false);
+        isDropperSamplingRef.current = false;
+      }
+    };
+
+    const handleBlur = () => {
+      isAltDropperRef.current = false;
+      setIsAltDropperActive(false);
+      isDropperSamplingRef.current = false;
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId]);
+    window.addEventListener('blur', handleBlur);
+    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); window.removeEventListener('blur', handleBlur); };
+  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool]);
 
   // Touch handlers
   const handleTouchStart = useCallback((e) => {
@@ -2072,9 +2096,24 @@ export default function App() {
     }
   }, []);
 
-  const canvasClass = `canvas-container ${activeTool === TOOLS.select ? 'tool-select' : ''} ${isPanning || spaceHeld ? 'panning' : ''}`;
+  const canvasClass = `canvas-container ${activeTool === TOOLS.select ? 'tool-select' : ''} ${isPanning || spaceHeld ? 'panning' : ''} ${isAltDropperActive ? 'tool-dropper' : ''}`;
 
   useEffect(() => { if (isDragging) setPan(p => ({ ...p })); }, [isDragging, dragOffset]);
+
+  // Track last wire-compatible layer
+  useEffect(() => {
+    const wireCompatible = ['poly', 'ndiff', 'pdiff', 'metal1', 'metal2', 'nwell', 'demarcation', 'nimplant', 'pimplant', 'silicideblock', 'thickoxide'];
+    if (wireCompatible.includes(activeLayerId) || activeLayerId.startsWith('metal')) {
+      setLastWireLayerId(activeLayerId);
+    }
+  }, [activeLayerId]);
+
+  // Clear selection when switching away from select tool (fixes properties panel sync)
+  useEffect(() => {
+    if (activeTool !== TOOLS.select) {
+      setSelectedIds(new Set());
+    }
+  }, [activeTool]);
 
   useEffect(() => {
     if (activeTool === TOOLS.contact) {
@@ -2083,15 +2122,18 @@ export default function App() {
         setActiveCanvasLayerId('canvas_vlsi_contact');
       }
     }
-    // Patch 3: Auto-switch away from contact/buriedcontact when switching to Wire tool
+    // Auto-switch away from contact/buriedcontact/via when switching to Wire tool
     if (activeTool === TOOLS.line) {
-      if (activeLayerId === 'contact' || activeLayerId === 'buriedcontact') {
-        setActiveLayerId('metal1');
-        setActiveCanvasLayerId('canvas_vlsi_metal1');
-        showStatusMessage('Layer auto-set to Metal 1');
+      if (activeLayerId === 'contact' || activeLayerId === 'buriedcontact' || activeLayerId === 'via') {
+        const targetLayer = lastWireLayerId || 'metal1';
+        setActiveLayerId(targetLayer);
+        setActiveCanvasLayerId(`canvas_vlsi_${targetLayer}`);
+        const layerDef = allLayers[targetLayer];
+        const layerName = layerDef?.label?.split('(')[0]?.trim() || targetLayer;
+        showStatusMessage(`Layer auto-set to ${layerName}`);
       }
     }
-  }, [activeTool, activeLayerId, showStatusMessage]);
+  }, [activeTool, activeLayerId, showStatusMessage, lastWireLayerId, allLayers]);
 
   const toolNames = {
     [TOOLS.select]: 'Select',
@@ -2183,6 +2225,7 @@ export default function App() {
           labelReadyRef={labelReadyRef}
           showShortcutsHUD={showShortcutsHUD}
           setShowShortcutsHUD={setShowShortcutsHUD}
+          zoom={zoom}
         />
 
         {/* Right Panel */}
@@ -2268,6 +2311,7 @@ export default function App() {
         resumeAutosave={resumeAutosave}
         startBlank={startBlank}
         startTemplate={startTemplate}
+        handleLoadProject={handleLoadProject}
         showExportModal={showExportModal}
         setShowExportModal={setShowExportModal}
         previewCanvasRef={previewCanvasRef}

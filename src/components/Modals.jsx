@@ -1,4 +1,4 @@
-import { Cpu, Layers, Grid3X3, FileText, Bug } from 'lucide-react';
+import { Cpu, Layers, Grid3X3, FileText, Bug, FolderOpen } from 'lucide-react';
 
 export default function Modals({
   // Template Modal
@@ -7,6 +7,7 @@ export default function Modals({
   resumeAutosave,
   startBlank,
   startTemplate,
+  handleLoadProject,
 
   // Export Modal
   showExportModal,
@@ -53,6 +54,10 @@ export default function Modals({
               <div className="template-option" onClick={startTemplate}>
                 <div className="tpl-icon"><FileText size={20} /></div>
                 <div className="tpl-info"><h3>Basic Stick Diagram Template</h3><p>Pre-loaded VDD/VSS rails, PMOS &amp; NMOS diffusion.</p></div>
+              </div>
+              <div className="template-option" onClick={() => { handleLoadProject(); }}>
+                <div className="tpl-icon"><FolderOpen size={20} /></div>
+                <div className="tpl-info"><h3>Open Project</h3><p>Load an existing .stk or .json project file.</p></div>
               </div>
             </div>
           </div>

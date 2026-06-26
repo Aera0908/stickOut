@@ -2,10 +2,94 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A lightweight browser-based VLSI stick diagram editor for IC design students and engineers." />
-    <title>StickOut — VLSI Stick Diagram Editor</title>
+
+    <!-- Primary Meta Tags -->
+    <title>StickOut — Free Online VLSI Stick Diagram Maker & Editor</title>
+    <meta name="title" content="StickOut — Free Online VLSI Stick Diagram Maker & Editor" />
+    <meta name="description" content="Free online stick diagram maker and editor for VLSI and CMOS IC design. Draw Metal, Polysilicon, Diffusion, Contacts, and Vias on an interactive canvas. Export high-resolution PNGs. Perfect for electrical engineering students, IC designers, and academic papers." />
+    <meta name="keywords" content="stick diagram, stick diagram maker, stick diagram editor, stick diagram tool, VLSI stick diagram, CMOS stick diagram, VLSI layout editor, CMOS layout tool, IC design tool, stick diagram online, stick diagram generator, VLSI design tool, semiconductor layout, transistor layout editor, EDA tool, electronic design automation, MOSFET layout, NMOS PMOS layout, stick diagram drawing, free VLSI tool" />
+    <meta name="author" content="Aira Josh Ynte" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#4A90E2" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://stickout.vercel.app/" />
+
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph / Facebook / Discord / LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://stickout.vercel.app/" />
+    <meta property="og:title" content="StickOut — Free Online VLSI Stick Diagram Maker & Editor" />
+    <meta property="og:description" content="Draw VLSI stick diagrams online for free. Interactive canvas with Metal, Poly, Diffusion layers, wire jumps, contacts, and vias. Export publication-ready high-res PNGs. Built for IC design students and engineers." />
+    <meta property="og:image" content="https://stickout.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="StickOut VLSI Stick Diagram Editor — interactive canvas showing a CMOS inverter layout with colored Metal, Poly, and Diffusion layers" />
+    <meta property="og:site_name" content="StickOut" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://stickout.vercel.app/" />
+    <meta name="twitter:title" content="StickOut — Free Online VLSI Stick Diagram Maker & Editor" />
+    <meta name="twitter:description" content="Draw VLSI stick diagrams online for free. Interactive canvas with Metal, Poly, Diffusion layers, wire jumps, contacts, and vias. Export high-res PNGs." />
+    <meta name="twitter:image" content="https://stickout.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt" content="StickOut VLSI Stick Diagram Editor preview" />
+    <meta name="twitter:creator" content="@aera0908" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "StickOut",
+      "alternateName": ["StickOut VLSI Editor", "Stick Diagram Maker", "Stick Diagram Editor"],
+      "url": "https://stickout.vercel.app/",
+      "description": "Free online VLSI stick diagram maker and editor. Draw CMOS layouts with Metal, Polysilicon, Diffusion, Contacts, and Vias on an interactive canvas. Export publication-ready high-resolution PNGs for academic papers and presentations.",
+      "applicationCategory": "DesignApplication",
+      "applicationSubCategory": "Electronic Design Automation (EDA)",
+      "operatingSystem": "Any (Web Browser)",
+      "browserRequirements": "Requires a modern web browser with HTML5 Canvas support",
+      "softwareVersion": "1.0",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Interactive stick diagram drawing canvas",
+        "VLSI layer management (Metal 1, Metal 2, Poly, N-Diffusion, P-Diffusion)",
+        "Contacts, Vias, and stacked connections",
+        "Wire jump detection for same-layer crossings",
+        "Grid snapping and alignment tools",
+        "Freehand paintbrush and eraser tools",
+        "High-resolution PNG export with transparent/white/dark backgrounds",
+        "LaTeX-style mathematical text subscript rendering",
+        "Clipboard operations (Copy, Cut, Paste, Duplicate)",
+        "Undo/Redo support",
+        "Auto-save to browser localStorage",
+        "Project save/load (.stk files)",
+        "Dark mode interface"
+      ],
+      "screenshot": "https://stickout.vercel.app/og-image.png",
+      "author": {
+        "@type": "Person",
+        "name": "Aira Josh Ynte",
+        "url": "https://github.com/Aera0908"
+      },
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "inLanguage": "en",
+      "keywords": "stick diagram, VLSI, CMOS, IC design, layout editor, EDA, stick diagram maker, stick diagram editor, semiconductor, transistor layout"
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
