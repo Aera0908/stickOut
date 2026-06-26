@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StickOut — Free Online Stick Diagram Maker & VLSI Layout Editor</title>
+  <meta name="description" content="StickOut is a free online stick diagram maker and VLSI layout editor. Draw CMOS stick diagrams with Metal, Polysilicon, Diffusion, Contacts, and Vias. Export high-resolution PNGs for academic papers." />
+  <meta name="keywords" content="stick diagram, stick diagram maker, stick diagram editor, VLSI stick diagram, CMOS stick diagram, stick diagram tool, online stick diagram, VLSI layout editor, IC design tool, stick diagram generator, free VLSI tool, CMOS layout tool, transistor layout, EDA tool, stick diagram drawing" />
+  <meta name="author" content="Aira Josh Ynte" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://stickout.vercel.app/landing.html" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://stickout.vercel.app/landing.html" />
+  <meta property="og:title" content="StickOut — Free Online Stick Diagram Maker & VLSI Layout Editor" />
+  <meta property="og:description" content="Draw VLSI stick diagrams online for free. Interactive canvas with Metal, Poly, Diffusion layers. Export publication-ready PNGs." />
+  <meta property="og:image" content="https://stickout.vercel.app/og-image.png" />
+  <meta property="og:site_name" content="StickOut" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="StickOut — Free Online Stick Diagram Maker & VLSI Layout Editor" />
+  <meta name="twitter:description" content="Draw VLSI stick diagrams online for free. Export high-res PNGs for papers and presentations." />
+  <meta name="twitter:image" content="https://stickout.vercel.app/og-image.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0D0D12;
+      --surface: #16161D;
+      --surface-2: #1E1E28;
+      --border: #2A2A36;
+      --accent: #FF5500;
+      --accent-glow: rgba(255, 85, 0, 0.25);
+      --text: #F0F0F5;
+      --text-secondary: #9898A6;
+      --text-muted: #606070;
+      --blue: #4A90E2;
+      --red: #C0392B;
+      --yellow: #F1C40F;
+      --green: #27AE60;
+      --purple: #9B59B6;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 48px;
+      background: rgba(13, 13, 18, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 18px; color: var(--text);
+      text-decoration: none;
+    }
+    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a {
+      color: var(--text-secondary); text-decoration: none;
+      font-size: 14px; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent); color: #fff;
+      padding: 8px 20px; border-radius: 8px;
+      font-weight: 600; font-size: 14px;
+      text-decoration: none; transition: all 0.2s;
+    }
+    .nav-cta:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 120px 24px 80px;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255, 85, 0, 0.08), transparent),
+        radial-gradient(ellipse 40% 40% at 80% 60%, rgba(74, 144, 226, 0.05), transparent),
+        var(--bg);
+    }
+    .hero-inner { max-width: 800px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      padding: 6px 16px; border-radius: 100px;
+      font-size: 13px; color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+    .hero-badge span { color: var(--accent); font-weight: 600; }
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 900; line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+    }
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, var(--accent), #FF8844);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 18px; color: var(--text-secondary);
+      max-width: 600px; margin: 0 auto 40px;
+      line-height: 1.8;
+    }
+    .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent); color: #fff;
+      padding: 14px 32px; border-radius: 12px;
+      font-size: 16px; font-weight: 700;
+      text-decoration: none; transition: all 0.25s;
+      box-shadow: 0 4px 24px var(--accent-glow);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface-2); color: var(--text);
+      border: 1px solid var(--border);
+      padding: 14px 32px; border-radius: 12px;
+      font-size: 16px; font-weight: 600;
+      text-decoration: none; transition: all 0.25s;
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); transform: translateY(-2px); }
+
+    /* ── Sections ── */
+    section { padding: 100px 24px; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      display: inline-block; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--accent); margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800; line-height: 1.2;
+      letter-spacing: -0.02em; margin-bottom: 20px;
+    }
+    .section-desc {
+      font-size: 17px; color: var(--text-secondary);
+      max-width: 640px; line-height: 1.8; margin-bottom: 48px;
+    }
+
+    /* ── What is a Stick Diagram ── */
+    .what-is { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .what-is-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .what-is-text h2 { margin-bottom: 20px; }
+    .what-is-text p { color: var(--text-secondary); font-size: 16px; margin-bottom: 16px; }
+    .layer-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .layer-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      padding: 6px 14px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+    }
+    .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .diagram-visual {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 40px;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 320px;
+    }
+    .diagram-visual svg { width: 100%; max-width: 360px; }
+
+    /* ── Features Grid ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s;
+    }
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      width: 44px; height: 44px;
+      background: var(--surface-2); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 20px;
+    }
+    .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+
+    /* ── Use Cases ── */
+    .use-cases { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .use-case-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+    .use-case-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      text-align: center;
+      transition: border-color 0.25s;
+    }
+    .use-case-item:hover { border-color: var(--accent); }
+    .use-case-item .emoji { font-size: 36px; margin-bottom: 16px; }
+    .use-case-item h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .use-case-item p { font-size: 13px; color: var(--text-secondary); }
+
+    /* ── FAQ ── */
+    .faq-list { max-width: 720px; }
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+      padding: 24px 0;
+    }
+    .faq-item h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .faq-item p { font-size: 15px; color: var(--text-secondary); line-height: 1.8; }
+
+    /* ── CTA ── */
+    .cta-section {
+      text-align: center;
+      background:
+        radial-gradient(ellipse 50% 60% at 50% 100%, rgba(255, 85, 0, 0.1), transparent),
+        var(--bg);
+    }
+    .cta-section .section-title { max-width: 600px; margin: 0 auto 20px; }
+    .cta-section .section-desc { margin: 0 auto 40px; text-align: center; }
+
+    /* ── Footer ── */
+    footer {
+      padding: 48px 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    footer p { color: var(--text-muted); font-size: 13px; }
+    footer a { color: var(--text-secondary); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      nav { padding: 12px 20px; }
+      .nav-links { display: none; }
+      .what-is-grid { grid-template-columns: 1fr; gap: 32px; }
+      .diagram-visual { order: -1; }
+      section { padding: 64px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="/" class="nav-brand" aria-label="StickOut Home">
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="6" fill="#1A1A2E"/>
+        <line x1="6" y1="8" x2="26" y2="8" stroke="#4A90E2" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="6" y1="24" x2="26" y2="24" stroke="#4A90E2" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="16" y1="8" x2="16" y2="14" stroke="#F1C40F" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="16" y1="18" x2="16" y2="24" stroke="#27AE60" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="10" y1="16" x2="22" y2="16" stroke="#9B59B6" stroke-width="2.5" stroke-linecap="round"/>
+        <rect x="14" y="14" width="4" height="4" fill="#111" stroke="#fff" stroke-width="0.5"/>
+      </svg>
+      StickOut
+    </a>
+    <div class="nav-links">
+      <a href="#what-is">What is a Stick Diagram?</a>
+      <a href="#features">Features</a>
+      <a href="#use-cases">Use Cases</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a href="/" class="nav-cta">Open Editor →</a>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">✨ <span>100% Free</span> · No sign-up required · Works in your browser</div>
+      <h1>The <span class="highlight">Stick Diagram Maker</span> Built for Engineers</h1>
+      <p>Draw professional VLSI stick diagrams online with an interactive canvas. Design CMOS layouts with Metal, Polysilicon, Diffusion, Contacts, and Vias — then export publication-ready PNGs in seconds.</p>
+      <div class="hero-actions">
+        <a href="/" class="btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start Drawing — It's Free
+        </a>
+        <a href="#features" class="btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Learn More
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- What is a Stick Diagram -->
+  <section class="what-is" id="what-is">
+    <div class="container">
+      <div class="what-is-grid">
+        <div class="what-is-text">
+          <span class="section-label">Understanding the Basics</span>
+          <h2 class="section-title">What is a Stick Diagram?</h2>
+          <p>A <strong>stick diagram</strong> is a simplified, abstracted representation of a VLSI (Very-Large-Scale Integration) integrated circuit layout. It maps the topology of a CMOS circuit — showing transistors, wiring, and connections — without specifying exact physical dimensions.</p>
+          <p>Stick diagrams are essential in <strong>IC design education</strong> and early-stage <strong>CMOS layout planning</strong>. They bridge the gap between a circuit schematic and a full mask layout, helping engineers visualize how transistors, metal interconnects, polysilicon gates, and diffusion regions are physically arranged on silicon.</p>
+          <p>Each layer in a stick diagram is represented by a <strong>different color</strong>:</p>
+          <div class="layer-legend">
+            <div class="layer-chip"><div class="layer-dot" style="background:#4A90E2"></div> Metal 1</div>
+            <div class="layer-chip"><div class="layer-dot" style="background:#C0392B"></div> Metal 2</div>
+            <div class="layer-chip"><div class="layer-dot" style="background:#9B59B6"></div> Polysilicon</div>
+            <div class="layer-chip"><div class="layer-dot" style="background:#F1C40F"></div> P-Diffusion</div>
+            <div class="layer-chip"><div class="layer-dot" style="background:#27AE60"></div> N-Diffusion</div>
+            <div class="layer-chip"><div class="layer-dot" style="background:#111;border:1px solid #888"></div> Contacts</div>
+          </div>
+        </div>
+        <div class="diagram-visual" aria-label="Example CMOS inverter stick diagram">
+          <svg viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+            <!-- VDD Rail -->
+            <line x1="30" y1="30" x2="270" y2="30" stroke="#4A90E2" stroke-width="4" stroke-linecap="round"/>
+            <text x="15" y="26" fill="#4A90E2" font-size="13" font-family="Inter, sans-serif" font-weight="600">V<tspan font-size="9" dy="3">DD</tspan></text>
+            <!-- GND Rail -->
+            <line x1="30" y1="230" x2="270" y2="230" stroke="#4A90E2" stroke-width="4" stroke-linecap="round"/>
+            <text x="15" y="226" fill="#4A90E2" font-size="13" font-family="Inter, sans-serif" font-weight="600">V<tspan font-size="9" dy="3">SS</tspan></text>
+            <!-- Demarcation -->
+            <line x1="30" y1="130" x2="270" y2="130" stroke="#8D6E63" stroke-width="1.5" stroke-dasharray="8 4"/>
+            <text x="240" y="123" fill="#8D6E63" font-size="10" font-family="Inter, sans-serif">PMOS</text>
+            <text x="240" y="143" fill="#8D6E63" font-size="10" font-family="Inter, sans-serif">NMOS</text>
+            <!-- P-Diffusion -->
+            <line x1="150" y1="50" x2="150" y2="110" stroke="#F1C40F" stroke-width="4" stroke-linecap="round"/>
+            <!-- N-Diffusion -->
+            <line x1="150" y1="150" x2="150" y2="210" stroke="#27AE60" stroke-width="4" stroke-linecap="round"/>
+            <!-- Poly Gate -->
+            <line x1="110" y1="50" x2="110" y2="210" stroke="#9B59B6" stroke-width="3" stroke-linecap="round"/>
+            <!-- Input label -->
+            <text x="85" y="135" fill="#9B59B6" font-size="13" font-family="Inter, sans-serif" font-weight="600">In</text>
+            <!-- Output Metal wire -->
+            <line x1="150" y1="80" x2="220" y2="80" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
+            <line x1="150" y1="180" x2="220" y2="180" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
+            <line x1="220" y1="80" x2="220" y2="180" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
+            <!-- Output label -->
+            <text x="228" y="134" fill="#4A90E2" font-size="13" font-family="Inter, sans-serif" font-weight="600">Out</text>
+            <!-- Contacts -->
+            <rect x="145" y="25" width="10" height="10" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
+            <rect x="145" y="225" width="10" height="10" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
+            <rect x="145" y="75" width="10" height="10" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
+            <rect x="145" y="175" width="10" height="10" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="container">
+      <span class="section-label">Powerful Tools</span>
+      <h2 class="section-title">Everything You Need in a Stick Diagram Editor</h2>
+      <p class="section-desc">StickOut is a professional-grade, browser-based EDA tool designed for drawing VLSI stick diagrams. No downloads, no installations — just open and start designing.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🎨</div>
+          <h3>Complete VLSI Layer Support</h3>
+          <p>Draw with Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well, Implants, and dynamically added higher metal layers — all color-coded to industry standards.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📐</div>
+          <h3>Interactive Grid Canvas</h3>
+          <p>Pan, zoom, and snap to grid on a fully interactive HTML5 Canvas. Grid snapping ensures your stick diagram wiring stays perfectly aligned to the manufacturing grid pitch.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔌</div>
+          <h3>Smart Wire Jumps</h3>
+          <p>Same-layer wire crossings automatically render bridge arcs to indicate no electrical connection. Right-click any jump to toggle connection state — a feature unique to StickOut.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <h3>High-Resolution PNG Export</h3>
+          <p>Export your stick diagrams as crisp 2× high-resolution PNGs with adjustable margins, transparent or solid backgrounds, and customizable label styles — ready for academic papers and presentations.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔀</div>
+          <h3>Layer Management</h3>
+          <p>Photoshop-style layer controls: toggle visibility, lock layers, adjust opacity, and drag-and-drop to reorder the rendering stack. Organize complex CMOS layouts with ease.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📝</div>
+          <h3>LaTeX-Style Subscripts</h3>
+          <p>Label your rails with V_{DD}, V_{SS}, and other notation — StickOut automatically renders elegant, publication-quality serif italic subscripts, just like LaTeX.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖌️</div>
+          <h3>Freehand Paintbrush</h3>
+          <p>Annotate your stick diagrams with freehand brush strokes. Adjustable brush size and opacity let you mark up designs during review sessions or lectures.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Auto-Save & Project Files</h3>
+          <p>Your work is automatically saved to browser localStorage. Save and load complete projects as .stk files to share stick diagrams with classmates or colleagues.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⌨️</div>
+          <h3>Full Keyboard Shortcuts</h3>
+          <p>Professional hotkey support: V for select, W for wire, P for via, Copy/Cut/Paste, Undo/Redo, and layer reordering — all accessible from the keyboard for fast stick diagram editing.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="use-cases" id="use-cases">
+    <div class="container">
+      <span class="section-label">Who is StickOut For?</span>
+      <h2 class="section-title">Built for Students, Engineers & Educators</h2>
+      <p class="section-desc">Whether you're studying VLSI design, teaching a circuits class, or planning a silicon layout, StickOut is the fastest way to draw stick diagrams online.</p>
+      <div class="use-case-list">
+        <div class="use-case-item">
+          <div class="emoji">🎓</div>
+          <h3>Engineering Students</h3>
+          <p>Complete VLSI homework and lab assignments with a free online stick diagram maker. Export clean diagrams for your reports.</p>
+        </div>
+        <div class="use-case-item">
+          <div class="emoji">👨‍🏫</div>
+          <h3>Professors & Educators</h3>
+          <p>Create lecture materials and demonstration stick diagrams. The interactive canvas is perfect for live classroom walkthroughs of CMOS layout concepts.</p>
+        </div>
+        <div class="use-case-item">
+          <div class="emoji">🔬</div>
+          <h3>IC Design Engineers</h3>
+          <p>Quickly sketch out transistor-level layouts before committing to full EDA tools. StickOut is ideal for early-stage CMOS design exploration and peer reviews.</p>
+        </div>
+        <div class="use-case-item">
+          <div class="emoji">📄</div>
+          <h3>Research & Publishing</h3>
+          <p>Generate publication-quality stick diagram figures for IEEE papers, theses, and technical reports with high-resolution PNG export.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="container">
+      <span class="section-label">Frequently Asked Questions</span>
+      <h2 class="section-title">Common Questions About Stick Diagrams</h2>
+      <div class="faq-list">
+        <div class="faq-item">
+          <h3>What is a stick diagram in VLSI design?</h3>
+          <p>A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring (metal interconnects), polysilicon gates, and diffusion regions without specifying exact physical dimensions. Stick diagrams use color-coded lines to represent different fabrication layers — for example, blue for Metal 1, purple for Polysilicon, yellow for P-Diffusion, and green for N-Diffusion. They are a critical step between circuit schematics and full mask layouts in CMOS IC design.</p>
+        </div>
+        <div class="faq-item">
+          <h3>How do I draw a stick diagram online?</h3>
+          <p>With StickOut, you can draw stick diagrams directly in your web browser — no downloads or installations needed. Simply open the editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Via/Contact tool to place connection points, and the Label tool to annotate rails like V<sub>DD</sub> and V<sub>SS</sub>. When you're done, export your stick diagram as a high-resolution PNG.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Is StickOut free to use?</h3>
+          <p>Yes, StickOut is 100% free and open-source under the MIT License. There are no ads, no sign-ups, and no usage limits. You can use it as much as you want for homework, research, teaching, or professional IC design work.</p>
+        </div>
+        <div class="faq-item">
+          <h3>What is the difference between a stick diagram and a layout diagram?</h3>
+          <p>A stick diagram is an abstracted, topological representation that shows the relative placement and connectivity of circuit elements without precise dimensions. A layout diagram (or mask layout) is a geometrically accurate representation with exact widths, spacings, and coordinates that can be sent to fabrication. Stick diagrams are typically drawn first to plan the layout before creating the final mask-level design in professional EDA tools.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Can I save and share my stick diagrams?</h3>
+          <p>Yes! StickOut automatically saves your work to your browser's localStorage, so your diagram persists between sessions. You can also save your project as a .stk file and share it with classmates or colleagues, who can open it in their own StickOut instance. For sharing images, use the Export PNG feature with customizable backgrounds and margins.</p>
+        </div>
+        <div class="faq-item">
+          <h3>What VLSI layers does StickOut support?</h3>
+          <p>StickOut supports all standard CMOS fabrication layers: Metal 1 (M1), Metal 2 (M2), Polysilicon, P-Diffusion (P-Active), N-Diffusion (N-Active), Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, N+ and P+ Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers (M3, M4, etc.) with customizable colors.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <span class="section-label">Get Started</span>
+      <h2 class="section-title">Start Drawing Your Stick Diagram Now</h2>
+      <p class="section-desc">No sign-up. No downloads. Just open the editor and start designing your CMOS layout in seconds.</p>
+      <a href="/" class="btn-primary">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Open StickOut Editor — Free
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2025 StickOut — Free Online VLSI Stick Diagram Maker & Editor. Built by <a href="https://github.com/Aera0908" target="_blank" rel="noopener">Aira Josh Ynte</a>. Open-source under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a>.</p>
+  </footer>
+
+  <!-- FAQ Schema for Google Rich Results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is a stick diagram in VLSI design?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring (metal interconnects), polysilicon gates, and diffusion regions without specifying exact physical dimensions. Stick diagrams use color-coded lines to represent different fabrication layers and are a critical step between circuit schematics and full mask layouts in CMOS IC design."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I draw a stick diagram online?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "With StickOut, you can draw stick diagrams directly in your web browser. Open the editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Via/Contact tool for connections and the Label tool for annotations. Export as high-resolution PNG when done."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is StickOut free to use?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, StickOut is 100% free and open-source under the MIT License. There are no ads, no sign-ups, and no usage limits."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the difference between a stick diagram and a layout diagram?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A stick diagram is an abstracted, topological representation that shows relative placement and connectivity without precise dimensions. A layout diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication. Stick diagrams are drawn first to plan the layout."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I save and share my stick diagrams?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. StickOut auto-saves to localStorage and supports .stk project files for sharing. You can also export PNG images with customizable backgrounds and margins."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What VLSI layers does StickOut support?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "StickOut supports Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers with customizable colors."
+        }
+      }
+    ]
+  }
+  </script>
+
+</body>
+</html>
