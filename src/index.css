@@ -11,7 +11,7 @@
   --grid-color: #222226;         /* Subtle dark grid lines */
   --ui-bg: #1A1A1E;              /* Dark panel background */
   --ui-border: #2E2E35;          /* Clean, flat dark border */
-  --accent: #FF5500;             /* Bauhaus Orange */
+  --accent: #2F6FED;             /* Primary Blue */
   --text-primary: #FFFFFF;       /* Clean white text */
   --text-secondary: #A0A0A5;     /* Medium gray secondary text */
   --text-muted: #606065;         /* Muted gray text */
@@ -20,8 +20,8 @@
   --warning: #FF9F0A;            /* Warm orange-yellow */
   --surface: #24242A;            /* Surface bg for hover/active/inputs */
   --surface-hover: #2C2C34;      /* Subtle dark hover */
-  --surface-active: #FF5500;     /* Highlight with orange when active */
-  --selection: rgba(255, 85, 0, 0.2); /* Light orange selection highlight */
+  --surface-active: #2F6FED;     /* Highlight with orange when active */
+  --selection: rgba(47, 111, 237, 0.22); /* Light blue selection highlight */
   --shadow-color: rgba(0, 0, 0, 0.4);
 }
 
@@ -31,7 +31,7 @@
   --grid-color: #E6E2D8;         /* Subtle warm gray grid lines */
   --ui-bg: #FFFFFF;              /* Clean white panel backgrounds */
   --ui-border: #E0E0E6;          /* Clean, thin light gray border */
-  --accent: #FF5500;             /* Bauhaus Orange */
+  --accent: #2F6FED;             /* Primary Blue */
   --text-primary: #111111;       /* Solid near-pitch-black text */
   --text-secondary: #555558;     /* Slate gray secondary text */
   --text-muted: #8E8E93;         /* Light gray muted text */
@@ -40,8 +40,8 @@
   --warning: #FF9500;            /* Bright warning orange */
   --surface: #F5F5F7;            /* Light gray surface */
   --surface-hover: #EBEBEF;      /* Subtle hover */
-  --surface-active: #FF5500;     /* Orange highlight active */
-  --selection: rgba(255, 85, 0, 0.15);
+  --surface-active: #2F6FED;     /* Orange highlight active */
+  --selection: rgba(47, 111, 237, 0.15);
   --shadow-color: rgba(0, 0, 0, 0.06);
 }
 
@@ -120,3 +120,125 @@ input, select, textarea, button {
 [data-tooltip]:hover::after {
   opacity: 1;
 }
+
+/* ─── Landing page ─────────────────────────────────────────── */
+.landing-root {
+  position: fixed;
+  inset: 0;
+  background: var(--canvas-bg);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+}
+.landing-theme-toggle {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.landing-theme-toggle:hover { background: var(--surface-hover); color: var(--text-primary); }
+.landing-inner { width: 100%; max-width: 820px; text-align: center; }
+.landing-brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.landing-logo {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.landing-brand-name { font-family: var(--font-mono); font-size: 20px; font-weight: 700; letter-spacing: 0.02em; }
+.landing-title { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+.landing-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 34px; }
+.landing-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+@media (max-width: 640px) {
+  .landing-cards { grid-template-columns: 1fr; }
+  .landing-title { font-size: 26px; }
+}
+.landing-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  padding: 26px 24px;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.landing-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--card-accent, var(--accent));
+  box-shadow: 0 10px 30px var(--shadow-color);
+}
+.landing-card-icon {
+  width: 60px; height: 60px; border-radius: 14px;
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px;
+}
+.landing-card-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.landing-card-desc { font-size: 13px; line-height: 1.5; color: var(--text-secondary); margin-bottom: 18px; }
+.landing-card-cta { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--card-accent, var(--accent)); }
+.landing-footer {
+  margin-top: 36px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 16px; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-muted);
+}
+.landing-credit { color: var(--text-muted); }
+.landing-credit a { color: var(--text-secondary); text-decoration: none; font-weight: 600; }
+.landing-credit a:hover { color: var(--accent); text-decoration: underline; }
+.landing-socials { display: inline-flex; align-items: center; gap: 8px; }
+.landing-social {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.landing-social:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+
+/* ─── Menu bar: home + mode badge ──────────────────────────── */
+.menu-home-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-right: 2px;
+}
+.menu-home-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+.menu-mode-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--ui-border);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+.fp-insert-btn:hover { border-color: var(--accent) !important; }

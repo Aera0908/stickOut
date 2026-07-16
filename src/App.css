@@ -883,6 +883,48 @@ button, input, select, textarea {
 }
 
 /* ===== KEYBOARD SHORTCUTS HUD (DESKTOP) ===== */
+.zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  z-index: 40;
+  overflow: hidden;
+}
+
+.zoom-btn {
+  width: 40px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s ease;
+}
+
+.zoom-btn:hover {
+  background: var(--surface-hover);
+}
+
+.zoom-btn.zoom-level {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Roboto Mono', monospace;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+  color: var(--text-secondary);
+}
+
 .shortcuts-hud {
   position: absolute;
   bottom: 12px;
@@ -1432,7 +1474,7 @@ button, input, select, textarea {
 
 .layer-stack-row.active {
   border-color: var(--accent);
-  background: rgba(255, 85, 0, 0.08);
+  background: rgba(47, 111, 237, 0.08);
 }
 
 .layer-stack-row.dragging {
@@ -2000,7 +2042,20 @@ button, input, select, textarea {
 .support-btn-action.gank:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 85, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(47, 111, 237, 0.2);
+}
+
+.support-btn-action.review {
+  background: #F5A623;
+  color: #1a1a1a;
+  font-weight: 600;
+  flex-grow: 1;
+}
+
+.support-btn-action.review:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.25);
 }
 
 .support-btn-action.remind {

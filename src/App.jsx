@@ -15,7 +15,11 @@ import {
   HIGHER_METAL_COLORS,
   PALETTE_ORDER_BEFORE_METALS,
   PALETTE_ORDER_AFTER_METALS,
-  TOOLS
+  TOOLS,
+  WIRE_THICKNESS,
+  RECT_DEFAULT_STROKE,
+  RECT_DEFAULT_STROKE_WIDTH,
+  FP_WIRE_TYPES
 } from './constants';
 
 import {
@@ -34,7 +38,11 @@ import {
   getCrossovers,
   getContactSize,
   pointInRect,
-  distPointToSegment
+  distPointToSegment,
+  computeRectResize,
+  groupUid,
+  expandGroupIds,
+  remapGroupIds
 } from './helpers';
 
 import MenuBar from './components/MenuBar';
@@ -44,9 +52,13 @@ import PropertiesPanel from './components/PropertiesPanel';
 import LayersPanel from './components/LayersPanel';
 import StatusBar from './components/StatusBar';
 import Modals from './components/Modals';
+import BooleanModal from './components/BooleanModal';
 
 // ─── Main App ────────────────────────────────────────────────────────
-export default function App() {
+export default function App({ mode = 'stick' }) {
+  const isFloorplan = mode === 'floorplan';
+  const autosaveKey = isFloorplan ? 'stickout-fp-autosave' : AUTOSAVE_KEY;
+
   // ─── State ──────────────────────────────────────────────────
   const [elements, setElements] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -54,6 +66,21 @@ export default function App() {
   const [contactSize, setContactSize] = useState('small');
   const [contactShape, setContactShape] = useState('square');
   const [showContactSubmenu, setShowContactSubmenu] = useState(false);
+
+  // Wire (stick) thickness: default for newly drawn wires
+  const [wireThickness, setWireThickness] = useState('medium');
+
+  // Floor-planning wire type: VDD / VSS / custom (recolorable + relabelable)
+  const [fpWireType, setFpWireType] = useState('vdd');
+  const [fpCustomWireColor, setFpCustomWireColor] = useState(FP_WIRE_TYPES.custom.color);
+  const [fpCustomWireLabel, setFpCustomWireLabel] = useState(FP_WIRE_TYPES.custom.label);
+
+  // Rectangle tool defaults (used for newly drawn rectangles)
+  const [rectStrokeColor, setRectStrokeColor] = useState(RECT_DEFAULT_STROKE);
+  const [rectFillColor, setRectFillColor] = useState(null); // null = transparent
+  const [rectStrokeWidth, setRectStrokeWidth] = useState(RECT_DEFAULT_STROKE_WIDTH);
+  // In-progress rectangle drag { x1, y1, x2, y2 }
+  const [rectDraw, setRectDraw] = useState(null);
   const [activeLayerId, setActiveLayerId] = useState('metal1');
   const [showGrid, setShowGrid] = useState(true);
   const [snapEnabled, setSnapEnabled] = useState(true);
@@ -69,6 +96,9 @@ export default function App() {
   const [exportTextColor, setExportTextColor] = useState('dark');
   const [exportMargin, setExportMargin] = useState(4);
   const previewCanvasRef = useRef(null);
+
+  // Boolean expression generator
+  const [showBooleanModal, setShowBooleanModal] = useState(false);
 
   // Feedback
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -161,6 +191,9 @@ export default function App() {
   const [linePreview, setLinePreview] = useState(null);
   const [labelInput, setLabelInput] = useState(null);
 
+  // Block/pin label dragging (move a rect's label independently of the box)
+  const [labelDrag, setLabelDrag] = useState(null);
+
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
@@ -250,6 +283,11 @@ export default function App() {
   const handleSupportGank = useCallback(() => {
     setShowSupportToast(false);
     window.open('https://ganknow.com/Aera0908', '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const handleSupportReview = useCallback(() => {
+    setShowSupportToast(false);
+    window.open('https://appbuildersph.com/apps/stickout', '_blank', 'noopener,noreferrer');
   }, []);
 
   const handleSupportClose = useCallback(() => {
@@ -422,6 +460,20 @@ export default function App() {
     setSelectedIds(new Set());
   }, [selectedIds, pushUndoSnapshot]);
 
+  // ─── Grouping ───────────────────────────────────────────────
+  const groupSelected = useCallback(() => {
+    if (selectedIds.size < 2) return;
+    pushUndoSnapshot();
+    const gid = groupUid();
+    setElements(prev => prev.map(el => selectedIds.has(el.id) ? { ...el, groupId: gid } : el));
+  }, [selectedIds, pushUndoSnapshot]);
+
+  const ungroupSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    pushUndoSnapshot();
+    setElements(prev => prev.map(el => (selectedIds.has(el.id) && el.groupId) ? { ...el, groupId: undefined } : el));
+  }, [selectedIds, pushUndoSnapshot]);
+
   // ─── Hit testing ────────────────────────────────────────────
   const hitTest = useCallback((wx, wy) => {
     const threshold = 8 / zoom;
@@ -430,7 +482,7 @@ export default function App() {
       const cLayer = canvasLayers.find(l => l.id === el.canvasLayerId);
       if (cLayer && !cLayer.visible) continue;
 
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'measure') {
         const d = distPointToSegment(wx, wy, el.x1, el.y1, el.x2, el.y2);
         if (d < threshold) return el;
       } else if (el.type === 'contact' || el.type === 'via') {
@@ -439,7 +491,7 @@ export default function App() {
       } else if (el.type === 'label') {
         const bounds = getElementBounds(el);
         if (pointInRect(wx, wy, bounds.x - 4, bounds.y - 4, bounds.w + 8, bounds.h + 8)) return el;
-      } else if (el.type === 'image') {
+      } else if (el.type === 'image' || el.type === 'rect') {
         const bounds = getElementBounds(el);
         if (pointInRect(wx, wy, bounds.x, bounds.y, bounds.w, bounds.h)) return el;
       } else if (el.type === 'brush') {
@@ -467,7 +519,7 @@ export default function App() {
   // ─── Auto-save: detect on mount (show modal with resume option) ──
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY) || localStorage.getItem('stickdiagram-autosave');
+      const saved = localStorage.getItem(autosaveKey) || (isFloorplan ? null : localStorage.getItem('stickdiagram-autosave'));
       if (saved) {
         const data = JSON.parse(saved);
         const age = Date.now() - (data.timestamp || 0);
@@ -478,12 +530,12 @@ export default function App() {
           setShowModal(true);
           return;
         } else {
-          localStorage.removeItem(AUTOSAVE_KEY);
+          localStorage.removeItem(autosaveKey);
         }
       }
     } catch {
       // Corrupt data — discard silently
-      try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
+      try { localStorage.removeItem(autosaveKey); } catch {}
     }
     // If we get here, no valid autosave — show modal without resume option
     setHasAutosave(false);
@@ -499,11 +551,11 @@ export default function App() {
           elements, jumpOverrides: [...jumpOverrides],
           canvasLayers, extraMetalLayers, customLayerColors,
         };
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+        localStorage.setItem(autosaveKey, JSON.stringify(data));
       } catch {}
     }, 500);
     return () => clearTimeout(timer);
-  }, [elements, jumpOverrides, canvasLayers, extraMetalLayers, customLayerColors, showModal]);
+  }, [elements, jumpOverrides, canvasLayers, extraMetalLayers, customLayerColors, showModal, autosaveKey]);
 
   // Support & Feedback Timer Effect
   useEffect(() => {
@@ -600,10 +652,10 @@ export default function App() {
     if (isDragging && dragOffset && (dragOffset.x !== 0 || dragOffset.y !== 0)) {
       renderElements = elements.map(el => {
         if (!selectedIds.has(el.id)) return el;
-        if (el.type === 'line') {
+        if (el.type === 'line' || el.type === 'measure') {
           return { ...el, x1: el.x1 + dragOffset.x, y1: el.y1 + dragOffset.y, x2: el.x2 + dragOffset.x, y2: el.y2 + dragOffset.y };
         }
-        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush') {
+        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush' || el.type === 'rect') {
           return { ...el, x: el.x + dragOffset.x, y: el.y + dragOffset.y };
         }
         return el;
@@ -636,6 +688,9 @@ export default function App() {
           else if (resizeState.handle === 'tc') { const ph = resizeState.startH - dy; if (ph >= 10) { nextY = resizeState.startY + dy; nextH = ph; const cd = resizeState.startCropH * (dy / resizeState.startH); nextCropY = Math.max(0, Math.min(1, resizeState.startCropY + cd)); nextCropH = Math.max(0.01, Math.min(1.0 - nextCropY, resizeState.startCropH * (nextH / resizeState.startH))); } }
 
           return { ...el, x: nextX, y: nextY, w: nextW, h: nextH, cropX: nextCropX, cropY: nextCropY, cropW: nextCropW, cropH: nextCropH };
+        }
+        if (el.type === 'rect') {
+          return { ...el, ...computeRectResize(resizeState, resizeState.currentWorldPos) };
         }
         return el;
       });
@@ -721,7 +776,7 @@ export default function App() {
         // Draw endpoint handles for selected lines
         if (isSelected && el.type === 'line' && activeTool === TOOLS.select) {
           ctx.save();
-          ctx.fillStyle = '#FF5500';
+          ctx.fillStyle = '#2F6FED';
           ctx.strokeStyle = '#FFFFFF';
           ctx.lineWidth = 1.5;
           const handleRadius = 5 / zoom;
@@ -736,15 +791,31 @@ export default function App() {
           const handleRadius = 5 / zoom;
           const halfBarW = 5 / zoom;
           const halfBarH = 1.5 / zoom;
-          ctx.fillStyle = '#FF5500'; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.5;
+          ctx.fillStyle = '#2F6FED'; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.5;
           [{ x: el.x, y: el.y }, { x: el.x + el.w, y: el.y }, { x: el.x, y: el.y + el.h }, { x: el.x + el.w, y: el.y + el.h }].forEach(c => {
             ctx.beginPath(); ctx.arc(c.x, c.y, handleRadius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           });
-          ctx.fillStyle = '#111111'; ctx.strokeStyle = '#FF5500'; ctx.lineWidth = 1.5;
+          ctx.fillStyle = '#111111'; ctx.strokeStyle = '#2F6FED'; ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.rect(el.x + el.w / 2 - halfBarW, el.y - halfBarH, halfBarW * 2, halfBarH * 2); ctx.fill(); ctx.stroke();
           ctx.beginPath(); ctx.rect(el.x + el.w / 2 - halfBarW, el.y + el.h - halfBarH, halfBarW * 2, halfBarH * 2); ctx.fill(); ctx.stroke();
           ctx.beginPath(); ctx.rect(el.x - halfBarH, el.y + el.h / 2 - halfBarW, halfBarH * 2, halfBarW * 2); ctx.fill(); ctx.stroke();
           ctx.beginPath(); ctx.rect(el.x + el.w - halfBarH, el.y + el.h / 2 - halfBarW, halfBarH * 2, halfBarW * 2); ctx.fill(); ctx.stroke();
+          ctx.restore();
+        }
+
+        // Draw rectangle resize handles
+        if (isSelected && el.type === 'rect' && activeTool === TOOLS.select) {
+          ctx.save();
+          const handleRadius = 5 / zoom;
+          ctx.fillStyle = '#2F6FED'; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.5;
+          [
+            { x: el.x, y: el.y }, { x: el.x + el.w, y: el.y },
+            { x: el.x, y: el.y + el.h }, { x: el.x + el.w, y: el.y + el.h },
+            { x: el.x + el.w / 2, y: el.y }, { x: el.x + el.w / 2, y: el.y + el.h },
+            { x: el.x, y: el.y + el.h / 2 }, { x: el.x + el.w, y: el.y + el.h / 2 },
+          ].forEach(c => {
+            ctx.beginPath(); ctx.arc(c.x, c.y, handleRadius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          });
           ctx.restore();
         }
       });
@@ -779,21 +850,53 @@ export default function App() {
       });
     }
 
-    // Line preview
+    // Line / measure preview
     if (lineStart && linePreview) {
-      const layerDef = allLayers[activeLayerId];
-      const color = customLayerColors[activeLayerId] || layerDef?.hex || '#4A90E2';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = LINE_WIDTH;
-      ctx.lineCap = 'round';
-      if (layerDef?.dash) ctx.setLineDash(layerDef.dash);
-      ctx.globalAlpha = 0.6;
-      ctx.beginPath();
-      ctx.moveTo(lineStart.x, lineStart.y);
-      ctx.lineTo(linePreview.x, linePreview.y);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      if (activeTool === TOOLS.measure) {
+        drawElement(ctx, { type: 'measure', x1: lineStart.x, y1: lineStart.y, x2: linePreview.x, y2: linePreview.y }, false, drawOpts);
+      } else {
+        let color, dash = null;
+        if (isFloorplan) {
+          const wt = FP_WIRE_TYPES[fpWireType] || FP_WIRE_TYPES.custom;
+          color = fpWireType === 'custom' ? fpCustomWireColor : wt.color;
+        } else {
+          const layerDef = allLayers[activeLayerId];
+          color = customLayerColors[activeLayerId] || layerDef?.hex || '#4A90E2';
+          dash = layerDef?.dash || null;
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = WIRE_THICKNESS[wireThickness] || LINE_WIDTH;
+        ctx.lineCap = 'round';
+        if (dash) ctx.setLineDash(dash);
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(lineStart.x, lineStart.y);
+        ctx.lineTo(linePreview.x, linePreview.y);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Rectangle preview (while dragging out a new rect)
+    if (rectDraw) {
+      const rx = Math.min(rectDraw.x1, rectDraw.x2);
+      const ry = Math.min(rectDraw.y1, rectDraw.y2);
+      const rw = Math.abs(rectDraw.x2 - rectDraw.x1);
+      const rh = Math.abs(rectDraw.y2 - rectDraw.y1);
+      ctx.save();
+      if (rectFillColor && rectFillColor !== 'transparent') {
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = rectFillColor;
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.globalAlpha = 1;
+      }
+      ctx.strokeStyle = rectStrokeColor || '#4A90E2';
+      ctx.lineWidth = rectStrokeWidth || 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(rx, ry, rw, rh);
       ctx.setLineDash([]);
+      ctx.restore();
     }
 
     // Brush preview
@@ -845,16 +948,16 @@ export default function App() {
       const by = Math.min(s1.y, s2.y);
       const bw = Math.abs(s2.x - s1.x);
       const bh = Math.abs(s2.y - s1.y);
-      ctx.strokeStyle = 'rgba(255, 85, 0, 0.7)';
+      ctx.strokeStyle = 'rgba(47, 111, 237, 0.8)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(bx, by, bw, bh);
-      ctx.fillStyle = 'rgba(255, 85, 0, 0.08)';
+      ctx.fillStyle = 'rgba(47, 111, 237, 0.10)';
       ctx.fillRect(bx, by, bw, bh);
       ctx.setLineDash([]);
     }
 
-  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeLayerId, customLayerColors, jumpOverrides, selectionBox, isDragging, dragOffset, theme, brushStroke, resizeState, activeTool, canvasLayers, allLayers, groupScaleState, triggerRedraw]);
+  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeLayerId, customLayerColors, jumpOverrides, selectionBox, isDragging, dragOffset, theme, brushStroke, resizeState, activeTool, canvasLayers, allLayers, groupScaleState, triggerRedraw, rectDraw, rectFillColor, rectStrokeColor, rectStrokeWidth, wireThickness, isFloorplan, fpWireType, fpCustomWireColor, fpCustomWireLabel]);
 
   // ─── Resize observer ───────────────────────────────────────
   useEffect(() => {
@@ -922,6 +1025,27 @@ export default function App() {
     const world = getWorldPos(e);
 
     if (activeTool === TOOLS.select) {
+      // Grab a selected rect's label to move it independently of the box.
+      if (selectedIds.size === 1) {
+        const selRect = elements.find(el => selectedIds.has(el.id) && el.type === 'rect' && el.label);
+        if (selRect) {
+          const fs = selRect.labelSize || 12;
+          const lw = Math.max(selRect.label.length * fs * 0.62, 12);
+          const lx = selRect.x + selRect.w / 2 + (selRect.labelOffsetX || 0);
+          const ly = selRect.y + selRect.h / 2 + (selRect.labelOffsetY || 0);
+          const padX = 6 / zoom, padY = 6 / zoom;
+          if (Math.abs(world.x - lx) <= lw / 2 + padX && Math.abs(world.y - ly) <= fs / 2 + padY) {
+            const raw = screenToWorld(sx, sy, pan, zoom);
+            pushUndoSnapshot();
+            setLabelDrag({
+              id: selRect.id, startRawX: raw.x, startRawY: raw.y,
+              startOffX: selRect.labelOffsetX || 0, startOffY: selRect.labelOffsetY || 0,
+            });
+            return;
+          }
+        }
+      }
+
       // Check endpoint handles for resize/group scale
       if (selectedIds.size > 0) {
         const handleThreshold = 10 / zoom;
@@ -987,16 +1111,38 @@ export default function App() {
             for (const c of edges) {
               if (Math.hypot(world.x - c.x, world.y - c.y) < handleThreshold) { setResizeState(makeImgResize(c.handle)); return; }
             }
+          } else if (el.type === 'rect') {
+            const makeRectResize = (handle) => ({
+              id: el.id, handle, startWorld: { ...world },
+              startX: el.x, startY: el.y, startW: el.w, startH: el.h,
+              currentWorldPos: { ...world },
+            });
+            const pts = [
+              { handle: 'tl', x: el.x, y: el.y }, { handle: 'tr', x: el.x + el.w, y: el.y },
+              { handle: 'bl', x: el.x, y: el.y + el.h }, { handle: 'br', x: el.x + el.w, y: el.y + el.h },
+              { handle: 't', x: el.x + el.w / 2, y: el.y }, { handle: 'b', x: el.x + el.w / 2, y: el.y + el.h },
+              { handle: 'l', x: el.x, y: el.y + el.h / 2 }, { handle: 'r', x: el.x + el.w, y: el.y + el.h / 2 },
+            ];
+            for (const c of pts) {
+              if (Math.hypot(world.x - c.x, world.y - c.y) < handleThreshold) { setResizeState(makeRectResize(c.handle)); return; }
+            }
           }
         }
       }
 
       const hit = hitTest(world.x, world.y);
       if (hit) {
+        const groupSet = expandGroupIds(new Set([hit.id]), elements);
         if (e.shiftKey) {
-          setSelectedIds(prev => { const next = new Set(prev); if (next.has(hit.id)) next.delete(hit.id); else next.add(hit.id); return next; });
+          setSelectedIds(prev => {
+            const next = new Set(prev);
+            const allIn = [...groupSet].every(id => next.has(id));
+            if (allIn) groupSet.forEach(id => next.delete(id));
+            else groupSet.forEach(id => next.add(id));
+            return next;
+          });
         } else if (!selectedIds.has(hit.id)) {
-          setSelectedIds(new Set([hit.id]));
+          setSelectedIds(groupSet);
         }
         setIsDragging(true); setDragStart(world); setDragOffset({ x: 0, y: 0 });
       } else {
@@ -1010,15 +1156,44 @@ export default function App() {
       } else {
         const end = getOrthoEnd(lineStart, world);
         if (end.x !== lineStart.x || end.y !== lineStart.y) {
-          const layerDef = allLayers[activeLayerId];
-          const color = customLayerColors[activeLayerId] || layerDef?.hex || '#4A90E2';
-          const line = {
-            id: uid(), type: 'line',
-            x1: lineStart.x, y1: lineStart.y, x2: end.x, y2: end.y,
-            layerId: activeLayerId, color, label: '',
-            canvasLayerId: `canvas_vlsi_${activeLayerId}`,
-          };
+          let line;
+          if (isFloorplan) {
+            // Floor-planning wires carry a net type (VDD/VSS/custom) with their own color + label.
+            const wt = FP_WIRE_TYPES[fpWireType] || FP_WIRE_TYPES.custom;
+            const wColor = fpWireType === 'custom' ? fpCustomWireColor : wt.color;
+            const wLabel = fpWireType === 'custom' ? fpCustomWireLabel : wt.label;
+            line = {
+              id: uid(), type: 'line',
+              x1: lineStart.x, y1: lineStart.y, x2: end.x, y2: end.y,
+              wireType: fpWireType, elementColor: wColor, color: wColor, label: wLabel,
+              thickness: wireThickness, canvasLayerId: activeCanvasLayerId,
+            };
+          } else {
+            const layerDef = allLayers[activeLayerId];
+            const color = customLayerColors[activeLayerId] || layerDef?.hex || '#4A90E2';
+            line = {
+              id: uid(), type: 'line',
+              x1: lineStart.x, y1: lineStart.y, x2: end.x, y2: end.y,
+              layerId: activeLayerId, color, label: '',
+              thickness: wireThickness,
+              canvasLayerId: `canvas_vlsi_${activeLayerId}`,
+            };
+          }
           addElement(line);
+        }
+        setLineStart(null); setLinePreview(null);
+      }
+    } else if (activeTool === TOOLS.measure) {
+      // Two-click dimension line. Free (diagonal) measurement — no ortho constraint.
+      if (!lineStart) {
+        setLineStart(world); setLinePreview(world);
+      } else {
+        if (world.x !== lineStart.x || world.y !== lineStart.y) {
+          addElement({
+            id: uid(), type: 'measure',
+            x1: lineStart.x, y1: lineStart.y, x2: world.x, y2: world.y,
+            canvasLayerId: activeCanvasLayerId,
+          });
         }
         setLineStart(null); setLinePreview(null);
       }
@@ -1039,6 +1214,8 @@ export default function App() {
         canvasLayerId: `canvas_vlsi_${activeLayerId}`,
       };
       addElement(newEl);
+    } else if (activeTool === TOOLS.rect) {
+      setRectDraw({ x1: world.x, y1: world.y, x2: world.x, y2: world.y });
     } else if (activeTool === TOOLS.label) {
       e.preventDefault();
       const screenPos = worldToScreen(world.x, world.y, pan, zoom);
@@ -1061,7 +1238,7 @@ export default function App() {
       const rawWorld = screenToWorld(sx, sy, pan, zoom);
       eraseBrushPoints(rawWorld.x, rawWorld.y, brushSize);
     }
-  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId, eraseBrushPoints, sampleCanvasColor]);
+  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId, eraseBrushPoints, sampleCanvasColor, wireThickness, isFloorplan, fpWireType, fpCustomWireColor, fpCustomWireLabel, pushUndoSnapshot]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1074,6 +1251,16 @@ export default function App() {
     setCursorGrid({ x: Math.round(rawWorld.x / GRID_PITCH), y: Math.round(rawWorld.y / GRID_PITCH) });
 
     if (isPanning && panStart) { setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y }); return; }
+
+    // Label drag: reposition a rect's label relative to the box centre
+    if (labelDrag) {
+      const dx = rawWorld.x - labelDrag.startRawX;
+      const dy = rawWorld.y - labelDrag.startRawY;
+      setElements(prev => prev.map(el => el.id === labelDrag.id
+        ? { ...el, labelOffsetX: labelDrag.startOffX + dx, labelOffsetY: labelDrag.startOffY + dy }
+        : el));
+      return;
+    }
 
     // Group scale drag
     if (groupScaleState) {
@@ -1160,7 +1347,7 @@ export default function App() {
           let nextPos = { ...world };
           if (isHorizontal) nextPos.y = el.y1; else nextPos.x = el.x1;
           setResizeState(prev => prev ? { ...prev, currentWorldPos: nextPos } : null);
-        } else if (el.type === 'image') {
+        } else if (el.type === 'image' || el.type === 'rect') {
           setResizeState(prev => prev ? { ...prev, currentWorldPos: world } : null);
         }
       }
@@ -1180,8 +1367,12 @@ export default function App() {
       setSelectionBox(prev => prev ? { ...prev, x2: raw.x, y2: raw.y } : null);
     }
 
-    if (activeTool === TOOLS.line && lineStart) {
+    if (activeTool === TOOLS.rect && rectDraw) {
+      setRectDraw(prev => prev ? { ...prev, x2: world.x, y2: world.y } : null);
+    } else if (activeTool === TOOLS.line && lineStart) {
       setLinePreview(getOrthoEnd(lineStart, world));
+    } else if (activeTool === TOOLS.measure && lineStart) {
+      setLinePreview(world);
     } else if (activeTool === TOOLS.brush && isDropperSamplingRef.current) {
       // Alt-key dropper: continuously sample color while dragging
       const color = sampleCanvasColor(e.clientX, e.clientY);
@@ -1197,7 +1388,7 @@ export default function App() {
       const rw = screenToWorld(sx, sy, pan, zoom);
       eraseBrushPoints(rw.x, rw.y, brushSize);
     }
-  }, [isPanning, panStart, pan, zoom, isDragging, dragStart, selectedIds, selectionBox, activeTool, lineStart, getWorldPos, getOrthoEnd, resizeState, elements, groupScaleState, snapEnabled, eraseBrushPoints, brushSize]);
+  }, [isPanning, panStart, pan, zoom, isDragging, dragStart, selectedIds, selectionBox, activeTool, lineStart, getWorldPos, getOrthoEnd, resizeState, elements, groupScaleState, snapEnabled, eraseBrushPoints, brushSize, rectDraw, labelDrag]);
 
   const handleMouseUp = useCallback((e) => {
     if (isPanning) { setIsPanning(false); setPanStart(null); return; }
@@ -1245,9 +1436,32 @@ export default function App() {
           else if (resizeState.handle === 'tc') { const ph = resizeState.startH - dy; if (ph >= 10) { nextY = resizeState.startY + dy; nextH = ph; const cd = resizeState.startCropH * (dy / resizeState.startH); nextCropY = Math.max(0, Math.min(1, resizeState.startCropY + cd)); nextCropH = Math.max(0.01, Math.min(1.0 - nextCropY, resizeState.startCropH * (nextH / resizeState.startH))); } }
           return { ...el, x: nextX, y: nextY, w: nextW, h: nextH, cropX: nextCropX, cropY: nextCropY, cropW: nextCropW, cropH: nextCropH };
         }
+        if (el.type === 'rect') {
+          return { ...el, ...computeRectResize(resizeState, resizeState.currentWorldPos) };
+        }
         return el;
       }));
       setResizeState(null);
+      return;
+    }
+
+    // Commit a newly drawn rectangle
+    if (activeTool === TOOLS.rect && rectDraw) {
+      const rx = Math.min(rectDraw.x1, rectDraw.x2);
+      const ry = Math.min(rectDraw.y1, rectDraw.y2);
+      const rw = Math.abs(rectDraw.x2 - rectDraw.x1);
+      const rh = Math.abs(rectDraw.y2 - rectDraw.y1);
+      setRectDraw(null);
+      if (rw >= GRID_PITCH / 2 && rh >= GRID_PITCH / 2) {
+        const newRect = {
+          id: uid(), type: 'rect', x: rx, y: ry, w: rw, h: rh,
+          strokeColor: rectStrokeColor, fillColor: rectFillColor,
+          strokeWidth: rectStrokeWidth, label: '',
+          canvasLayerId: activeCanvasLayerId,
+        };
+        addElement(newRect);
+        setSelectedIds(new Set([newRect.id]));
+      }
       return;
     }
 
@@ -1267,8 +1481,8 @@ export default function App() {
       pushUndoSnapshot();
       setElements(prev => prev.map(el => {
         if (!selectedIds.has(el.id)) return el;
-        if (el.type === 'line') return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
-        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush') return { ...el, x: el.x + dx, y: el.y + dy };
+        if (el.type === 'line' || el.type === 'measure') return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush' || el.type === 'rect') return { ...el, x: el.x + dx, y: el.y + dy };
         return el;
       }));
     }
@@ -1282,15 +1496,37 @@ export default function App() {
         const b = getElementBounds(el);
         return b.x >= bx1 && b.y >= by1 && b.x + b.w <= bx2 && b.y + b.h <= by2;
       });
+      const marqueeIds = expandGroupIds(new Set(selected.map(el => el.id)), elements);
       if (e.shiftKey) {
-        setSelectedIds(prev => { const next = new Set(prev); selected.forEach(el => next.add(el.id)); return next; });
+        setSelectedIds(prev => { const next = new Set(prev); marqueeIds.forEach(id => next.add(id)); return next; });
       } else {
-        setSelectedIds(new Set(selected.map(el => el.id)));
+        setSelectedIds(marqueeIds);
       }
       setSelectionBox(null);
     }
     setIsDragging(false); setDragStart(null); setDragOffset(null);
-  }, [isPanning, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndoSnapshot, activeTool, addElement, resizeState, groupScaleState, activeCanvasLayerId]);
+  }, [isPanning, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndoSnapshot, activeTool, addElement, resizeState, groupScaleState, activeCanvasLayerId, rectDraw, rectStrokeColor, rectFillColor, rectStrokeWidth]);
+
+  // Zoom toward a screen point (defaults to the canvas centre when sx/sy omitted).
+  // Shared by the scroll wheel, the on-screen magnifier buttons and the keyboard shortcuts.
+  const applyZoom = useCallback((targetZoom, sx, sy) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const r = canvas.getBoundingClientRect();
+    const px = sx == null ? r.width / 2 : sx;
+    const py = sy == null ? r.height / 2 : sy;
+    const oldZoom = zoom;
+    const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom));
+    if (newZoom === oldZoom) return;
+    const wx = (px - pan.x) / oldZoom;
+    const wy = (py - pan.y) / oldZoom;
+    setZoom(newZoom);
+    setPan({ x: px - wx * newZoom, y: py - wy * newZoom });
+  }, [zoom, pan]);
+
+  const zoomInStep = useCallback(() => applyZoom(zoom + ZOOM_STEP * 2), [applyZoom, zoom]);
+  const zoomOutStep = useCallback(() => applyZoom(zoom - ZOOM_STEP * 2), [applyZoom, zoom]);
+  const zoomReset = useCallback(() => applyZoom(1), [applyZoom]);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
@@ -1299,14 +1535,9 @@ export default function App() {
     const r = canvas.getBoundingClientRect();
     const sx = e.clientX - r.left;
     const sy = e.clientY - r.top;
-    const oldZoom = zoom;
     const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-    const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, oldZoom + delta));
-    const wx = (sx - pan.x) / oldZoom;
-    const wy = (sy - pan.y) / oldZoom;
-    setZoom(newZoom);
-    setPan({ x: sx - wx * newZoom, y: sy - wy * newZoom });
-  }, [zoom, pan]);
+    applyZoom(zoom + delta, sx, sy);
+  }, [zoom, applyZoom]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1383,6 +1614,7 @@ export default function App() {
           return;
         }
 
+        if (e.key === 'g') { e.preventDefault(); if (e.shiftKey) ungroupSelected(); else groupSelected(); return; }
         if (e.key === 'z') { e.preventDefault(); doUndo(); return; }
         if (e.key === 'y') { e.preventDefault(); doRedo(); return; }
         if (e.key === 's') { e.preventDefault(); saveProjectFnRef.current?.(); return; }
@@ -1427,13 +1659,13 @@ export default function App() {
             const selected = elements.filter(el => selectedIds.has(el.id));
             const offset = GRID_PITCH;
             pushUndoSnapshot();
-            const newEls = selected.map(el => {
+            const newEls = remapGroupIds(selected.map(el => {
               const n = JSON.parse(JSON.stringify(el));
               n.id = uid();
               if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-              else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
+              else if (['contact', 'via', 'label', 'image', 'brush', 'rect'].includes(n.type)) { n.x += offset; n.y += offset; }
               return n;
-            });
+            }));
             setElements(prev => [...prev, ...newEls]);
             setSelectedIds(new Set(newEls.map(el => el.id)));
             setActiveTool(TOOLS.select);
@@ -1453,13 +1685,21 @@ export default function App() {
         return;
       }
 
+      // Zoom shortcuts (help users whose scroll wheel is broken):
+      //   +/=  zoom in   ·   -/_  zoom out   ·   0  reset to 100%
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomInStep(); return; }
+      if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomOutStep(); return; }
+      if (e.key === '0') { e.preventDefault(); zoomReset(); return; }
+
       const key = e.key.toLowerCase();
       if (key === 'v') setActiveTool(TOOLS.select);
       else if (key === 'w') { setActiveTool(TOOLS.line); setLineStart(null); setLinePreview(null); }
       else if (key === 'p') setActiveTool(TOOLS.contact);
+      else if (key === 'r') setActiveTool(TOOLS.rect);
       else if (key === 'l' || key === 't') setActiveTool(TOOLS.label);
       else if (key === 'b') setActiveTool(TOOLS.brush);
       else if (key === 'e') setActiveTool(TOOLS.eraser);
+      else if (key === 'm') { setActiveTool(TOOLS.measure); setLineStart(null); setLinePreview(null); }
       else if (key === 'g') setShowGrid(prev => !prev);
       else if (key === 's') setSnapEnabled(prev => !prev);
     };
@@ -1483,7 +1723,7 @@ export default function App() {
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); window.removeEventListener('blur', handleBlur); };
-  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool]);
+  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool, groupSelected, ungroupSelected, zoomInStep, zoomOutStep, zoomReset]);
 
   // Touch handlers
   const handleTouchStart = useCallback((e) => {
@@ -1588,16 +1828,34 @@ export default function App() {
   // Selected element properties
   const selectedElements = elements.filter(el => selectedIds.has(el.id));
   const rotateSelected = useCallback(() => {
-    const editableElements = elements.filter(el => selectedIds.has(el.id) && el.type === 'line');
+    const editableElements = elements.filter(el => selectedIds.has(el.id) && (el.type === 'line' || el.type === 'measure' || el.type === 'rect'));
     if (editableElements.length === 0) return;
     pushUndoSnapshot();
     setElements(prev => prev.map(el => {
-      if (!selectedIds.has(el.id) || el.type !== 'line') return el;
-      const cx = (el.x1 + el.x2) / 2;
-      const cy = (el.y1 + el.y2) / 2;
-      const dx1 = el.x1 - cx, dy1 = el.y1 - cy;
-      const dx2 = el.x2 - cx, dy2 = el.y2 - cy;
-      return { ...el, x1: cx - dy1, y1: cy + dx1, x2: cx - dy2, y2: cy + dx2 };
+      if (!selectedIds.has(el.id)) return el;
+      if (el.type === 'line' || el.type === 'measure') {
+        const cx = (el.x1 + el.x2) / 2;
+        const cy = (el.y1 + el.y2) / 2;
+        const dx1 = el.x1 - cx, dy1 = el.y1 - cy;
+        const dx2 = el.x2 - cx, dy2 = el.y2 - cy;
+        return { ...el, x1: cx - dy1, y1: cy + dx1, x2: cx - dy2, y2: cy + dx2 };
+      }
+      if (el.type === 'rect') {
+        // Rotate a pin/block 90° about its centre: swap the footprint (w↔h),
+        // advance the label orientation, and rotate the label offset to match.
+        const cx = el.x + el.w / 2;
+        const cy = el.y + el.h / 2;
+        const nw = el.h, nh = el.w;
+        const offX = el.labelOffsetX || 0;
+        const offY = el.labelOffsetY || 0;
+        return {
+          ...el,
+          x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh,
+          rotation: ((el.rotation || 0) + 90) % 360,
+          labelOffsetX: -offY, labelOffsetY: offX,
+        };
+      }
+      return el;
     }));
   }, [selectedIds, elements, pushUndoSnapshot]);
 
@@ -1645,9 +1903,11 @@ export default function App() {
   const startTemplate = useCallback(() => {
     const templateEls = createTemplateElements('canvas_vlsi_metal1');
     setCanvasLayers([
-      { id: 'canvas_vlsi_metal1', name: 'Metal 1', visible: true, opacity: 1.0, isCustom: false },
       { id: 'canvas_vlsi_pdiff', name: 'P-Diffusion', visible: true, opacity: 1.0, isCustom: false },
       { id: 'canvas_vlsi_ndiff', name: 'N-Diffusion', visible: true, opacity: 1.0, isCustom: false },
+      { id: 'canvas_vlsi_poly', name: 'Polysilicon', visible: true, opacity: 1.0, isCustom: false },
+      { id: 'canvas_vlsi_metal1', name: 'Metal 1', visible: true, opacity: 1.0, isCustom: false },
+      { id: 'canvas_vlsi_contact', name: 'Contact', visible: true, opacity: 1.0, isCustom: false },
       { id: 'layer_1', name: 'Layer 1', visible: true, opacity: 1.0, isCustom: true }
     ]);
     setActiveCanvasLayerId('canvas_vlsi_metal1');
@@ -1664,8 +1924,73 @@ export default function App() {
     setZoom(1); setShowModal(false);
   }, []);
 
+  const startFloorplanTemplate = useCallback(() => {
+    const g = GRID_PITCH;
+    const darkStroke = theme === 'dark' ? '#E6E2D8' : '#111111';
+    const boundary = {
+      id: uid(), type: 'rect', x: 100, y: 100, w: 26 * g, h: 18 * g,
+      strokeColor: darkStroke, strokeWidth: 3, fillColor: null, label: '',
+      canvasLayerId: 'layer_1',
+    };
+    setCanvasLayers([{ id: 'layer_1', name: 'Floor Plan', visible: true, opacity: 1.0, isCustom: true }]);
+    setActiveCanvasLayerId('layer_1');
+    setElements([boundary]);
+    setUndoStack([]); setRedoStack([]); setSelectedIds(new Set());
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const b = getContentBounds([boundary]);
+      setPan({ x: rect.width / 2 - (b.x + b.w / 2), y: rect.height / 2 - (b.y + b.h / 2) });
+    } else {
+      setPan({ x: 50, y: 50 });
+    }
+    setZoom(1); setShowModal(false);
+  }, [theme]);
+
+  // Insert elements produced by the boolean expression generator as regular
+  // editable elements, centered in the current viewport.
+  const insertBooleanGate = useCallback((analysis) => {
+    const genEls = analysis.elements;
+    pushUndoSnapshot();
+
+    // Ensure the standard VLSI canvas layers used by the gate exist
+    const neededLayerIds = new Set();
+    genEls.forEach(el => { if (el.layerId) neededLayerIds.add(el.layerId); });
+    setCanvasLayers(prev => {
+      const next = [...prev];
+      neededLayerIds.forEach(lid => {
+        const cid = `canvas_vlsi_${lid}`;
+        if (next.some(l => l.id === cid)) return;
+        const def = allLayers[lid] || BASE_LAYERS[lid];
+        next.push({ id: cid, name: def.label.split('(')[0].trim(), visible: true, opacity: 1.0, isCustom: false });
+      });
+      return next;
+    });
+
+    // Center the gate in the current viewport, snapped to the grid
+    const bounds = getContentBounds(genEls);
+    let dx = 0, dy = 0;
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const center = screenToWorld(rect.width / 2, rect.height / 2, pan, zoom);
+      dx = snapToGrid(center.x - (bounds.x + bounds.w / 2), GRID_PITCH);
+      dy = snapToGrid(center.y - (bounds.y + bounds.h / 2), GRID_PITCH);
+    }
+    const moved = genEls.map(el => {
+      if (el.type === 'line') return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+      return { ...el, x: el.x + dx, y: el.y + dy };
+    });
+
+    setElements(prev => [...prev, ...moved]);
+    setSelectedIds(new Set(moved.map(el => el.id)));
+    setActiveTool(TOOLS.select);
+    setShowBooleanModal(false);
+    showToast(`Generated ${analysis.minimizedString} — ${analysis.transistorCount} transistors`);
+  }, [pushUndoSnapshot, allLayers, pan, zoom, showToast]);
+
   const handleNew = useCallback(() => { setShowModal(true); setOpenMenu(null); }, []);
-  const handleClear = useCallback(() => { pushUndoSnapshot(); setElements([]); setSelectedIds(new Set()); setOpenMenu(null); try { localStorage.removeItem(AUTOSAVE_KEY); } catch {} }, [pushUndoSnapshot]);
+  const handleClear = useCallback(() => { pushUndoSnapshot(); setElements([]); setSelectedIds(new Set()); setOpenMenu(null); try { localStorage.removeItem(autosaveKey); } catch {} }, [pushUndoSnapshot, autosaveKey]);
 
   const handleSaveProject = useCallback(() => {
     const data = {
@@ -1735,7 +2060,7 @@ export default function App() {
 
   const resumeAutosave = useCallback(() => {
     try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      const saved = localStorage.getItem(autosaveKey);
       if (saved) {
         const data = JSON.parse(saved);
         
@@ -1774,7 +2099,7 @@ export default function App() {
       }
     } catch {}
     setShowModal(false); setHasAutosave(false);
-  }, [restoreCanvasLayers]);
+  }, [restoreCanvasLayers, autosaveKey]);
 
   const triggerImageImport = useCallback(() => {
     const input = document.createElement('input');
@@ -1822,13 +2147,13 @@ export default function App() {
           if (Array.isArray(parsed) && parsed.length > 0) {
             const offset = GRID_PITCH;
             pushUndoSnapshot();
-            const newEls = parsed.map(el => {
+            const newEls = remapGroupIds(parsed.map(el => {
               const n = JSON.parse(JSON.stringify(el));
               n.id = uid();
               if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-              else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
+              else if (['contact', 'via', 'label', 'image', 'brush', 'rect'].includes(n.type)) { n.x += offset; n.y += offset; }
               return n;
-            });
+            }));
             setElements(prev => [...prev, ...newEls]);
             setSelectedIds(new Set(newEls.map(el => el.id)));
             setActiveTool(TOOLS.select);
@@ -1884,13 +2209,13 @@ export default function App() {
           e.preventDefault();
           const offset = GRID_PITCH;
           pushUndoSnapshot();
-          const newEls = clipboardRef.current.map(el => {
+          const newEls = remapGroupIds(clipboardRef.current.map(el => {
             const n = JSON.parse(JSON.stringify(el));
             n.id = uid();
             if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-            else if (['contact', 'via', 'label', 'image', 'brush'].includes(n.type)) { n.x += offset; n.y += offset; }
+            else if (['contact', 'via', 'label', 'image', 'brush', 'rect'].includes(n.type)) { n.x += offset; n.y += offset; }
             return n;
-          });
+          }));
           setElements(prev => [...prev, ...newEls]);
           setSelectedIds(new Set(newEls.map(el => el.id)));
           setActiveTool(TOOLS.select);
@@ -2041,7 +2366,7 @@ export default function App() {
     const newId = layerUid();
     const newLayer = { ...layer, id: newId, name: layer.name + ' Copy' };
     const layerEls = elements.filter(el => el.canvasLayerId === layerId);
-    const newEls = layerEls.map(el => ({ ...JSON.parse(JSON.stringify(el)), id: uid(), canvasLayerId: newId }));
+    const newEls = remapGroupIds(layerEls.map(el => ({ ...JSON.parse(JSON.stringify(el)), id: uid(), canvasLayerId: newId })));
     pushUndoSnapshot();
     const idx = canvasLayers.findIndex(l => l.id === layerId);
     setCanvasLayers(prev => { const arr = [...prev]; arr.splice(idx + 1, 0, newLayer); return arr; });
@@ -2096,6 +2421,37 @@ export default function App() {
     }
   }, []);
 
+  // ─── Floor Planning: quick-insert pre-styled shapes ─────────
+  const insertFloorplanShape = useCallback((kind) => {
+    const g = GRID_PITCH;
+    const darkStroke = theme === 'dark' ? '#E6E2D8' : '#111111';
+    const presets = {
+      boundary: { w: 26 * g, h: 18 * g, strokeColor: darkStroke, strokeWidth: 3, fillColor: null, label: '', labelColor: undefined },
+      block:    { w: 8 * g, h: 4 * g, strokeColor: darkStroke, strokeWidth: 2, fillColor: null, label: 'BLOCK', labelColor: undefined },
+      input:    { w: 2 * g, h: g, strokeColor: '#2E7D32', strokeWidth: 2, fillColor: '#C8E6C9', label: 'IN', labelColor: '#111111' },
+      output:   { w: 2 * g, h: g, strokeColor: '#1565C0', strokeWidth: 2, fillColor: '#BBDEFB', label: 'OUT', labelColor: '#111111' },
+      power:    { w: 2 * g, h: g, strokeColor: '#EF6C00', strokeWidth: 2, fillColor: '#FFE0B2', label: 'VDD', labelColor: '#111111' },
+      ground:   { w: 2 * g, h: g, strokeColor: '#F9A825', strokeWidth: 2, fillColor: '#FFF9C4', label: 'VSS', labelColor: '#111111' },
+    };
+    const p = presets[kind] || presets.block;
+    let cx = 200, cy = 200;
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const world = screenToWorld(rect.width / 2, rect.height / 2, pan, zoom);
+      cx = snapToGrid(world.x - p.w / 2, GRID_PITCH);
+      cy = snapToGrid(world.y - p.h / 2, GRID_PITCH);
+    }
+    const el = {
+      id: uid(), type: 'rect', x: cx, y: cy, w: p.w, h: p.h,
+      strokeColor: p.strokeColor, strokeWidth: p.strokeWidth, fillColor: p.fillColor,
+      label: p.label, labelColor: p.labelColor, canvasLayerId: activeCanvasLayerId,
+    };
+    addElement(el);
+    setSelectedIds(new Set([el.id]));
+    setActiveTool(TOOLS.select);
+  }, [theme, pan, zoom, addElement, activeCanvasLayerId]);
+
   const canvasClass = `canvas-container ${activeTool === TOOLS.select ? 'tool-select' : ''} ${isPanning || spaceHeld ? 'panning' : ''} ${isAltDropperActive ? 'tool-dropper' : ''}`;
 
   useEffect(() => { if (isDragging) setPan(p => ({ ...p })); }, [isDragging, dragOffset]);
@@ -2139,9 +2495,11 @@ export default function App() {
     [TOOLS.select]: 'Select',
     [TOOLS.line]: 'Wire / Line',
     [TOOLS.contact]: 'Contact',
+    [TOOLS.rect]: 'Rectangle',
     [TOOLS.label]: 'Label',
     [TOOLS.brush]: 'Brush',
     [TOOLS.eraser]: 'Eraser',
+    [TOOLS.measure]: 'Measure',
   };
 
   // Build palette
@@ -2158,6 +2516,7 @@ export default function App() {
     <div className="app-container">
       {/* Top Menu Bar */}
       <MenuBar
+        mode={mode}
         openMenu={openMenu}
         setOpenMenu={setOpenMenu}
         theme={theme}
@@ -2185,6 +2544,8 @@ export default function App() {
       <div className="main-area">
         {/* Left Toolbar */}
         <Toolbar
+          mode={mode}
+          insertFloorplanShape={insertFloorplanShape}
           activeTool={activeTool}
           setActiveTool={setActiveTool}
           contactShape={contactShape}
@@ -2202,6 +2563,7 @@ export default function App() {
           activeCanvasLayerId={activeCanvasLayerId}
           setActiveCanvasLayerId={setActiveCanvasLayerId}
           triggerImageImport={triggerImageImport}
+          openBooleanModal={() => setShowBooleanModal(true)}
         />
 
         {/* Canvas Area */}
@@ -2226,6 +2588,10 @@ export default function App() {
           showShortcutsHUD={showShortcutsHUD}
           setShowShortcutsHUD={setShowShortcutsHUD}
           zoom={zoom}
+          zoomInStep={zoomInStep}
+          zoomOutStep={zoomOutStep}
+          zoomReset={zoomReset}
+          mode={mode}
         />
 
         {/* Right Panel */}
@@ -2264,6 +2630,16 @@ export default function App() {
               canvasLayers={canvasLayers}
               moveLayerInStack={moveLayerInStack}
               activeLayerId={activeLayerId}
+              wireThickness={wireThickness}
+              setWireThickness={setWireThickness}
+              rectStrokeColor={rectStrokeColor}
+              setRectStrokeColor={setRectStrokeColor}
+              rectFillColor={rectFillColor}
+              setRectFillColor={setRectFillColor}
+              rectStrokeWidth={rectStrokeWidth}
+              setRectStrokeWidth={setRectStrokeWidth}
+              groupSelected={groupSelected}
+              ungroupSelected={ungroupSelected}
             />
           ) : (
             <LayersPanel
@@ -2306,11 +2682,12 @@ export default function App() {
 
       {/* Modals Overlay */}
       <Modals
+        mode={mode}
         showModal={showModal}
         hasAutosave={hasAutosave}
         resumeAutosave={resumeAutosave}
         startBlank={startBlank}
-        startTemplate={startTemplate}
+        startTemplate={isFloorplan ? startFloorplanTemplate : startTemplate}
         handleLoadProject={handleLoadProject}
         showExportModal={showExportModal}
         setShowExportModal={setShowExportModal}
@@ -2334,6 +2711,13 @@ export default function App() {
         setFeedbackStatus={setFeedbackStatus}
       />
 
+      {/* Boolean Expression Generator Modal */}
+      <BooleanModal
+        show={showBooleanModal}
+        onClose={() => setShowBooleanModal(false)}
+        onInsert={insertBooleanGate}
+      />
+
       {/* Toast notification */}
       {toastMessage && (
         <div className="autosave-toast">{toastMessage}</div>
@@ -2348,15 +2732,18 @@ export default function App() {
           <div className="support-toast-content">
             <h4 className="support-toast-title">Enjoying StickOut? 🎨</h4>
             <p className="support-toast-text">
-              Help keep the project alive by sharing feedback or donating on Gank!
+              Help keep the project alive — leave a review on AppBuildersPH, share feedback, or donate on Gank!
             </p>
           </div>
           <div className="support-toast-actions">
+            <button className="support-btn-action review" onClick={handleSupportReview}>
+              Leave a Review
+            </button>
             <button className="support-btn-action feedback" onClick={handleSupportFeedback}>
               Feedback
             </button>
             <button className="support-btn-action gank" onClick={handleSupportGank}>
-              Support Creator
+              Donate on Gank
             </button>
             <button className="support-btn-action remind" onClick={handleSupportRemindLater}>
               Remind later

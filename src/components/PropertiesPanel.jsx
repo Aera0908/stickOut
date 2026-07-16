@@ -1,4 +1,4 @@
-import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette } from 'lucide-react';
+import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette, Group, Ungroup } from 'lucide-react';
 import { TOOLS, HIGHER_METAL_COLORS } from '../constants';
 
 export default function PropertiesPanel({
@@ -27,8 +27,33 @@ export default function PropertiesPanel({
   deleteSelected,
   canvasLayers,
   moveLayerInStack,
-  activeLayerId
+  activeLayerId,
+  wireThickness,
+  setWireThickness,
+  rectStrokeColor,
+  setRectStrokeColor,
+  rectFillColor,
+  setRectFillColor,
+  rectStrokeWidth,
+  setRectStrokeWidth,
+  groupSelected,
+  ungroupSelected
 }) {
+  const THICKNESS_OPTS = ['small', 'medium', 'large'];
+  const renderThicknessRow = (current, onPick) => (
+    <div className="prop-btn-row">
+      {THICKNESS_OPTS.map(t => (
+        <button
+          key={t}
+          className={`prop-btn ${current === t ? 'active' : ''}`}
+          style={{ background: current === t ? 'var(--accent)' : 'var(--surface)', color: current === t ? '#fff' : 'var(--text-primary)' }}
+          onClick={() => onPick(t)}
+        >
+          {t.charAt(0).toUpperCase() + t.slice(1)}
+        </button>
+      ))}
+    </div>
+  );
   const renderInlineColorPicker = (currentColor, onChangeHandler) => {
     const handleEyeDropper = async () => {
       if (!window.EyeDropper) return;
@@ -168,6 +193,31 @@ export default function PropertiesPanel({
           </div>
         </div>
       );
+    } else if (activeTool === TOOLS.rect) {
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Rectangle Tool Settings</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '12px' }}>Click and drag on the canvas to draw a rectangle.</div>
+          <div className="prop-group">
+            <span className="prop-label">Outline Color</span>
+            {renderInlineColorPicker(rectStrokeColor, setRectStrokeColor)}
+          </div>
+          <div className="prop-group">
+            <span className="prop-label">Outline Thickness: {rectStrokeWidth}px</span>
+            <input type="range" min="0" max="12" value={rectStrokeWidth} onChange={(e) => setRectStrokeWidth(parseInt(e.target.value))} style={{ width: '100%' }} />
+          </div>
+          <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+            <input type="checkbox" id="rect-tool-transparent" checked={!rectFillColor || rectFillColor === 'transparent'} onChange={(e) => setRectFillColor(e.target.checked ? null : '#4A90E2')} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+            <label htmlFor="rect-tool-transparent" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Transparent Fill</label>
+          </div>
+          {rectFillColor && rectFillColor !== 'transparent' && (
+            <div className="prop-group">
+              <span className="prop-label">Fill Color</span>
+              {renderInlineColorPicker(rectFillColor, setRectFillColor)}
+            </div>
+          )}
+        </div>
+      );
     } else {
       const isCustomizable = activeLayerId && allLayers[activeLayerId]?.customizable;
       return (
@@ -186,6 +236,12 @@ export default function PropertiesPanel({
                 pushUndoSnapshot();
                 setCustomLayerColors(prev => ({ ...prev, [activeLayerId]: newColor }));
               })}
+            </div>
+          )}
+          {activeTool === TOOLS.line && (
+            <div className="prop-group">
+              <span className="prop-label">Wire Thickness</span>
+              {renderThicknessRow(wireThickness, setWireThickness)}
             </div>
           )}
           <div style={{ marginTop: '16px', fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
@@ -357,6 +413,18 @@ export default function PropertiesPanel({
         </div>
       )}
 
+      {selectedElements.some(el => el.type === 'line') && (() => {
+        const lineEls = selectedElements.filter(el => el.type === 'line');
+        const first = lineEls[0].thickness || 'medium';
+        const common = lineEls.every(el => (el.thickness || 'medium') === first) ? first : null;
+        return (
+          <div className="prop-group">
+            <span className="prop-label">Wire Thickness</span>
+            {renderThicknessRow(common, (t) => updateProp('thickness', t))}
+          </div>
+        );
+      })()}
+
       {singleLine && (
         <div className="prop-group">
           <span className="prop-label">Length (grid units)</span>
@@ -370,6 +438,39 @@ export default function PropertiesPanel({
           <div className="prop-group"><span className="prop-label">Height (px)</span><input className="prop-input" type="number" value={selectedElements[0].h || 100} onChange={e => updateProp('h', parseInt(e.target.value) || 100)} /></div>
         </>
       )}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'rect') && (() => {
+        const rectEl = selectedElements[0];
+        const isTransparent = !rectEl.fillColor || rectEl.fillColor === 'transparent';
+        return (
+          <>
+            {selectedElements.length === 1 && (
+              <div className="prop-group">
+                <span className="prop-label">Label</span>
+                <input className="prop-input" value={rectEl.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. Block, VDD" />
+              </div>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Outline Color</span>
+              {renderInlineColorPicker(rectEl.strokeColor || '#4A90E2', (c) => updateProp('strokeColor', c))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Outline Thickness: {rectEl.strokeWidth !== undefined ? rectEl.strokeWidth : 2}px</span>
+              <input type="range" min="0" max="12" value={rectEl.strokeWidth !== undefined ? rectEl.strokeWidth : 2} onChange={e => updateProp('strokeWidth', parseInt(e.target.value))} style={{ width: '100%' }} />
+            </div>
+            <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <input type="checkbox" id="rect-sel-transparent" checked={isTransparent} onChange={e => updateProp('fillColor', e.target.checked ? null : '#4A90E2')} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+              <label htmlFor="rect-sel-transparent" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Transparent Fill</label>
+            </div>
+            {!isTransparent && (
+              <div className="prop-group">
+                <span className="prop-label">Fill Color</span>
+                {renderInlineColorPicker(rectEl.fillColor, (c) => updateProp('fillColor', c))}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {selectedElements.length === 1 && selectedElements[0].type === 'brush' && (
         <>
@@ -428,6 +529,18 @@ export default function PropertiesPanel({
           <button className="prop-btn" onClick={rotateSelected}><RotateCw size={12} /> Rotate 90°</button>
         )}
       </div>
+
+      {(selectedElements.length >= 2 || selectedElements.some(el => el.groupId)) && (
+        <div className="prop-btn-row" style={{ marginTop: '8px' }}>
+          {selectedElements.length >= 2 && (
+            <button className="prop-btn" onClick={groupSelected} title="Group (Ctrl+G)"><Group size={12} /> Group</button>
+          )}
+          {selectedElements.some(el => el.groupId) && (
+            <button className="prop-btn" onClick={ungroupSelected} title="Ungroup (Ctrl+Shift+G)"><Ungroup size={12} /> Ungroup</button>
+          )}
+        </div>
+      )}
+
       <button className="prop-btn danger" onClick={deleteSelected} style={{ marginTop: '8px', width: '100%' }}><Trash2 size={12} /> Delete</button>
     </div>
   );

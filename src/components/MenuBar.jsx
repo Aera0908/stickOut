@@ -1,6 +1,8 @@
-import { Cpu, Bug, Sun, Moon, Heart } from 'lucide-react';
+import { Cpu, Bug, Sun, Moon, Heart, Home } from 'lucide-react';
+import { Link } from '../router.jsx';
 
 export default function MenuBar({
+  mode = 'stick',
   openMenu,
   setOpenMenu,
   theme,
@@ -25,7 +27,9 @@ export default function MenuBar({
 }) {
   return (
     <div className="menu-bar">
+      <Link to="/" className="menu-home-btn" title="Back to Home"><Home size={15} /></Link>
       <span className="app-title"><Cpu size={14} />StickOut</span>
+      <span className="menu-mode-badge">{mode === 'floorplan' ? 'Floor Planning' : 'Stick Diagram'}</span>
 
       <div className="menu-item">
         <button className={openMenu === 'file' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'file' ? null : 'file'); }}>File</button>

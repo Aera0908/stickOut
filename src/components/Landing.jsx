@@ -1,144 +1,138 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StickOut — Free Online Stick Diagram Maker & VLSI Floor Planning Tool</title>
-  <meta name="description" content="StickOut is a free online VLSI toolkit: a stick diagram maker and a block-level floor planner. Draw CMOS stick diagrams with Metal, Polysilicon, Diffusion, Contacts, and Vias, or plan chip floor plans. Export high-resolution PNGs." />
-  <meta name="keywords" content="stick diagram, stick diagram maker, stick diagram editor, VLSI stick diagram, CMOS stick diagram, floor planning, VLSI floor plan, block level floorplanning, VLSI layout editor, IC design tool, free VLSI tool, CMOS layout tool, transistor layout, EDA tool" />
-  <meta name="author" content="Aira Josh Ynte" />
-  <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://stickout.vercel.app/landing.html" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+import { useEffect, useState } from 'react';
 
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://stickout.vercel.app/landing.html" />
-  <meta property="og:title" content="StickOut — Free Online Stick Diagram Maker & VLSI Floor Planning Tool" />
-  <meta property="og:description" content="Draw VLSI stick diagrams and plan floor plans online for free. Interactive canvas with Metal, Poly, Diffusion layers. Export publication-ready PNGs." />
-  <meta property="og:image" content="https://stickout.vercel.app/og-image.png" />
-  <meta property="og:site_name" content="StickOut" />
+// The marketing / landing page shown at the base URL ("/"). Rendered as HTML so
+// the existing markup and SVGs are preserved. Recolored to the blue theme,
+// emojis replaced with inline icons, and a two-tool selector added.
 
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="StickOut — Free Online Stick Diagram Maker & VLSI Floor Planning Tool" />
-  <meta name="twitter:description" content="Draw VLSI stick diagrams and plan floor plans online for free. Export high-res PNGs for papers and presentations." />
-  <meta name="twitter:image" content="https://stickout.vercel.app/og-image.png" />
+const LANDING_HTML = `
+<style>
+  /* Allow the long landing page to scroll (app's global CSS locks overflow) */
+  html, body { overflow-y: auto !important; height: auto !important; }
+  #root { height: auto !important; overflow: visible !important; }
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  .lp *, .lp *::before, .lp *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  .lp {
+    --bg: #0D0D12; --surface: #16161D; --surface-2: #1E1E28; --border: #2A2A36;
+    --accent: #2F6FED; --accent-glow: rgba(47, 111, 237, 0.28);
+    --text: #F0F0F5; --text-secondary: #9898A6; --text-muted: #606070;
+    --blue: #4A90E2; --red: #C0392B; --yellow: #F1C40F; --green: #27AE60; --purple: #9B59B6;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7; -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .lp a { color: inherit; }
 
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  .lp nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 48px; background: rgba(13, 13, 18, 0.85);
+    backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+  }
+  .lp .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--text); text-decoration: none; }
+  .lp .nav-brand svg { width: 28px; height: 28px; }
+  .lp .nav-links { display: flex; gap: 32px; }
+  .lp .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+  .lp .nav-links a:hover { color: var(--text); }
+  .lp .nav-cta { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #fff; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; text-decoration: none; transition: all 0.2s; }
+  .lp .nav-cta:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .lp .nav-cta svg { width: 15px; height: 15px; }
 
-    :root {
-      --bg: #0D0D12; --surface: #16161D; --surface-2: #1E1E28; --border: #2A2A36;
-      --accent: #2F6FED; --accent-glow: rgba(47, 111, 237, 0.28);
-      --text: #F0F0F5; --text-secondary: #9898A6; --text-muted: #606070;
-      --blue: #4A90E2; --red: #C0392B; --yellow: #F1C40F; --green: #27AE60; --purple: #9B59B6;
-    }
+  .lp .hero {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 120px 24px 80px;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(47, 111, 237, 0.10), transparent),
+      radial-gradient(ellipse 40% 40% at 80% 60%, rgba(74, 144, 226, 0.06), transparent),
+      var(--bg);
+  }
+  .lp .hero-inner { max-width: 820px; }
+  .lp .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 16px; border-radius: 100px; font-size: 13px; color: var(--text-secondary); margin-bottom: 32px; }
+  .lp .hero-badge svg { width: 14px; height: 14px; color: var(--accent); }
+  .lp .hero-badge span { color: var(--accent); font-weight: 600; }
+  .lp .hero h1 { font-size: clamp(36px, 6vw, 62px); font-weight: 900; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 24px; }
+  .lp .hero h1 .highlight { background: linear-gradient(135deg, #2F6FED, #5B9BFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .lp .hero p { font-size: 18px; color: var(--text-secondary); max-width: 620px; margin: 0 auto 40px; line-height: 1.8; }
+  .lp .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .lp .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 700; text-decoration: none; transition: all 0.25s; box-shadow: 0 4px 24px var(--accent-glow); }
+  .lp .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
+  .lp .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; text-decoration: none; transition: all 0.25s; }
+  .lp .btn-secondary:hover { border-color: var(--text-muted); transform: translateY(-2px); }
+  .lp .btn-primary svg, .lp .btn-secondary svg { width: 20px; height: 20px; }
 
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; -webkit-font-smoothing: antialiased; }
+  .lp section { padding: 100px 24px; }
+  .lp .container { max-width: 1100px; margin: 0 auto; }
+  .lp .section-label { display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 16px; }
+  .lp .section-title { font-size: clamp(28px, 4vw, 42px); font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 20px; }
+  .lp .section-desc { font-size: 17px; color: var(--text-secondary); max-width: 640px; line-height: 1.8; margin-bottom: 48px; }
 
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 16px 48px; background: rgba(13, 13, 18, 0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
-    .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--text); text-decoration: none; }
-    .nav-brand svg { width: 28px; height: 28px; }
-    .nav-links { display: flex; gap: 32px; }
-    .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
-    .nav-links a:hover { color: var(--text); }
-    .nav-cta { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #fff; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; text-decoration: none; transition: all 0.2s; }
-    .nav-cta:hover { filter: brightness(1.15); transform: translateY(-1px); }
-    .nav-cta svg { width: 15px; height: 15px; }
+  /* Tools / two choices */
+  .lp .tools { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .lp .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .lp .tool-card { display: block; text-decoration: none; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: all 0.25s; }
+  .lp .tool-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .lp .tool-card-icon { width: 52px; height: 52px; background: var(--surface-2); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 18px; }
+  .lp .tool-card-icon svg { width: 26px; height: 26px; }
+  .lp .tool-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .lp .tool-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; }
+  .lp .tool-card-cta { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; font-size: 14px; }
+  .lp .tool-card-cta svg { width: 16px; height: 16px; }
 
-    .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 120px 24px 80px; background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(47, 111, 237, 0.10), transparent), radial-gradient(ellipse 40% 40% at 80% 60%, rgba(74, 144, 226, 0.06), transparent), var(--bg); }
-    .hero-inner { max-width: 820px; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 16px; border-radius: 100px; font-size: 13px; color: var(--text-secondary); margin-bottom: 32px; }
-    .hero-badge svg { width: 14px; height: 14px; color: var(--accent); }
-    .hero-badge span { color: var(--accent); font-weight: 600; }
-    .hero h1 { font-size: clamp(36px, 6vw, 62px); font-weight: 900; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 24px; }
-    .hero h1 .highlight { background: linear-gradient(135deg, #2F6FED, #5B9BFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .hero p { font-size: 18px; color: var(--text-secondary); max-width: 620px; margin: 0 auto 40px; line-height: 1.8; }
-    .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-    .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 700; text-decoration: none; transition: all 0.25s; box-shadow: 0 4px 24px var(--accent-glow); }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
-    .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; text-decoration: none; transition: all 0.25s; }
-    .btn-secondary:hover { border-color: var(--text-muted); transform: translateY(-2px); }
-    .btn-primary svg, .btn-secondary svg { width: 20px; height: 20px; }
+  .lp .what-is { border-bottom: 1px solid var(--border); }
+  .lp .what-is-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .lp .what-is-text h2 { margin-bottom: 20px; }
+  .lp .what-is-text p { color: var(--text-secondary); font-size: 16px; margin-bottom: 16px; }
+  .lp .layer-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+  .lp .layer-chip { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+  .lp .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .lp .diagram-visual { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 40px; display: flex; align-items: center; justify-content: center; min-height: 320px; }
+  .lp .diagram-visual svg { width: 100%; max-width: 380px; }
 
-    section { padding: 100px 24px; }
-    .container { max-width: 1100px; margin: 0 auto; }
-    .section-label { display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 16px; }
-    .section-title { font-size: clamp(28px, 4vw, 42px); font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 20px; }
-    .section-desc { font-size: 17px; color: var(--text-secondary); max-width: 640px; line-height: 1.8; margin-bottom: 48px; }
+  .lp .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .lp .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: all 0.3s; }
+  .lp .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .lp .feature-icon { width: 44px; height: 44px; background: var(--surface-2); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 20px; }
+  .lp .feature-icon svg { width: 22px; height: 22px; }
+  .lp .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+  .lp .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
 
-    .tools { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-    .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-    .tool-card { display: block; text-decoration: none; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: all 0.25s; }
-    .tool-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-    .tool-card-icon { width: 52px; height: 52px; background: var(--surface-2); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 18px; }
-    .tool-card-icon svg { width: 26px; height: 26px; }
-    .tool-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-    .tool-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; }
-    .tool-card-cta { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; font-size: 14px; }
-    .tool-card-cta svg { width: 16px; height: 16px; }
+  .lp .use-cases { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .lp .use-case-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+  .lp .use-case-item { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 28px; text-align: center; transition: border-color 0.25s; }
+  .lp .use-case-item:hover { border-color: var(--accent); }
+  .lp .use-case-item .u-icon { color: var(--accent); margin-bottom: 16px; display: flex; justify-content: center; }
+  .lp .use-case-item .u-icon svg { width: 34px; height: 34px; }
+  .lp .use-case-item h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .lp .use-case-item p { font-size: 13px; color: var(--text-secondary); }
 
-    .what-is { border-bottom: 1px solid var(--border); }
-    .what-is-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
-    .what-is-text h2 { margin-bottom: 20px; }
-    .what-is-text p { color: var(--text-secondary); font-size: 16px; margin-bottom: 16px; }
-    .layer-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
-    .layer-chip { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; }
-    .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .diagram-visual { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 40px; display: flex; align-items: center; justify-content: center; min-height: 320px; }
-    .diagram-visual svg { width: 100%; max-width: 380px; }
+  .lp .faq-list { max-width: 720px; }
+  .lp .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
+  .lp .faq-item h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+  .lp .faq-item p { font-size: 15px; color: var(--text-secondary); line-height: 1.8; }
 
-    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
-    .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: all 0.3s; }
-    .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-    .feature-icon { width: 44px; height: 44px; background: var(--surface-2); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 20px; }
-    .feature-icon svg { width: 22px; height: 22px; }
-    .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
-    .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+  .lp .cta-section { text-align: center; background: radial-gradient(ellipse 50% 60% at 50% 100%, rgba(47, 111, 237, 0.12), transparent), var(--bg); }
+  .lp .cta-section .section-title { max-width: 620px; margin: 0 auto 20px; }
+  .lp .cta-section .section-desc { margin: 0 auto 40px; text-align: center; }
 
-    .use-cases { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-    .use-case-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
-    .use-case-item { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 28px; text-align: center; transition: border-color 0.25s; }
-    .use-case-item:hover { border-color: var(--accent); }
-    .use-case-item .u-icon { color: var(--accent); margin-bottom: 16px; display: flex; justify-content: center; }
-    .use-case-item .u-icon svg { width: 34px; height: 34px; }
-    .use-case-item h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-    .use-case-item p { font-size: 13px; color: var(--text-secondary); }
+  .lp footer { padding: 48px 24px; border-top: 1px solid var(--border); text-align: center; }
+  .lp footer p { color: var(--text-muted); font-size: 13px; }
+  .lp footer a { color: var(--text-secondary); text-decoration: none; }
+  .lp footer a:hover { color: var(--text); }
+  .lp .footer-socials { display: flex; gap: 12px; justify-content: center; margin: 20px 0 0; }
+  .lp .footer-socials a { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-secondary); transition: all 0.2s; }
+  .lp .footer-socials a:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+  .lp .footer-socials svg { width: 16px; height: 16px; }
 
-    .faq-list { max-width: 720px; }
-    .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
-    .faq-item h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
-    .faq-item p { font-size: 15px; color: var(--text-secondary); line-height: 1.8; }
+  @media (max-width: 768px) {
+    .lp nav { padding: 12px 20px; }
+    .lp .nav-links { display: none; }
+    .lp .tools-grid { grid-template-columns: 1fr; }
+    .lp .what-is-grid { grid-template-columns: 1fr; gap: 32px; }
+    .lp .diagram-visual { order: -1; }
+    .lp section { padding: 64px 20px; }
+  }
+</style>
 
-    .cta-section { text-align: center; background: radial-gradient(ellipse 50% 60% at 50% 100%, rgba(47, 111, 237, 0.12), transparent), var(--bg); }
-    .cta-section .section-title { max-width: 620px; margin: 0 auto 20px; }
-    .cta-section .section-desc { margin: 0 auto 40px; text-align: center; }
-
-    footer { padding: 48px 24px; border-top: 1px solid var(--border); text-align: center; }
-    footer p { color: var(--text-muted); font-size: 13px; }
-    footer a { color: var(--text-secondary); text-decoration: none; }
-    footer a:hover { color: var(--text); }
-    .footer-socials { display: flex; gap: 12px; justify-content: center; margin: 20px 0 0; }
-    .footer-socials a { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-secondary); transition: all 0.2s; }
-    .footer-socials a:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
-    .footer-socials svg { width: 16px; height: 16px; }
-
-    @media (max-width: 768px) {
-      nav { padding: 12px 20px; }
-      .nav-links { display: none; }
-      .tools-grid { grid-template-columns: 1fr; }
-      .what-is-grid { grid-template-columns: 1fr; gap: 32px; }
-      .diagram-visual { order: -1; }
-      section { padding: 64px 20px; }
-    }
-  </style>
-</head>
-<body>
-
+<div class="lp">
   <nav>
     <a href="/" class="nav-brand" aria-label="StickOut Home">
       <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -351,27 +345,27 @@
       <div class="faq-list">
         <div class="faq-item">
           <h3>What is a stick diagram in VLSI design?</h3>
-          <p>A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring, polysilicon gates, and diffusion regions without specifying exact physical dimensions. Stick diagrams use color-coded lines to represent different fabrication layers and are a critical step between circuit schematics and full mask layouts in CMOS IC design.</p>
+          <p>A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring, polysilicon gates, and diffusion regions without exact physical dimensions. It uses color-coded lines for each fabrication layer and is a critical step between circuit schematics and full mask layouts in CMOS IC design.</p>
         </div>
         <div class="faq-item">
           <h3>How do I draw a stick diagram online?</h3>
-          <p>With StickOut, open the Stick Diagram editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Contact tool to place connections and the Label tool to annotate rails like V<sub>DD</sub> and V<sub>SS</sub>. Export your diagram as a high-resolution PNG when done.</p>
+          <p>With StickOut, open the Stick Diagram editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Contact tool to place connections and the Label tool to annotate rails like V<sub>DD</sub> and V<sub>SS</sub>. When done, export as a high-resolution PNG.</p>
         </div>
         <div class="faq-item">
           <h3>Is StickOut free to use?</h3>
-          <p>Yes, StickOut is 100% free. There are no ads, no sign-ups, and no usage limits. You can use it as much as you want for homework, research, teaching, or professional IC design work.</p>
+          <p>Yes, StickOut is 100% free. There are no ads, no sign-ups, and no usage limits. Use it as much as you want for homework, research, teaching, or professional IC design work.</p>
         </div>
         <div class="faq-item">
           <h3>What is the difference between a stick diagram and a layout diagram?</h3>
-          <p>A stick diagram is an abstracted, topological representation that shows relative placement and connectivity without precise dimensions. A layout (mask) diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication. Stick diagrams are typically drawn first to plan the layout.</p>
+          <p>A stick diagram is an abstracted, topological representation showing relative placement and connectivity without precise dimensions. A layout (mask) diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication. Stick diagrams are drawn first to plan the layout.</p>
         </div>
         <div class="faq-item">
           <h3>Can I save and share my work?</h3>
-          <p>Yes. StickOut automatically saves your work to your browser, and supports .stk project files for sharing. For images, use the Export PNG feature with customizable backgrounds and margins.</p>
+          <p>Yes. StickOut auto-saves to your browser, and you can save projects as .stk files to share with others. For images, use the Export PNG feature with customizable backgrounds and margins.</p>
         </div>
         <div class="faq-item">
           <h3>What VLSI layers does StickOut support?</h3>
-          <p>StickOut supports Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, N+ and P+ Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers with customizable colors.</p>
+          <p>Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, N+ and P+ Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers with customizable colors.</p>
         </div>
       </div>
     </div>
@@ -404,21 +398,20 @@
       <a href="https://appbuildersph.com/apps/stickout" target="_blank" rel="noopener" title="AppBuildersPH" aria-label="AppBuildersPH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></a>
     </div>
   </footer>
+</div>
+`;
 
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      { "@type": "Question", "name": "What is a stick diagram in VLSI design?", "acceptedAnswer": { "@type": "Answer", "text": "A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring, polysilicon gates, and diffusion regions without exact physical dimensions. It uses color-coded lines for each fabrication layer and is a critical step between circuit schematics and full mask layouts in CMOS IC design." } },
-      { "@type": "Question", "name": "How do I draw a stick diagram online?", "acceptedAnswer": { "@type": "Answer", "text": "With StickOut, open the Stick Diagram editor, select a layer, choose the Wire tool, and click on the canvas grid to draw. Use the Contact tool for connections and the Label tool for annotations. Export as high-resolution PNG when done." } },
-      { "@type": "Question", "name": "Is StickOut free to use?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, StickOut is 100% free. There are no ads, no sign-ups, and no usage limits." } },
-      { "@type": "Question", "name": "What is the difference between a stick diagram and a layout diagram?", "acceptedAnswer": { "@type": "Answer", "text": "A stick diagram is an abstracted, topological representation showing relative placement and connectivity without precise dimensions. A layout diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication." } },
-      { "@type": "Question", "name": "Can I save and share my stick diagrams?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. StickOut auto-saves to your browser and supports .stk project files for sharing. You can also export PNG images with customizable backgrounds and margins." } },
-      { "@type": "Question", "name": "What VLSI layers does StickOut support?", "acceptedAnswer": { "@type": "Answer", "text": "StickOut supports Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and higher metal layers with customizable colors." } }
-    ]
-  }
-  </script>
+export default function Landing() {
+  const [theme] = useState(() => {
+    try { return localStorage.getItem('stickout-theme') || 'dark'; }
+    catch { return 'dark'; }
+  });
 
-</body>
-</html>
+  // The landing page has its own dark palette; keep the document theme in sync
+  // so any shared chrome matches.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  return <div dangerouslySetInnerHTML={{ __html: LANDING_HTML }} />;
+}
