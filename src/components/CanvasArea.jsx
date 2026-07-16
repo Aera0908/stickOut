@@ -1,4 +1,4 @@
-import { Layers, HelpCircle } from 'lucide-react';
+import { Layers, HelpCircle, ZoomIn, ZoomOut } from 'lucide-react';
 
 export default function CanvasArea({
   canvasRef,
@@ -20,7 +20,11 @@ export default function CanvasArea({
   labelReadyRef,
   showShortcutsHUD,
   setShowShortcutsHUD,
-  zoom
+  zoom,
+  zoomInStep,
+  zoomOutStep,
+  zoomReset,
+  mode
 }) {
   return (
     <div className={canvasClass} ref={containerRef}>
@@ -34,6 +38,13 @@ export default function CanvasArea({
       />
 
       <button className="mobile-sidebar-toggle-btn" onClick={(e) => { e.stopPropagation(); setSidebarOpen(prev => !prev); }} title="Toggle Sidebar"><Layers size={18} /></button>
+
+      {/* Zoom / magnifier controls (works without a scroll wheel) */}
+      <div className="zoom-controls" onMouseDown={e => e.stopPropagation()}>
+        <button className="zoom-btn" onClick={(e) => { e.stopPropagation(); zoomInStep && zoomInStep(); }} title="Zoom In ( + )"><ZoomIn size={16} /></button>
+        <button className="zoom-btn zoom-level" onClick={(e) => { e.stopPropagation(); zoomReset && zoomReset(); }} title="Reset Zoom ( 0 )">{Math.round((zoom || 1) * 100)}%</button>
+        <button className="zoom-btn" onClick={(e) => { e.stopPropagation(); zoomOutStep && zoomOutStep(); }} title="Zoom Out ( - )"><ZoomOut size={16} /></button>
+      </div>
 
       {lineStart && (
         <button className="canvas-floating-btn" onClick={(e) => { e.stopPropagation(); setLineStart(null); setLinePreview(null); }} title="Finish Wire Drawing (Esc)">Done / Finish Wire</button>
@@ -75,13 +86,19 @@ export default function CanvasArea({
               <div className="hud-row"><kbd>V</kbd> <span>Select Tool</span></div>
               <div className="hud-row"><kbd>W</kbd> <span>Wire Tool</span></div>
               <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>
+              <div className="hud-row"><kbd>R</kbd> <span>Rectangle Tool</span></div>
               <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
-              <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>
+              {mode === 'floorplan'
+                ? <div className="hud-row"><kbd>M</kbd> <span>Measure Tool</span></div>
+                : <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>}
+              <div className="hud-row"><kbd>+</kbd> / <kbd>-</kbd> <span>Zoom In / Out</span></div>
+              <div className="hud-row"><kbd>0</kbd> <span>Reset Zoom</span></div>
               <div className="hud-row"><kbd>G</kbd> <span>Toggle Grid</span></div>
               <div className="hud-row"><kbd>S</kbd> <span>Toggle Snap</span></div>
               <div className="hud-row"><kbd>Space</kbd> + Drag <span>Pan Canvas</span></div>
               <div className="hud-row"><kbd>Del</kbd> / <kbd>Backspace</kbd> <span>Delete</span></div>
               <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Y</kbd> <span>Undo / Redo</span></div>
+              <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>G</kbd> <span>Group / Ungroup</span></div>
               <div className="hud-row"><kbd>Ctrl</kbd> + <kbd>]</kbd> / <kbd>[</kbd> <span>Layer Forward/Back</span></div>
             </div>
           </div>

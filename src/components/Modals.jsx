@@ -2,6 +2,7 @@ import { Cpu, Layers, Grid3X3, FileText, Bug, FolderOpen } from 'lucide-react';
 
 export default function Modals({
   // Template Modal
+  mode = 'stick',
   showModal,
   hasAutosave,
   resumeAutosave,
@@ -39,7 +40,7 @@ export default function Modals({
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <div className="modal-header"><Cpu size={20} /><h2>New Stick Diagram</h2></div>
+            <div className="modal-header"><Cpu size={20} /><h2>{mode === 'floorplan' ? 'New Floor Plan' : 'New Stick Diagram'}</h2></div>
             <div className="modal-body">
               {hasAutosave && (
                 <div className="template-option" onClick={resumeAutosave} style={{ borderColor: 'var(--accent)' }}>
@@ -53,7 +54,11 @@ export default function Modals({
               </div>
               <div className="template-option" onClick={startTemplate}>
                 <div className="tpl-icon"><FileText size={20} /></div>
-                <div className="tpl-info"><h3>Basic Stick Diagram Template</h3><p>Pre-loaded VDD/VSS rails, PMOS &amp; NMOS diffusion.</p></div>
+                <div className="tpl-info">
+                  {mode === 'floorplan'
+                    ? <><h3>Chip Boundary Starter</h3><p>Start with a chip boundary rectangle, ready for pins &amp; blocks.</p></>
+                    : <><h3>Basic Stick Diagram Template</h3><p>Pre-loaded VDD/VSS rails, PMOS &amp; NMOS diffusion.</p></>}
+                </div>
               </div>
               <div className="template-option" onClick={() => { handleLoadProject(); }}>
                 <div className="tpl-icon"><FolderOpen size={20} /></div>

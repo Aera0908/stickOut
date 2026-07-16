@@ -39,7 +39,24 @@ export const TOOLS = {
   select:  'select',
   line:    'line',
   contact: 'contact',
+  rect:    'rect',
   label:   'label',
   brush:   'brush',
   eraser:  'eraser',
+  measure: 'measure',
 };
+
+// Floor-planning wire (power/ground/custom) presets.
+// VDD = supply (red), VSS = ground (dark blue), custom = user-recolorable signal net.
+export const FP_WIRE_TYPES = {
+  vdd:    { label: 'VDD', color: '#E74C3C' },
+  vss:    { label: 'VSS', color: '#2C3E50' },
+  custom: { label: 'NET', color: '#16A085' },
+};
+
+// Wire (stick) thickness presets, in canvas pixels.
+export const WIRE_THICKNESS = { small: 2, medium: 3, large: 6 };
+
+// Rectangle tool defaults.
+export const RECT_DEFAULT_STROKE = '#4A90E2';
+export const RECT_DEFAULT_STROKE_WIDTH = 2;

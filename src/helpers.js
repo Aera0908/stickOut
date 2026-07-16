@@ -1,8 +1,45 @@
-import { GRID_PITCH, LINE_WIDTH } from './constants';
+import { GRID_PITCH, LINE_WIDTH, WIRE_THICKNESS } from './constants.js';
 
 let nextId = 1;
 export const uid = () => `el-${nextId++}`;
 export const setNextId = (id) => { nextId = id; };
+
+// Group id generator for grouping elements together.
+export const groupUid = () => `grp-${Math.random().toString(36).slice(2, 10)}`;
+
+// Given a set of selected ids, expand it to include every element that shares
+// a group with any selected element.
+export function expandGroupIds(ids, elements) {
+  const groups = new Set();
+  elements.forEach(el => { if (ids.has(el.id) && el.groupId) groups.add(el.groupId); });
+  if (groups.size === 0) return ids instanceof Set ? new Set(ids) : new Set(ids);
+  const result = new Set(ids);
+  elements.forEach(el => { if (el.groupId && groups.has(el.groupId)) result.add(el.id); });
+  return result;
+}
+
+// Re-map group ids on a batch of cloned elements so a duplicated/pasted group
+// becomes its own independent group.
+export function remapGroupIds(clones) {
+  const map = {};
+  clones.forEach(n => {
+    if (n.groupId) {
+      if (!map[n.groupId]) map[n.groupId] = groupUid();
+      n.groupId = map[n.groupId];
+    }
+  });
+  return clones;
+}
+
+// Resolve the drawn thickness (px) for a wire/line element.
+export function getLineWidth(el, cLayer) {
+  const isOnCustomLayer = cLayer && cLayer.isCustom;
+  let lw = LINE_WIDTH;
+  if (isOnCustomLayer && cLayer.lineWidth) lw = cLayer.lineWidth;
+  else if (el.layerId === 'thickoxide') lw = 6;
+  if (el.thickness && WIRE_THICKNESS[el.thickness]) lw = WIRE_THICKNESS[el.thickness];
+  return lw;
+}
 
 let nextLayerId = 1;
 export const layerUid = () => `layer_${nextLayerId++}`;
@@ -48,7 +85,7 @@ export function getContactSize(el) {
 }
 
 export function getElementBounds(el) {
-  if (el.type === 'line') {
+  if (el.type === 'line' || el.type === 'measure') {
     const minX = Math.min(el.x1, el.x2);
     const minY = Math.min(el.y1, el.y2);
     const maxX = Math.max(el.x1, el.x2);
@@ -68,7 +105,7 @@ export function getElementBounds(el) {
     const rx = align === 'center' ? el.x - w / 2 : el.x;
     return { x: rx, y: el.y - h / 2, w, h };
   }
-  if (el.type === 'image') {
+  if (el.type === 'image' || el.type === 'rect') {
     return { x: el.x, y: el.y, w: el.w, h: el.h };
   }
   if (el.type === 'brush') {
@@ -227,14 +264,8 @@ export function drawElement(ctx, el, isSelected, options = {}) {
     const cLayer = canvasLayers?.find(l => l.id === el.canvasLayerId);
     const isOnCustomLayer = cLayer && cLayer.isCustom;
 
-    // Determine line width
-    let lw = LINE_WIDTH;
-    if (isOnCustomLayer && cLayer.lineWidth) {
-      lw = cLayer.lineWidth;
-    } else if (el.layerId === 'thickoxide') {
-      lw = 6; // Double thickness for thick oxide
-    }
-    ctx.lineWidth = lw;
+    // Determine line width (per-wire thickness overrides layer defaults)
+    ctx.lineWidth = getLineWidth(el, cLayer);
     ctx.lineCap = 'round';
 
     // Apply dash pattern
@@ -330,6 +361,71 @@ export function drawElement(ctx, el, isSelected, options = {}) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(el.label, mx, my + 1);
+      ctx.restore();
+    }
+  } else if (el.type === 'measure') {
+    const isDarkM = document.documentElement.getAttribute('data-theme') !== 'light';
+    const mColor = el.color || (isExport ? (exportTextColor || '#111111') : (isDarkM ? '#F1C40F' : '#B7791F'));
+    const { x1, y1, x2, y2 } = el;
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    const ang = Math.atan2(dy, dx);
+
+    ctx.save();
+    ctx.strokeStyle = mColor;
+    ctx.fillStyle = mColor;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.lineCap = 'round';
+
+    // Main span
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // Arrowheads at both ends
+    const ah = 7;
+    [{ x: x1, y: y1, a: ang }, { x: x2, y: y2, a: ang + Math.PI }].forEach(p => {
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + ah * Math.cos(p.a - Math.PI / 7), p.y + ah * Math.sin(p.a - Math.PI / 7));
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + ah * Math.cos(p.a + Math.PI / 7), p.y + ah * Math.sin(p.a + Math.PI / 7));
+      ctx.stroke();
+    });
+
+    // Dimension readout (px + grid units), offset perpendicular to the span
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const units = len / GRID_PITCH;
+    const uStr = units % 1 === 0 ? units.toFixed(0) : units.toFixed(1);
+    const text = `${Math.round(len)} px · ${uStr}u`;
+    ctx.font = '11px "Roboto Mono", monospace';
+    const tw = ctx.measureText(text).width;
+    const pad = 4;
+    const nx = len ? -dy / len : 0;
+    const ny = len ? dx / len : -1;
+    const off = 12;
+    const tx = mx + nx * off, ty = my + ny * off;
+    ctx.fillStyle = isDarkM ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.88)';
+    ctx.beginPath();
+    ctx.roundRect(tx - tw / 2 - pad, ty - 8 - pad, tw + pad * 2, 16 + pad * 2, 4);
+    ctx.fill();
+    ctx.fillStyle = mColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, tx, ty);
+    ctx.restore();
+
+    if (isSelected && !isExport) {
+      ctx.save();
+      const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      const b = getElementBounds(el);
+      const p = 4;
+      ctx.strokeRect(b.x - p, b.y - p, b.w + p * 2, b.h + p * 2);
       ctx.restore();
     }
   } else if (el.type === 'contact') {
@@ -439,6 +535,62 @@ export function drawElement(ctx, el, isSelected, options = {}) {
       ctx.strokeRect(el.x - s / 2 - 4, el.y - s / 2 - 4, s + 8, s + 8);
       ctx.restore();
     }
+  } else if (el.type === 'rect') {
+    const stroke = el.strokeColor || '#4A90E2';
+    const sw = el.strokeWidth !== undefined ? el.strokeWidth : 2;
+    const fill = el.fillColor;
+
+    // Fill (skip when transparent / unset)
+    if (fill && fill !== 'transparent') {
+      ctx.save();
+      ctx.fillStyle = fill;
+      ctx.fillRect(el.x, el.y, el.w, el.h);
+      ctx.restore();
+    }
+    // Outline
+    if (sw > 0 && stroke && stroke !== 'transparent') {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = sw;
+      ctx.setLineDash([]);
+      ctx.strokeRect(el.x, el.y, el.w, el.h);
+      ctx.restore();
+    }
+    // Label — resizable (labelSize), movable (labelOffsetX/Y) and rotatable (rotation)
+    if (el.label) {
+      ctx.save();
+      const fontSize = el.labelSize || 12;
+      ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+      let labelColor = el.labelColor;
+      if (!labelColor) {
+        if (isExport && exportTextColor) labelColor = exportTextColor;
+        else labelColor = (stroke && stroke !== 'transparent') ? stroke : '#888888';
+      }
+      ctx.fillStyle = labelColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const lx = el.x + el.w / 2 + (el.labelOffsetX || 0);
+      const ly = el.y + el.h / 2 + (el.labelOffsetY || 0);
+      const rot = el.rotation || 0;
+      if (rot) {
+        ctx.translate(lx, ly);
+        ctx.rotate((rot * Math.PI) / 180);
+        ctx.fillText(el.label, 0, 0);
+      } else {
+        ctx.fillText(el.label, lx, ly);
+      }
+      ctx.restore();
+    }
+
+    if (isSelected && !isExport) {
+      ctx.save();
+      const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(el.x - 4, el.y - 4, el.w + 8, el.h + 8);
+      ctx.restore();
+    }
   } else if (el.type === 'label') {
     drawLabelOnContext(ctx, el, isSelected, {
       forceTextColor: exportTextColor,
@@ -522,20 +674,76 @@ export function drawElement(ctx, el, isSelected, options = {}) {
   }
 }
 
+// Compute a resized rectangle from a resize-state snapshot and current pointer.
+export function computeRectResize(rs, worldPos) {
+  const dx = worldPos.x - rs.startWorld.x;
+  const dy = worldPos.y - rs.startWorld.y;
+  let x = rs.startX, y = rs.startY, w = rs.startW, h = rs.startH;
+  const MIN = GRID_PITCH / 2;
+  const hd = rs.handle;
+  if (hd.includes('r')) w = Math.max(MIN, rs.startW + dx);
+  if (hd.includes('l')) { const pw = rs.startW - dx; if (pw >= MIN) { x = rs.startX + dx; w = pw; } }
+  if (hd.includes('b')) h = Math.max(MIN, rs.startH + dy);
+  if (hd.includes('t')) { const ph = rs.startH - dy; if (ph >= MIN) { y = rs.startY + dy; h = ph; } }
+  return { x, y, w, h };
+}
+
 export function createTemplateElements(defaultCanvasLayerId) {
-  const cx = 300;
-  const topY = 100;
-  const g = GRID_PITCH;
+  // A correct 2-input CMOS gate stick diagram:
+  //   VDD / VSS rails (metal1, blue), P-diffusion (yellow) and N-diffusion
+  //   (green) rows, two poly gate inputs A & B (purple), metal routing to an
+  //   output L, and contacts at the metal ↔ diffusion junctions.
+  const M = (x1, y1, x2, y2) => ({ id: uid(), type: 'line', x1, y1, x2, y2, layerId: 'metal1', color: '#4A90E2', label: '', canvasLayerId: 'canvas_vlsi_metal1' });
+  const P = (x1, y1, x2, y2) => ({ id: uid(), type: 'line', x1, y1, x2, y2, layerId: 'pdiff',  color: '#F1C40F', label: '', canvasLayerId: 'canvas_vlsi_pdiff' });
+  const N = (x1, y1, x2, y2) => ({ id: uid(), type: 'line', x1, y1, x2, y2, layerId: 'ndiff',  color: '#27AE60', label: '', canvasLayerId: 'canvas_vlsi_ndiff' });
+  const POLY = (x1, y1, x2, y2) => ({ id: uid(), type: 'line', x1, y1, x2, y2, layerId: 'poly', color: '#9B59B6', label: '', canvasLayerId: 'canvas_vlsi_poly' });
+  const C = (x, y) => ({ id: uid(), type: 'contact', x, y, size: 'small', shape: 'square', layerId: 'contact', color: '#111111', canvasLayerId: 'canvas_vlsi_contact' });
+  const L = (x, y, text, align = 'left') => ({ id: uid(), type: 'label', x, y, text, align, hasBg: false, canvasLayerId: 'canvas_vlsi_metal1' });
 
-  const vddLine = { id: uid(), type: 'line', x1: cx - 10 * g, y1: topY, x2: cx + 10 * g, y2: topY, layerId: 'metal1', color: '#4A90E2', label: '', canvasLayerId: 'canvas_vlsi_metal1' };
-  const vssLine = { id: uid(), type: 'line', x1: cx - 10 * g, y1: topY + 12 * g, x2: cx + 10 * g, y2: topY + 12 * g, layerId: 'metal1', color: '#4A90E2', label: '', canvasLayerId: 'canvas_vlsi_metal1' };
-  const pmosLine = { id: uid(), type: 'line', x1: cx - 10 * g, y1: topY + 3 * g, x2: cx + 10 * g, y2: topY + 3 * g, layerId: 'pdiff', color: '#F1C40F', label: '', canvasLayerId: 'canvas_vlsi_pdiff' };
-  const nmosLine = { id: uid(), type: 'line', x1: cx - 10 * g, y1: topY + 9 * g, x2: cx + 10 * g, y2: topY + 9 * g, layerId: 'ndiff', color: '#27AE60', label: '', canvasLayerId: 'canvas_vlsi_ndiff' };
+  // Rails & diffusion rows (horizontal)
+  const rails = [
+    M(40, 60, 440, 60),    // VDD rail
+    M(40, 300, 440, 300),  // VSS rail
+    P(40, 120, 400, 120),  // P-diffusion row
+    N(40, 240, 400, 240),  // N-diffusion row
+    M(240, 180, 430, 180), // output metal → L
+  ];
 
-  const vddLabel = { id: uid(), type: 'label', x: cx, y: topY - 14, text: 'V_{DD}', align: 'center', hasBg: false, canvasLayerId: 'canvas_vlsi_metal1' };
-  const vssLabel = { id: uid(), type: 'label', x: cx, y: topY + 12 * g + 24, text: 'V_{SS}', align: 'center', hasBg: false, canvasLayerId: 'canvas_vlsi_metal1' };
+  // Poly gate inputs (vertical, crossing both diffusion rows)
+  const polys = [
+    POLY(160, 100, 160, 260), // gate A
+    POLY(300, 100, 300, 260), // gate B
+  ];
 
-  return [vddLine, vssLine, pmosLine, nmosLine, vddLabel, vssLabel];
+  // Metal routing (vertical)
+  const metals = [
+    M(100, 60, 100, 120),   // VDD → P-diff (left)
+    M(360, 60, 360, 120),   // VDD → P-diff (right)
+    M(240, 120, 240, 180),  // P-diff drain → output
+    M(360, 180, 360, 240),  // output → N-diff (right)
+    M(100, 240, 100, 300),  // N-diff → VSS (left)
+    M(160, 160, 195, 160),  // A input tap
+    M(300, 160, 335, 160),  // B input tap
+  ];
+
+  // Contacts at metal ↔ diffusion / rail junctions and poly taps
+  const contacts = [
+    C(100, 60), C(360, 60),
+    C(100, 120), C(240, 120), C(360, 120),
+    C(100, 240), C(360, 240),
+    C(100, 300),
+    C(160, 160), C(300, 160),
+  ];
+
+  const labels = [
+    L(240, 46, 'V_{DD}', 'center'),
+    L(240, 316, 'V_{SS}', 'center'),
+    L(205, 160, 'A'),
+    L(345, 160, 'B'),
+    L(440, 180, 'L'),
+  ];
+
+  return [...rails, ...polys, ...metals, ...contacts, ...labels];
 }
 
 export function getContentBounds(elementsList) {
