@@ -674,6 +674,49 @@ export function drawElement(ctx, el, isSelected, options = {}) {
   }
 }
 
+// A floor-plan pin is a small rect inserted from the pin palette (fpKind) or,
+// for legacy saves that predate fpKind, any rect no bigger than 3×3 grid cells.
+export function isFloorplanPin(el) {
+  if (el.type !== 'rect') return false;
+  if (el.fpKind) return ['input', 'output', 'power', 'ground'].includes(el.fpKind);
+  return el.w <= GRID_PITCH * 3 && el.h <= GRID_PITCH * 3;
+}
+
+// Clamp a floor-plan pin onto the nearest perimeter point of a block when it
+// is dragged onto (or near) one, so pins sit on block edges/corners instead of
+// floating inside. Returns the clamped top-left position, or null if no block
+// captures the pin at (px, py).
+export function clampPinToBlockEdge(pin, px, py, blocks) {
+  const cx = px + pin.w / 2;
+  const cy = py + pin.h / 2;
+  let best = null;
+  blocks.forEach(b => {
+    const inside = cx > b.x && cx < b.x + b.w && cy > b.y && cy < b.y + b.h;
+    let qx, qy, dist;
+    if (!inside) {
+      // Nearest point of the solid rect is on the perimeter when outside.
+      qx = Math.min(Math.max(cx, b.x), b.x + b.w);
+      qy = Math.min(Math.max(cy, b.y), b.y + b.h);
+      dist = Math.hypot(cx - qx, cy - qy);
+    } else {
+      const dLeft = cx - b.x, dRight = b.x + b.w - cx;
+      const dTop = cy - b.y, dBottom = b.y + b.h - cy;
+      dist = Math.min(dLeft, dRight, dTop, dBottom);
+      if (dist === dLeft) { qx = b.x; qy = cy; }
+      else if (dist === dRight) { qx = b.x + b.w; qy = cy; }
+      else if (dist === dTop) { qx = cx; qy = b.y; }
+      else { qx = cx; qy = b.y + b.h; }
+    }
+    // Blocks capture a pin dropped anywhere inside them; every target also
+    // captures within one grid cell of its perimeter. The chip boundary only
+    // edge-captures, so pins can still be placed freely inside the die area.
+    const captured = dist <= GRID_PITCH || (inside && b.fpKind === 'block');
+    if (!captured) return;
+    if (!best || dist < best.d) best = { d: dist, x: qx - pin.w / 2, y: qy - pin.h / 2 };
+  });
+  return best ? { x: best.x, y: best.y } : null;
+}
+
 // Compute a resized rectangle from a resize-state snapshot and current pointer.
 export function computeRectResize(rs, worldPos) {
   const dx = worldPos.x - rs.startWorld.x;

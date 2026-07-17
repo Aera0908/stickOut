@@ -42,7 +42,9 @@ import {
   computeRectResize,
   groupUid,
   expandGroupIds,
-  remapGroupIds
+  remapGroupIds,
+  isFloorplanPin,
+  clampPinToBlockEdge
 } from './helpers';
 
 import MenuBar from './components/MenuBar';
@@ -656,7 +658,14 @@ export default function App({ mode = 'stick' }) {
           return { ...el, x1: el.x1 + dragOffset.x, y1: el.y1 + dragOffset.y, x2: el.x2 + dragOffset.x, y2: el.y2 + dragOffset.y };
         }
         if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush' || el.type === 'rect') {
-          return { ...el, x: el.x + dragOffset.x, y: el.y + dragOffset.y };
+          let nx = el.x + dragOffset.x, ny = el.y + dragOffset.y;
+          // Floor-plan pins lock onto a block's edge/corner while dragged over it.
+          if (isFloorplan && isFloorplanPin(el)) {
+            const blocks = elements.filter(b => b.type === 'rect' && !selectedIds.has(b.id) && !isFloorplanPin(b));
+            const snapped = clampPinToBlockEdge(el, nx, ny, blocks);
+            if (snapped) { nx = snapped.x; ny = snapped.y; }
+          }
+          return { ...el, x: nx, y: ny };
         }
         return el;
       });
@@ -1487,7 +1496,16 @@ export default function App({ mode = 'stick' }) {
       setElements(prev => prev.map(el => {
         if (!selectedIds.has(el.id)) return el;
         if (el.type === 'line' || el.type === 'measure') return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
-        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush' || el.type === 'rect') return { ...el, x: el.x + dx, y: el.y + dy };
+        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush' || el.type === 'rect') {
+          let nx = el.x + dx, ny = el.y + dy;
+          // Match the drag preview: pins land clamped to a block's edge/corner.
+          if (isFloorplan && isFloorplanPin(el)) {
+            const blocks = prev.filter(b => b.type === 'rect' && !selectedIds.has(b.id) && !isFloorplanPin(b));
+            const snapped = clampPinToBlockEdge(el, nx, ny, blocks);
+            if (snapped) { nx = snapped.x; ny = snapped.y; }
+          }
+          return { ...el, x: nx, y: ny };
+        }
         return el;
       }));
     }
@@ -1510,7 +1528,7 @@ export default function App({ mode = 'stick' }) {
       setSelectionBox(null);
     }
     setIsDragging(false); setDragStart(null); setDragOffset(null);
-  }, [isPanning, labelDrag, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndoSnapshot, activeTool, addElement, resizeState, groupScaleState, activeCanvasLayerId, rectDraw, rectStrokeColor, rectFillColor, rectStrokeWidth]);
+  }, [isPanning, labelDrag, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndoSnapshot, activeTool, addElement, resizeState, groupScaleState, activeCanvasLayerId, rectDraw, rectStrokeColor, rectFillColor, rectStrokeWidth, isFloorplan]);
 
   // Zoom toward a screen point (defaults to the canvas centre when sx/sy omitted).
   // Shared by the scroll wheel, the on-screen magnifier buttons and the keyboard shortcuts.
@@ -1935,7 +1953,7 @@ export default function App({ mode = 'stick' }) {
     const boundary = {
       id: uid(), type: 'rect', x: 100, y: 100, w: 26 * g, h: 18 * g,
       strokeColor: darkStroke, strokeWidth: 3, fillColor: null, label: '',
-      canvasLayerId: 'layer_1',
+      canvasLayerId: 'layer_1', fpKind: 'boundary',
     };
     setCanvasLayers([{ id: 'layer_1', name: 'Floor Plan', visible: true, opacity: 1.0, isCustom: true }]);
     setActiveCanvasLayerId('layer_1');
@@ -2451,6 +2469,7 @@ export default function App({ mode = 'stick' }) {
       id: uid(), type: 'rect', x: cx, y: cy, w: p.w, h: p.h,
       strokeColor: p.strokeColor, strokeWidth: p.strokeWidth, fillColor: p.fillColor,
       label: p.label, labelColor: p.labelColor, canvasLayerId: activeCanvasLayerId,
+      fpKind: kind,
     };
     addElement(el);
     setSelectedIds(new Set([el.id]));
