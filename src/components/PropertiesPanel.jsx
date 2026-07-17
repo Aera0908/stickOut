@@ -1,7 +1,14 @@
 import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette, Group, Ungroup } from 'lucide-react';
-import { TOOLS, HIGHER_METAL_COLORS } from '../constants';
+import { TOOLS, HIGHER_METAL_COLORS, FP_WIRE_TYPES } from '../constants';
 
 export default function PropertiesPanel({
+  isFloorplan = false,
+  fpWireType,
+  setFpWireType,
+  fpCustomWireColor,
+  setFpCustomWireColor,
+  fpCustomWireLabel,
+  setFpCustomWireLabel,
   selectedElements,
   activeTool,
   contactSize,
@@ -218,6 +225,54 @@ export default function PropertiesPanel({
           )}
         </div>
       );
+    } else if (isFloorplan && activeTool === TOOLS.line) {
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Wire Tool Settings</div>
+          <div className="prop-group">
+            <span className="prop-label">Wire Type</span>
+            <div className="prop-btn-row">
+              {Object.keys(FP_WIRE_TYPES).map(t => (
+                <button
+                  key={t}
+                  className={`prop-btn ${fpWireType === t ? 'active' : ''}`}
+                  style={{ background: fpWireType === t ? 'var(--accent)' : 'var(--surface)', color: fpWireType === t ? '#fff' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  onClick={() => setFpWireType(t)}
+                >
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: t === 'custom' ? fpCustomWireColor : FP_WIRE_TYPES[t].color, border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                  {t === 'custom' ? 'Custom' : FP_WIRE_TYPES[t].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {fpWireType === 'custom' && (
+            <>
+              <div className="prop-group">
+                <span className="prop-label">Custom Net Label</span>
+                <input className="prop-input" value={fpCustomWireLabel} onChange={e => setFpCustomWireLabel(e.target.value)} placeholder="e.g. CLK, NET1" />
+              </div>
+              <div className="prop-group">
+                <span className="prop-label">Custom Wire Color</span>
+                {renderInlineColorPicker(fpCustomWireColor, setFpCustomWireColor)}
+              </div>
+            </>
+          )}
+          <div className="prop-group">
+            <span className="prop-label">Wire Thickness</span>
+            {renderThicknessRow(wireThickness, setWireThickness)}
+          </div>
+        </div>
+      );
+    } else if (isFloorplan) {
+      // Floor planning has no VLSI process layers — show a mode-appropriate hint.
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Floor Planning</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+            Insert blocks and pins from the left toolbar, or draw VCC / VSS / custom wires with the Wire tool (W). Select an element to edit its properties.
+          </div>
+        </div>
+      );
     } else {
       const isCustomizable = activeLayerId && allLayers[activeLayerId]?.customizable;
       return (
@@ -330,7 +385,57 @@ export default function PropertiesPanel({
         </>
       )}
 
-      {selectedElements.some(el => el.type === 'line') && (
+      {isFloorplan && selectedElements.some(el => el.type === 'line') && (() => {
+        const lineEls = selectedElements.filter(el => el.type === 'line');
+        // Old saves used 'vdd' before the rename to VCC.
+        const normType = (el) => (el.wireType === 'vdd' ? 'vcc' : el.wireType) || 'vcc';
+        const applyWireType = (t) => {
+          pushUndoSnapshot();
+          setElements(prev => prev.map(el => {
+            if (!selectedIds.has(el.id) || el.type !== 'line') return el;
+            const color = t === 'custom' ? fpCustomWireColor : FP_WIRE_TYPES[t].color;
+            const label = t === 'custom' ? fpCustomWireLabel : FP_WIRE_TYPES[t].label;
+            return { ...el, wireType: t, color, elementColor: color, label };
+          }));
+        };
+        const allCustom = lineEls.every(el => normType(el) === 'custom');
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Wire Type</span>
+              <div className="prop-btn-row">
+                {Object.keys(FP_WIRE_TYPES).map(t => {
+                  const active = lineEls.every(el => normType(el) === t);
+                  return (
+                    <button
+                      key={t}
+                      className={`prop-btn ${active ? 'active' : ''}`}
+                      style={{ background: active ? 'var(--accent)' : 'var(--surface)', color: active ? '#fff' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      onClick={() => applyWireType(t)}
+                    >
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: FP_WIRE_TYPES[t].color, border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                      {t === 'custom' ? 'Custom' : FP_WIRE_TYPES[t].label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {allCustom && (
+              <div className="prop-group">
+                <span className="prop-label">Wire Color</span>
+                {renderInlineColorPicker(lineEls[0].elementColor || lineEls[0].color || FP_WIRE_TYPES.custom.color, (c) => {
+                  pushUndoSnapshot();
+                  setElements(prev => prev.map(el =>
+                    selectedIds.has(el.id) && el.type === 'line' ? { ...el, color: c, elementColor: c } : el
+                  ));
+                })}
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {!isFloorplan && selectedElements.some(el => el.type === 'line') && (
         <div className="prop-group">
           <span className="prop-label">Layer / Color</span>
           {Object.entries(allLayers).filter(([k]) => !['contact', 'via', 'buriedcontact'].includes(k)).map(([key, { label, hex }]) => (
@@ -449,6 +554,21 @@ export default function PropertiesPanel({
                 <span className="prop-label">Label</span>
                 <input className="prop-input" value={rectEl.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. Block, VDD" />
               </div>
+            )}
+            {selectedElements.length === 1 && rectEl.label && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Label Size: {rectEl.labelSize || 12}px</span>
+                  <input type="range" min="8" max="48" value={rectEl.labelSize || 12} onChange={e => updateProp('labelSize', parseInt(e.target.value))} style={{ width: '100%' }} />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Label Color</span>
+                  {renderInlineColorPicker(rectEl.labelColor || rectEl.strokeColor || '#888888', (c) => updateProp('labelColor', c))}
+                  {rectEl.labelColor && (
+                    <button className="prop-btn" onClick={() => updateProp('labelColor', undefined)} style={{ marginTop: '4px', fontSize: '10px' }}>Reset to Default</button>
+                  )}
+                </div>
+              </>
             )}
             <div className="prop-group">
               <span className="prop-label">Outline Color</span>
