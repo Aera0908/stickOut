@@ -84,9 +84,9 @@ export default function CanvasArea({
             <div className="hud-header">Keyboard Shortcuts</div>
             <div className="hud-grid">
               <div className="hud-row"><kbd>V</kbd> <span>Select Tool</span></div>
-              <div className="hud-row"><kbd>W</kbd> <span>Wire Tool</span></div>
-              <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>
-              <div className="hud-row"><kbd>R</kbd> <span>Rectangle Tool</span></div>
+              <div className="hud-row"><kbd>W</kbd> <span>{mode === 'floorplan' ? 'Wire (VCC/VSS)' : 'Wire Tool'}</span></div>
+              {mode !== 'floorplan' && <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>}
+              <div className="hud-row"><kbd>R</kbd> <span>{mode === 'floorplan' ? 'Block / Pin' : 'Rectangle Tool'}</span></div>
               <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
               {mode === 'floorplan'
                 ? <div className="hud-row"><kbd>M</kbd> <span>Measure Tool</span></div>

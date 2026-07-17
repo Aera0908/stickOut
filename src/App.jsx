@@ -70,8 +70,8 @@ export default function App({ mode = 'stick' }) {
   // Wire (stick) thickness: default for newly drawn wires
   const [wireThickness, setWireThickness] = useState('medium');
 
-  // Floor-planning wire type: VDD / VSS / custom (recolorable + relabelable)
-  const [fpWireType, setFpWireType] = useState('vdd');
+  // Floor-planning wire type: VCC / VSS / custom (recolorable + relabelable)
+  const [fpWireType, setFpWireType] = useState('vcc');
   const [fpCustomWireColor, setFpCustomWireColor] = useState(FP_WIRE_TYPES.custom.color);
   const [fpCustomWireLabel, setFpCustomWireLabel] = useState(FP_WIRE_TYPES.custom.label);
 
@@ -702,9 +702,10 @@ export default function App({ mode = 'stick' }) {
       });
     }
 
-    const crossovers = getCrossovers(renderElements);
+    // Crossover jumps are a stick-diagram convention; floor-plan wires cross flat.
+    const crossovers = isFloorplan ? [] : getCrossovers(renderElements);
     const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
-    const originalCrossovers = getCrossovers(elements);
+    const originalCrossovers = isFloorplan ? [] : getCrossovers(elements);
     const activeOriginalCrossovers = originalCrossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
 
     const drawOpts = {
@@ -1000,7 +1001,8 @@ export default function App({ mode = 'stick' }) {
       e.preventDefault();
       if (lineStart) { setLineStart(null); setLinePreview(null); return; }
       const world = getWorldPos(e);
-      const crossovers = getCrossovers(elements);
+      // Jump overrides only apply to stick-diagram crossovers.
+      const crossovers = isFloorplan ? [] : getCrossovers(elements);
       if (crossovers.length > 0) {
         let closest = null, minDist = Infinity;
         crossovers.forEach(c => { const dist = Math.hypot(world.x - c.x, world.y - c.y); if (dist < minDist) { minDist = dist; closest = c; } });
@@ -1025,27 +1027,6 @@ export default function App({ mode = 'stick' }) {
     const world = getWorldPos(e);
 
     if (activeTool === TOOLS.select) {
-      // Grab a selected rect's label to move it independently of the box.
-      if (selectedIds.size === 1) {
-        const selRect = elements.find(el => selectedIds.has(el.id) && el.type === 'rect' && el.label);
-        if (selRect) {
-          const fs = selRect.labelSize || 12;
-          const lw = Math.max(selRect.label.length * fs * 0.62, 12);
-          const lx = selRect.x + selRect.w / 2 + (selRect.labelOffsetX || 0);
-          const ly = selRect.y + selRect.h / 2 + (selRect.labelOffsetY || 0);
-          const padX = 6 / zoom, padY = 6 / zoom;
-          if (Math.abs(world.x - lx) <= lw / 2 + padX && Math.abs(world.y - ly) <= fs / 2 + padY) {
-            const raw = screenToWorld(sx, sy, pan, zoom);
-            pushUndoSnapshot();
-            setLabelDrag({
-              id: selRect.id, startRawX: raw.x, startRawY: raw.y,
-              startOffX: selRect.labelOffsetX || 0, startOffY: selRect.labelOffsetY || 0,
-            });
-            return;
-          }
-        }
-      }
-
       // Check endpoint handles for resize/group scale
       if (selectedIds.size > 0) {
         const handleThreshold = 10 / zoom;
@@ -1126,6 +1107,28 @@ export default function App({ mode = 'stick' }) {
             for (const c of pts) {
               if (Math.hypot(world.x - c.x, world.y - c.y) < handleThreshold) { setResizeState(makeRectResize(c.handle)); return; }
             }
+          }
+        }
+      }
+
+      // Grab a selected rect's label to move it independently of the box.
+      // Checked after the resize handles so handles keep priority on small pins.
+      if (selectedIds.size === 1) {
+        const selRect = elements.find(el => selectedIds.has(el.id) && el.type === 'rect' && el.label);
+        if (selRect) {
+          const fs = selRect.labelSize || 12;
+          const lw = Math.max(selRect.label.length * fs * 0.62, 12);
+          const lx = selRect.x + selRect.w / 2 + (selRect.labelOffsetX || 0);
+          const ly = selRect.y + selRect.h / 2 + (selRect.labelOffsetY || 0);
+          const padX = 6 / zoom, padY = 6 / zoom;
+          if (Math.abs(world.x - lx) <= lw / 2 + padX && Math.abs(world.y - ly) <= fs / 2 + padY) {
+            const raw = screenToWorld(sx, sy, pan, zoom);
+            pushUndoSnapshot();
+            setLabelDrag({
+              id: selRect.id, startRawX: raw.x, startRawY: raw.y,
+              startOffX: selRect.labelOffsetX || 0, startOffY: selRect.labelOffsetY || 0,
+            });
+            return;
           }
         }
       }
@@ -1392,6 +1395,8 @@ export default function App({ mode = 'stick' }) {
 
   const handleMouseUp = useCallback((e) => {
     if (isPanning) { setIsPanning(false); setPanStart(null); return; }
+    // Drop a label being repositioned — without this the label stays glued to the cursor.
+    if (labelDrag) { setLabelDrag(null); return; }
     if (isDropperSamplingRef.current) {
       isDropperSamplingRef.current = false;
       return;
@@ -1505,7 +1510,7 @@ export default function App({ mode = 'stick' }) {
       setSelectionBox(null);
     }
     setIsDragging(false); setDragStart(null); setDragOffset(null);
-  }, [isPanning, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndoSnapshot, activeTool, addElement, resizeState, groupScaleState, activeCanvasLayerId, rectDraw, rectStrokeColor, rectFillColor, rectStrokeWidth]);
+  }, [isPanning, labelDrag, isDragging, dragOffset, elements, selectedIds, selectionBox, pushUndoSnapshot, activeTool, addElement, resizeState, groupScaleState, activeCanvasLayerId, rectDraw, rectStrokeColor, rectFillColor, rectStrokeWidth]);
 
   // Zoom toward a screen point (defaults to the canvas centre when sx/sy omitted).
   // Shared by the scroll wheel, the on-screen magnifier buttons and the keyboard shortcuts.
@@ -1694,10 +1699,10 @@ export default function App({ mode = 'stick' }) {
       const key = e.key.toLowerCase();
       if (key === 'v') setActiveTool(TOOLS.select);
       else if (key === 'w') { setActiveTool(TOOLS.line); setLineStart(null); setLinePreview(null); }
-      else if (key === 'p') setActiveTool(TOOLS.contact);
+      else if (key === 'p') { if (!isFloorplan) setActiveTool(TOOLS.contact); } // stick-diagram only
       else if (key === 'r') setActiveTool(TOOLS.rect);
       else if (key === 'l' || key === 't') setActiveTool(TOOLS.label);
-      else if (key === 'b') setActiveTool(TOOLS.brush);
+      else if (key === 'b') { if (!isFloorplan) setActiveTool(TOOLS.brush); } // stick-diagram only
       else if (key === 'e') setActiveTool(TOOLS.eraser);
       else if (key === 'm') { setActiveTool(TOOLS.measure); setLineStart(null); setLinePreview(null); }
       else if (key === 'g') setShowGrid(prev => !prev);
@@ -1723,7 +1728,7 @@ export default function App({ mode = 'stick' }) {
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); window.removeEventListener('blur', handleBlur); };
-  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool, groupSelected, ungroupSelected, zoomInStep, zoomOutStep, zoomReset]);
+  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool, groupSelected, ungroupSelected, zoomInStep, zoomOutStep, zoomReset, isFloorplan]);
 
   // Touch handlers
   const handleTouchStart = useCallback((e) => {
@@ -2254,7 +2259,7 @@ export default function App({ mode = 'stick' }) {
     let textColor = '#FFFFFF', hasPill = true;
     if (exportTextColor === 'dark') { textColor = '#111111'; hasPill = false; }
     else if (exportTextColor === 'light') { textColor = '#FFFFFF'; hasPill = false; }
-    const crossovers = getCrossovers(elements);
+    const crossovers = isFloorplan ? [] : getCrossovers(elements);
     const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
     const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
     // Detect stacked via+contact pairs for export
@@ -2279,7 +2284,7 @@ export default function App({ mode = 'stick' }) {
       ctx.restore();
     });
     ctx.restore();
-  }, [elements, exportBgType, exportTextColor, exportMargin, jumpOverrides, triggerRedraw, allLayers, customLayerColors, canvasLayers]);
+  }, [elements, exportBgType, exportTextColor, exportMargin, jumpOverrides, triggerRedraw, allLayers, customLayerColors, canvasLayers, isFloorplan]);
 
   useEffect(() => { if (showExportModal) { const t = setTimeout(updateExportPreview, 50); return () => clearTimeout(t); } }, [showExportModal, updateExportPreview]);
 
@@ -2300,7 +2305,7 @@ export default function App({ mode = 'stick' }) {
     let textColor = '#FFFFFF', hasPill = true;
     if (exportTextColor === 'dark') { textColor = '#111111'; hasPill = false; }
     else if (exportTextColor === 'light') { textColor = '#FFFFFF'; hasPill = false; }
-    const crossovers = getCrossovers(elements);
+    const crossovers = isFloorplan ? [] : getCrossovers(elements);
     const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
     const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
     // Detect stacked via+contact pairs for full-res export
@@ -2328,7 +2333,7 @@ export default function App({ mode = 'stick' }) {
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
     setShowExportModal(false);
-  }, [elements, exportBgType, exportTextColor, exportMargin, jumpOverrides, allLayers, customLayerColors, canvasLayers, triggerRedraw]);
+  }, [elements, exportBgType, exportTextColor, exportMargin, jumpOverrides, allLayers, customLayerColors, canvasLayers, triggerRedraw, isFloorplan]);
 
   useEffect(() => { if (!openMenu) return; const handler = () => setOpenMenu(null); window.addEventListener('click', handler); return () => window.removeEventListener('click', handler); }, [openMenu]);
 
@@ -2456,13 +2461,14 @@ export default function App({ mode = 'stick' }) {
 
   useEffect(() => { if (isDragging) setPan(p => ({ ...p })); }, [isDragging, dragOffset]);
 
-  // Track last wire-compatible layer
+  // Track last wire-compatible layer (stick-diagram only)
   useEffect(() => {
+    if (isFloorplan) return;
     const wireCompatible = ['poly', 'ndiff', 'pdiff', 'metal1', 'metal2', 'nwell', 'demarcation', 'nimplant', 'pimplant', 'silicideblock', 'thickoxide'];
     if (wireCompatible.includes(activeLayerId) || activeLayerId.startsWith('metal')) {
       setLastWireLayerId(activeLayerId);
     }
-  }, [activeLayerId]);
+  }, [activeLayerId, isFloorplan]);
 
   // Clear selection when switching away from select tool (fixes properties panel sync)
   useEffect(() => {
@@ -2472,6 +2478,9 @@ export default function App({ mode = 'stick' }) {
   }, [activeTool]);
 
   useEffect(() => {
+    // VLSI layer auto-switching is a stick-diagram behavior; floor-plan wires
+    // use their own VCC/VSS/custom net types instead of process layers.
+    if (isFloorplan) return;
     if (activeTool === TOOLS.contact) {
       if (activeLayerId !== 'via' && activeLayerId !== 'buriedcontact' && activeLayerId !== 'contact') {
         setActiveLayerId('contact');
@@ -2489,13 +2498,13 @@ export default function App({ mode = 'stick' }) {
         showStatusMessage(`Layer auto-set to ${layerName}`);
       }
     }
-  }, [activeTool, activeLayerId, showStatusMessage, lastWireLayerId, allLayers]);
+  }, [activeTool, activeLayerId, showStatusMessage, lastWireLayerId, allLayers, isFloorplan]);
 
   const toolNames = {
     [TOOLS.select]: 'Select',
-    [TOOLS.line]: 'Wire / Line',
+    [TOOLS.line]: isFloorplan ? 'Wire (VCC/VSS/Custom)' : 'Wire / Line',
     [TOOLS.contact]: 'Contact',
-    [TOOLS.rect]: 'Rectangle',
+    [TOOLS.rect]: isFloorplan ? 'Block / Pin' : 'Rectangle',
     [TOOLS.label]: 'Label',
     [TOOLS.brush]: 'Brush',
     [TOOLS.eraser]: 'Eraser',
@@ -2604,6 +2613,13 @@ export default function App({ mode = 'stick' }) {
 
           {rightTab === 'properties' ? (
             <PropertiesPanel
+              isFloorplan={isFloorplan}
+              fpWireType={fpWireType}
+              setFpWireType={setFpWireType}
+              fpCustomWireColor={fpCustomWireColor}
+              setFpCustomWireColor={setFpCustomWireColor}
+              fpCustomWireLabel={fpCustomWireLabel}
+              setFpCustomWireLabel={setFpCustomWireLabel}
               selectedElements={selectedElements}
               activeTool={activeTool}
               contactSize={contactSize}

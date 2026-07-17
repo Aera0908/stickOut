@@ -47,9 +47,9 @@ export const TOOLS = {
 };
 
 // Floor-planning wire (power/ground/custom) presets.
-// VDD = supply (red), VSS = ground (dark blue), custom = user-recolorable signal net.
+// VCC = supply (red), VSS = ground (dark blue), custom = user-recolorable signal net.
 export const FP_WIRE_TYPES = {
-  vdd:    { label: 'VDD', color: '#E74C3C' },
+  vcc:    { label: 'VCC', color: '#E74C3C' },
   vss:    { label: 'VSS', color: '#2C3E50' },
   custom: { label: 'NET', color: '#16A085' },
 };
