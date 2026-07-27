@@ -57,7 +57,7 @@ export default function Modals({
     };
 
     try {
-      const res = await fetch("https://formsubmit.co/ajax/c0c70ee7fc10829bb28cbc968004e253", {
+      const res = await fetch("https://formsubmit.co/ajax/ynte0130@gmail.com", {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ export default function Modals({
     const body = encodeURIComponent(
       `From: ${feedbackName.trim() || 'Anonymous'}\nDate: ${new Date().toLocaleString()}\n\nReport / Feedback:\n${feedbackDesc.trim()}`
     );
-    window.open(`mailto:airajoshynte@gmail.com?subject=${subject}&body=${body}`, '_blank');
+    window.open(`mailto:ynte0130@gmail.com?subject=${subject}&body=${body}`, '_blank');
   };
 
   return (
