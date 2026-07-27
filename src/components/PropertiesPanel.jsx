@@ -645,7 +645,7 @@ export default function PropertiesPanel({
       )}
 
       <div className="prop-btn-row" style={{ marginTop: '12px' }}>
-        {selectedElements.some(el => el.type === 'line') && (
+        {selectedElements.some(el => el.type === 'line' || el.type === 'measure' || el.type === 'rect') && (
           <button className="prop-btn" onClick={rotateSelected}><RotateCw size={12} /> Rotate 90°</button>
         )}
       </div>

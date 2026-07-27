@@ -88,9 +88,8 @@ export default function CanvasArea({
               {mode !== 'floorplan' && <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>}
               <div className="hud-row"><kbd>R</kbd> <span>{mode === 'floorplan' ? 'Block / Pin' : 'Rectangle Tool'}</span></div>
               <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
-              {mode === 'floorplan'
-                ? <div className="hud-row"><kbd>M</kbd> <span>Measure Tool</span></div>
-                : <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>}
+              {mode !== 'floorplan' && <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>}
+              <div className="hud-row"><kbd>M</kbd> <span>Measure Tool</span></div>
               <div className="hud-row"><kbd>+</kbd> / <kbd>-</kbd> <span>Zoom In / Out</span></div>
               <div className="hud-row"><kbd>0</kbd> <span>Reset Zoom</span></div>
               <div className="hud-row"><kbd>G</kbd> <span>Toggle Grid</span></div>

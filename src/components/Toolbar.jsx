@@ -1,4 +1,4 @@
-import { MousePointer2, Minus, Square, Type, Paintbrush, Eraser, Image as ImageIcon, Plus, Pencil, X as XIcon, FunctionSquare } from 'lucide-react';
+import { MousePointer2, Minus, Square, Type, Paintbrush, Eraser, Image as ImageIcon, Plus, Pencil, X as XIcon, FunctionSquare, Ruler } from 'lucide-react';
 import { TOOLS } from '../constants';
 
 export default function Toolbar({
@@ -39,6 +39,7 @@ export default function Toolbar({
         <button className={`tool-btn ${activeTool === TOOLS.line ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.line)} title="Power/Ground Line (W)"><Minus size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.label ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.label)} title="Label (L / T)"><Type size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.eraser ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.eraser)} title="Eraser (E)"><Eraser size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.measure ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.measure)} title="Ruler / Measure (M)"><Ruler size={18} /></button>
         <button className="tool-btn" onClick={triggerImageImport} title="Import Image"><ImageIcon size={18} /></button>
 
         <div className="toolbar-divider" />
@@ -100,6 +101,7 @@ export default function Toolbar({
       <button className={`tool-btn ${activeTool === TOOLS.label ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.label); }} title="Label (L / T)"><Type size={18} /></button>
       <button className={`tool-btn ${activeTool === TOOLS.brush ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.brush); }} title="Brush (B)"><Paintbrush size={18} /></button>
       <button className={`tool-btn ${activeTool === TOOLS.eraser ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.eraser); }} title="Eraser (E)"><Eraser size={18} /></button>
+      <button className={`tool-btn ${activeTool === TOOLS.measure ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.measure); }} title="Ruler / Measure (M)"><Ruler size={18} /></button>
       <button className="tool-btn" onClick={triggerImageImport} title="Import Image"><ImageIcon size={18} /></button>
       <button className="tool-btn" onClick={openBooleanModal} title="Generate from Boolean Expression"><FunctionSquare size={18} /></button>
 

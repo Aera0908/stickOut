@@ -1,4 +1,5 @@
-import { Cpu, Layers, Grid3X3, FileText, Bug, FolderOpen } from 'lucide-react';
+import { useState } from 'react';
+import { Cpu, Layers, Grid3X3, FileText, Bug, FolderOpen, Mail } from 'lucide-react';
 
 export default function Modals({
   // Template Modal
@@ -34,6 +35,71 @@ export default function Modals({
   feedbackStatus,
   setFeedbackStatus
 }) {
+  const [feedbackErrorMsg, setFeedbackErrorMsg] = useState('');
+
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    if (!feedbackTitle.trim() || !feedbackDesc.trim()) return;
+    setFeedbackStatus('sending');
+    setFeedbackErrorMsg('');
+
+    const today = new Date().toLocaleDateString(undefined, {
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const payload = {
+      name: feedbackName.trim() || 'Anonymous',
+      _subject: `[StickOut Bug/Feedback] ${feedbackTitle.trim()}`,
+      _captcha: 'false',
+      _template: 'table',
+      date: today,
+      message: feedbackDesc.trim()
+    };
+
+    try {
+      const res = await fetch("https://formsubmit.co/ajax/c0c70ee7fc10829bb28cbc968004e253", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
+
+      if (res.ok && data && (data.success === 'true' || data.success === true)) {
+        setFeedbackStatus('success');
+        setFeedbackName('');
+        setFeedbackTitle('');
+        setFeedbackDesc('');
+        setFeedbackErrorMsg('');
+        setTimeout(() => {
+          setShowFeedbackModal(false);
+          setFeedbackStatus('idle');
+        }, 2500);
+      } else {
+        const serverMsg = data?.message || 'Server returned an unconfirmed response or needs form activation.';
+        setFeedbackErrorMsg(serverMsg);
+        setFeedbackStatus('error');
+      }
+    } catch (err) {
+      setFeedbackErrorMsg(err?.message || 'Network request failed or endpoint was blocked.');
+      setFeedbackStatus('error');
+    }
+  };
+
+  const handleMailtoFallback = () => {
+    const subject = encodeURIComponent(`[StickOut Bug/Feedback] ${feedbackTitle.trim() || 'Report'}`);
+    const body = encodeURIComponent(
+      `From: ${feedbackName.trim() || 'Anonymous'}\nDate: ${new Date().toLocaleString()}\n\nReport / Feedback:\n${feedbackDesc.trim()}`
+    );
+    window.open(`mailto:airajoshynte@gmail.com?subject=${subject}&body=${body}`, '_blank');
+  };
+
   return (
     <>
       {/* ─── Template Modal ─── */}
@@ -126,17 +192,16 @@ export default function Modals({
                 <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Your report has been sent successfully!</p>
               </div>
             ) : (
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (!feedbackTitle.trim() || !feedbackDesc.trim()) return;
-                setFeedbackStatus('sending');
-                const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                fetch("https://formsubmit.co/ajax/c0c70ee7fc10829bb28cbc968004e253", {
-                  method: "POST", headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                  body: JSON.stringify({ name: feedbackName.trim() || 'Anonymous', _subject: `[StickOut Bug/Feedback] ${feedbackTitle.trim()}`, date: today, message: feedbackDesc.trim() })
-                }).then(res => { if (res.ok) { setFeedbackStatus('success'); setFeedbackName(''); setFeedbackTitle(''); setFeedbackDesc(''); setTimeout(() => { setShowFeedbackModal(false); setFeedbackStatus('idle'); }, 2500); } else setFeedbackStatus('error'); }).catch(() => setFeedbackStatus('error'));
-              }} className="modal-body feedback-form">
-                {feedbackStatus === 'error' && <div style={{ background: 'rgba(255, 69, 58, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '8px 12px', borderRadius: '4px', fontSize: '11px', marginBottom: '12px', textAlign: 'center' }}>Failed to send report.</div>}
+              <form onSubmit={handleSubmitFeedback} className="modal-body feedback-form">
+                {feedbackStatus === 'error' && (
+                  <div style={{ background: 'rgba(255, 69, 58, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '10px 12px', borderRadius: '6px', fontSize: '12px', marginBottom: '12px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Unable to send report online.</div>
+                    {feedbackErrorMsg && <div style={{ fontSize: '11px', opacity: 0.9, marginBottom: '8px' }}>{feedbackErrorMsg}</div>}
+                    <button type="button" onClick={handleMailtoFallback} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--danger)', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      <Mail size={13} /> Send via Email App (mailto)
+                    </button>
+                  </div>
+                )}
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Name (Optional)</label>
                   <input type="text" value={feedbackName} onChange={e => setFeedbackName(e.target.value)} placeholder="e.g. John Doe" disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '13px' }} />
@@ -149,9 +214,14 @@ export default function Modals({
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Description <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <textarea value={feedbackDesc} onChange={e => setFeedbackDesc(e.target.value)} placeholder="Describe the issue..." rows="4" required disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '13px', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }} />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                  <button type="button" className="export-action-btn secondary" onClick={() => setShowFeedbackModal(false)} disabled={feedbackStatus === 'sending'}>Cancel</button>
-                  <button type="submit" className="export-action-btn primary" disabled={feedbackStatus === 'sending' || !feedbackTitle.trim() || !feedbackDesc.trim()}>{feedbackStatus === 'sending' ? 'Sending...' : 'Send Report'}</button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
+                  <button type="button" onClick={handleMailtoFallback} disabled={feedbackStatus === 'sending' || !feedbackTitle.trim() || !feedbackDesc.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline', opacity: (!feedbackTitle.trim() || !feedbackDesc.trim()) ? 0.5 : 1 }}>
+                    <Mail size={14} /> Open in Email App
+                  </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button type="button" className="export-action-btn secondary" onClick={() => setShowFeedbackModal(false)} disabled={feedbackStatus === 'sending'}>Cancel</button>
+                    <button type="submit" className="export-action-btn primary" disabled={feedbackStatus === 'sending' || !feedbackTitle.trim() || !feedbackDesc.trim()}>{feedbackStatus === 'sending' ? 'Sending...' : 'Send Report'}</button>
+                  </div>
                 </div>
               </form>
             )}
