@@ -272,13 +272,24 @@ function drawMosfetSymbol(ctx, el, options) {
 
   // Optional G / D / S terminal markers
   if (el.showPins) {
-    const t = getMosfetTerminals(el);
     ctx.font = '9px "Roboto Mono", monospace';
-    ctx.textAlign = 'center';
-    const pin = (label, pt, dy) => ctx.fillText(label, pt.x, pt.y + dy);
-    pin('G', t.gate, -8);
-    pin(el.device === 'pmos' ? 'S' : 'D', el.device === 'pmos' ? t.source : t.drain, -8);
-    pin(el.device === 'pmos' ? 'D' : 'S', el.device === 'pmos' ? t.drain : t.source, 10);
+    const drawPinMarker = (label, localX, localY) => {
+      const pos = P(localX, localY);
+      const dx = pos.x - el.x;
+      const dy = pos.y - el.y;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        ctx.textAlign = dx > 0 ? 'left' : 'right';
+        ctx.textBaseline = 'middle';
+      } else {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = dy > 0 ? 'top' : 'bottom';
+      }
+      ctx.fillText(label, pos.x, pos.y);
+    };
+
+    drawPinMarker('G', -2.35 * G, 0);
+    drawPinMarker(isP ? 'S' : 'D', 0, -2.35 * G);
+    drawPinMarker(isP ? 'D' : 'S', 0, 2.35 * G);
   }
   ctx.restore();
 }
