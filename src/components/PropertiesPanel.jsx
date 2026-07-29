@@ -500,16 +500,16 @@ export default function PropertiesPanel({
               <span className="prop-label">Flip</span>
               <div className="prop-btn-row">
                 <button
-                  className={`prop-btn ${dev.mirror ? 'active' : ''}`}
-                  style={{ background: dev.mirror ? 'var(--accent)' : 'var(--surface)', color: dev.mirror ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className="prop-btn"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   onClick={flipSelectedHorizontal}
                   title="Flip Horizontally"
                 >
                   <FlipHorizontal2 size={14} />
                 </button>
                 <button
-                  className={`prop-btn ${dev.flipY ? 'active' : ''}`}
-                  style={{ background: dev.flipY ? 'var(--accent)' : 'var(--surface)', color: dev.flipY ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className="prop-btn"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   onClick={flipSelectedVertical}
                   title="Flip Vertically"
                 >
@@ -551,16 +551,16 @@ export default function PropertiesPanel({
               <span className="prop-label">Flip</span>
               <div className="prop-btn-row">
                 <button
-                  className={`prop-btn ${sup.mirror ? 'active' : ''}`}
-                  style={{ background: sup.mirror ? 'var(--accent)' : 'var(--surface)', color: sup.mirror ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className="prop-btn"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   onClick={flipSelectedHorizontal}
                   title="Flip Horizontally"
                 >
                   <FlipHorizontal2 size={14} />
                 </button>
                 <button
-                  className={`prop-btn ${sup.flipY ? 'active' : ''}`}
-                  style={{ background: sup.flipY ? 'var(--accent)' : 'var(--surface)', color: sup.flipY ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className="prop-btn"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   onClick={flipSelectedVertical}
                   title="Flip Vertically"
                 >
