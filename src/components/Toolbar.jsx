@@ -67,7 +67,7 @@ export default function Toolbar({
         <button className={`tool-btn ${activeTool === TOOLS.line ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.line)} title="Wire (W)"><Minus size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.junction ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.junction)} title="Connection Dot (D)"><Circle size={12} fill="currentColor" /></button>
         <button className={`tool-btn ${activeTool === TOOLS.label ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.label)} title="Label (L / T)"><Type size={18} /></button>
-        <button className={`tool-btn ${activeTool === TOOLS.rect ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.rect)} title="Rectangle (R)"><Square size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.rect ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.rect)} title="Rectangle (Q)"><Square size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.eraser ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.eraser)} title="Eraser (E)"><Eraser size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.measure ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.measure)} title="Ruler / Measure (M)"><Ruler size={18} /></button>
         <button className="tool-btn" onClick={triggerImageImport} title="Import Image"><ImageIcon size={18} /></button>
@@ -120,7 +120,7 @@ export default function Toolbar({
     return (
       <div className="left-toolbar">
         <button className={`tool-btn ${activeTool === TOOLS.select ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.select)} title="Select (V)"><MousePointer2 size={18} /></button>
-        <button className={`tool-btn ${activeTool === TOOLS.rect ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.rect)} title="Rectangle (R)"><Square size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.rect ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.rect)} title="Rectangle (Q)"><Square size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.line ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.line)} title="Power/Ground Line (W)"><Minus size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.label ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.label)} title="Label (L / T)"><Type size={18} /></button>
         <button className={`tool-btn ${activeTool === TOOLS.eraser ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.eraser)} title="Eraser (E)"><Eraser size={18} /></button>
@@ -182,7 +182,7 @@ export default function Toolbar({
           </div>
         )}
       </div>
-      <button className={`tool-btn ${activeTool === TOOLS.rect ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.rect); }} title="Rectangle (R)"><Square size={18} /></button>
+      <button className={`tool-btn ${activeTool === TOOLS.rect ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.rect); }} title="Rectangle (Q)"><Square size={18} /></button>
       <button className={`tool-btn ${activeTool === TOOLS.label ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.label); }} title="Label (L / T)"><Type size={18} /></button>
       <button className={`tool-btn ${activeTool === TOOLS.brush ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.brush); }} title="Brush (B)"><Paintbrush size={18} /></button>
       <button className={`tool-btn ${activeTool === TOOLS.eraser ? 'active' : ''}`} onClick={() => { setActiveTool(TOOLS.eraser); }} title="Eraser (E)"><Eraser size={18} /></button>

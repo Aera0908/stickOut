@@ -1675,6 +1675,41 @@ export default function App({ mode = 'stick' }) {
     }
   }, [activeTool, getWorldPos, hitTest, pan, zoom]);
 
+  // Selected element properties & rotate
+  const selectedElements = elements.filter(el => selectedIds.has(el.id));
+  const rotateSelected = useCallback(() => {
+    const editableElements = elements.filter(el => selectedIds.has(el.id) && ROTATABLE_TYPES.includes(el.type));
+    if (editableElements.length === 0) return;
+    pushUndoSnapshot();
+    setElements(prev => prev.map(el => {
+      if (!selectedIds.has(el.id)) return el;
+      if (el.type === 'line' || el.type === 'measure') {
+        const cx = (el.x1 + el.x2) / 2;
+        const cy = (el.y1 + el.y2) / 2;
+        const dx1 = el.x1 - cx, dy1 = el.y1 - cy;
+        const dx2 = el.x2 - cx, dy2 = el.y2 - cy;
+        return { ...el, x1: cx - dy1, y1: cy + dx1, x2: cx - dy2, y2: cy + dx2 };
+      }
+      if (el.type === 'mosfet' || el.type === 'supply') {
+        return { ...el, rotation: ((el.rotation || 0) + 90) % 360 };
+      }
+      if (el.type === 'rect') {
+        const cx = el.x + el.w / 2;
+        const cy = el.y + el.h / 2;
+        const nw = el.h, nh = el.w;
+        const offX = el.labelOffsetX || 0;
+        const offY = el.labelOffsetY || 0;
+        return {
+          ...el,
+          x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh,
+          rotation: ((el.rotation || 0) + 90) % 360,
+          labelOffsetX: -offY, labelOffsetY: offX,
+        };
+      }
+      return el;
+    }));
+  }, [selectedIds, elements, pushUndoSnapshot]);
+
   // Keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1820,7 +1855,8 @@ export default function App({ mode = 'stick' }) {
       }
       else if (key === 'n') { if (isCmos) { setDeviceKind('nmos'); setActiveTool(TOOLS.device); } } // CMOS only
       else if (key === 'd') { if (isCmos) setActiveTool(TOOLS.junction); } // CMOS only
-      else if (key === 'r') setActiveTool(TOOLS.rect);
+      else if (key === 'r') { e.preventDefault(); rotateSelected(); }
+      else if (key === 'q' || key === 'k') setActiveTool(TOOLS.rect);
       else if (key === 'l' || key === 't') setActiveTool(TOOLS.label);
       else if (key === 'b') { if (!isFloorplan && !isCmos) setActiveTool(TOOLS.brush); } // stick-diagram only
       else if (key === 'e') setActiveTool(TOOLS.eraser);
@@ -1848,7 +1884,7 @@ export default function App({ mode = 'stick' }) {
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); window.removeEventListener('blur', handleBlur); };
-  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool, groupSelected, ungroupSelected, zoomInStep, zoomOutStep, zoomReset, isFloorplan, isCmos]);
+  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool, groupSelected, ungroupSelected, zoomInStep, zoomOutStep, zoomReset, isFloorplan, isCmos, rotateSelected]);
 
   // Touch handlers
   const handleTouchStart = useCallback((e) => {
@@ -1950,44 +1986,6 @@ export default function App({ mode = 'stick' }) {
     }
   }, [labelInput]);
 
-  // Selected element properties
-  const selectedElements = elements.filter(el => selectedIds.has(el.id));
-  const rotateSelected = useCallback(() => {
-    const editableElements = elements.filter(el => selectedIds.has(el.id) && ROTATABLE_TYPES.includes(el.type));
-    if (editableElements.length === 0) return;
-    pushUndoSnapshot();
-    setElements(prev => prev.map(el => {
-      if (!selectedIds.has(el.id)) return el;
-      if (el.type === 'line' || el.type === 'measure') {
-        const cx = (el.x1 + el.x2) / 2;
-        const cy = (el.y1 + el.y2) / 2;
-        const dx1 = el.x1 - cx, dy1 = el.y1 - cy;
-        const dx2 = el.x2 - cx, dy2 = el.y2 - cy;
-        return { ...el, x1: cx - dy1, y1: cy + dx1, x2: cx - dy2, y2: cy + dx2 };
-      }
-      if (el.type === 'mosfet' || el.type === 'supply') {
-        // Schematic symbols pivot about their anchor; the drawing code applies
-        // the rotation, so terminals stay on grid.
-        return { ...el, rotation: ((el.rotation || 0) + 90) % 360 };
-      }
-      if (el.type === 'rect') {
-        // Rotate a pin/block 90° about its centre: swap the footprint (w↔h),
-        // advance the label orientation, and rotate the label offset to match.
-        const cx = el.x + el.w / 2;
-        const cy = el.y + el.h / 2;
-        const nw = el.h, nh = el.w;
-        const offX = el.labelOffsetX || 0;
-        const offY = el.labelOffsetY || 0;
-        return {
-          ...el,
-          x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh,
-          rotation: ((el.rotation || 0) + 90) % 360,
-          labelOffsetX: -offY, labelOffsetY: offX,
-        };
-      }
-      return el;
-    }));
-  }, [selectedIds, elements, pushUndoSnapshot]);
 
   const updateLineLength = useCallback((lengthGridUnits) => {
     if (selectedElements.length !== 1 || selectedElements[0].type !== 'line') return;

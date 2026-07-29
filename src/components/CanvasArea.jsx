@@ -89,7 +89,8 @@ export default function CanvasArea({
               {mode === 'cmos' && <div className="hud-row"><kbd>D</kbd> <span>Connection Dot</span></div>}
               {mode === 'cmos' && <div className="hud-row"><kbd>Right-click</kbd> <span>Toggle Dot on Crossing</span></div>}
               {mode === 'stick' && <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>}
-              <div className="hud-row"><kbd>R</kbd> <span>{mode === 'floorplan' ? 'Block / Pin' : 'Rectangle Tool'}</span></div>
+              <div className="hud-row"><kbd>Q</kbd> <span>{mode === 'floorplan' ? 'Block / Pin' : 'Rectangle Tool'}</span></div>
+              <div className="hud-row"><kbd>R</kbd> <span>Rotate Selected (90°)</span></div>
               <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
               {mode === 'stick' && <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>}
               <div className="hud-row"><kbd>M</kbd> <span>Measure Tool</span></div>

@@ -1,0 +1,45 @@
+# StickOut
+
+> Free Online VLSI Stick Diagram, CMOS Diagram, and VLSI Floor Planning Editor.
+
+StickOut is a specialized web-based Electronic Design Automation (EDA) tool designed for electrical & computer engineering students, IC layout designers, and academic researchers. It allows users to quickly draw, analyze, and export publication-ready VLSI stick diagrams, CMOS logic gate circuit schematics, and IC floor plans directly in the browser with zero installation.
+
+## Core Features & Capabilities
+
+- **VLSI Stick Diagram Editor**: Draw interactive stick diagrams with standard IC manufacturing layers including Polysilicon, Metal 1, Metal 2, N-Diffusion, P-Diffusion, N-Well, P-Well, contacts, and vias.
+- **CMOS Circuit Diagram Editor**: Place PMOS & NMOS transistor symbols, connection dots, supply rails (VCC/GND), and automatically generate full CMOS gate layouts from Boolean expressions (e.g. `~(A & B)` for NAND, `~(A | B)` for NOR, XOR, AOI, OAI gates).
+- **VLSI Floor Planning Tool**: Define top-level chip boundaries, layout functional macro blocks, place input/output/power pin terminals, route power ring wires, and inspect chip area metrics.
+- **Automated Jump Detection**: Automatically renders wire crossover jumps when same-layer conductors cross without a contact junction.
+- **High-Resolution Export**: Export vector-quality high-resolution PNG images with customizable transparent, light, or dark backgrounds suitable for IEEE/academic papers and presentations.
+- **Project Files**: Save and reload projects locally as `.stk` files or autosave in browser local storage.
+
+## Routes & Interactive Pages
+
+- [/](https://stickout.vercel.app/): Main landing page with feature breakdowns, live interactive canvas preview, layer documentation, and tool launching.
+- [/stick-diagram](https://stickout.vercel.app/stick-diagram): Standalone VLSI Stick Diagram layout editor interface.
+- [/cmos-diagram](https://stickout.vercel.app/cmos-diagram): CMOS schematic and transistor layout editor interface.
+- [/floor-planning](https://stickout.vercel.app/floor-planning): VLSI top-level chip floor planning and block placement interface.
+
+## Keyboard Shortcuts
+
+- `V`: Select / Move tool
+- `W`: Wire / Line tool
+- `Q`: Rectangle / Block tool
+- `R`: Rotate selected element (90°)
+- `P`: PMOS Transistor (CMOS mode) / Contact tool (Stick mode)
+- `N`: NMOS Transistor (CMOS mode)
+- `D`: Connection Dot (CMOS mode)
+- `L` / `T`: Text Label tool
+- `E`: Eraser tool
+- `M`: Measure / Ruler tool
+- `G`: Toggle Grid
+- `S`: Toggle Grid Snapping
+- `Space + Drag`: Pan canvas
+- `Ctrl + Z / Ctrl + Y`: Undo / Redo
+- `Ctrl + G`: Group / Ungroup selected elements
+
+## Author & Project Info
+
+- **Created by**: Aira Josh Ynte
+- **Repository**: https://github.com/Aera0908/stickOut
+- **Website**: https://stickout.vercel.app
