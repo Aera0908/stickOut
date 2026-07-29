@@ -74,21 +74,7 @@ export default function PropertiesPanel({
     </div>
   );
 
-  const renderIconChoiceRow = (options, current, onPick) => (
-    <div className="prop-btn-row">
-      {options.map(o => (
-        <button
-          key={String(o.value)}
-          className={`prop-btn ${current === o.value ? 'active' : ''}`}
-          style={{ background: current === o.value ? 'var(--accent)' : 'var(--surface)', color: current === o.value ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => onPick(o.value)}
-          title={o.title || o.label}
-        >
-          {o.icon ? <o.icon size={14} /> : o.label}
-        </button>
-      ))}
-    </div>
-  );
+
   const ROTATION_OPTS = [0, 90, 180, 270].map(r => ({ value: r, label: `${r}°` }));
   const JUNCTION_OPTS = Object.keys(JUNCTION_SIZES).map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }));
   const renderThicknessRow = (current, onPick) => (
@@ -511,18 +497,25 @@ export default function PropertiesPanel({
               {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (dev.rotation || 0)) ? (dev.rotation || 0) : null, (r) => updateProp('rotation', r))}
             </div>
             <div className="prop-group">
-              <span className="prop-label">Flip Horizontal</span>
-              {renderIconChoiceRow([
-                { value: false, icon: FlipHorizontal2, title: 'Normal (Unflipped)' },
-                { value: true, icon: FlipHorizontal2, title: 'Flip Horizontally (Mirrored)' }
-              ], !!dev.mirror, (m) => updateProp('mirror', m))}
-            </div>
-            <div className="prop-group">
-              <span className="prop-label">Flip Vertical</span>
-              {renderIconChoiceRow([
-                { value: false, icon: FlipVertical2, title: 'Normal (Unflipped)' },
-                { value: true, icon: FlipVertical2, title: 'Flip Vertically (Flipped)' }
-              ], !!dev.flipY, (f) => updateProp('flipY', f))}
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button
+                  className={`prop-btn ${dev.mirror ? 'active' : ''}`}
+                  style={{ background: dev.mirror ? 'var(--accent)' : 'var(--surface)', color: dev.mirror ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={flipSelectedHorizontal}
+                  title="Flip Horizontally"
+                >
+                  <FlipHorizontal2 size={14} />
+                </button>
+                <button
+                  className={`prop-btn ${dev.flipY ? 'active' : ''}`}
+                  style={{ background: dev.flipY ? 'var(--accent)' : 'var(--surface)', color: dev.flipY ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={flipSelectedVertical}
+                  title="Flip Vertically"
+                >
+                  <FlipVertical2 size={14} />
+                </button>
+              </div>
             </div>
             <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
               <input type="checkbox" id="mosfet-show-pins" checked={!!dev.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
@@ -555,18 +548,25 @@ export default function PropertiesPanel({
               {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (sup.rotation || 0)) ? (sup.rotation || 0) : null, (r) => updateProp('rotation', r))}
             </div>
             <div className="prop-group">
-              <span className="prop-label">Flip Horizontal</span>
-              {renderIconChoiceRow([
-                { value: false, icon: FlipHorizontal2, title: 'Normal (Unflipped)' },
-                { value: true, icon: FlipHorizontal2, title: 'Flip Horizontally (Mirrored)' }
-              ], !!sup.mirror, (m) => updateProp('mirror', m))}
-            </div>
-            <div className="prop-group">
-              <span className="prop-label">Flip Vertical</span>
-              {renderIconChoiceRow([
-                { value: false, icon: FlipVertical2, title: 'Normal (Unflipped)' },
-                { value: true, icon: FlipVertical2, title: 'Flip Vertically (Flipped)' }
-              ], !!sup.flipY, (f) => updateProp('flipY', f))}
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button
+                  className={`prop-btn ${sup.mirror ? 'active' : ''}`}
+                  style={{ background: sup.mirror ? 'var(--accent)' : 'var(--surface)', color: sup.mirror ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={flipSelectedHorizontal}
+                  title="Flip Horizontally"
+                >
+                  <FlipHorizontal2 size={14} />
+                </button>
+                <button
+                  className={`prop-btn ${sup.flipY ? 'active' : ''}`}
+                  style={{ background: sup.flipY ? 'var(--accent)' : 'var(--surface)', color: sup.flipY ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={flipSelectedVertical}
+                  title="Flip Vertically"
+                >
+                  <FlipVertical2 size={14} />
+                </button>
+              </div>
             </div>
           </>
         );
