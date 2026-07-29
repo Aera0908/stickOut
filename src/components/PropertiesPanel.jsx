@@ -1,4 +1,4 @@
-import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette, Group, Ungroup, FlipHorizontal, FlipVertical } from 'lucide-react';
+import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette, Group, Ungroup, FlipHorizontal2, FlipVertical2 } from 'lucide-react';
 import { TOOLS, HIGHER_METAL_COLORS, FP_WIRE_TYPES, CMOS_DEVICES, JUNCTION_SIZES } from '../constants';
 
 export default function PropertiesPanel({
@@ -69,6 +69,22 @@ export default function PropertiesPanel({
           onClick={() => onPick(o.value)}
         >
           {o.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderIconChoiceRow = (options, current, onPick) => (
+    <div className="prop-btn-row">
+      {options.map(o => (
+        <button
+          key={String(o.value)}
+          className={`prop-btn ${current === o.value ? 'active' : ''}`}
+          style={{ background: current === o.value ? 'var(--accent)' : 'var(--surface)', color: current === o.value ? '#fff' : 'var(--text-primary)', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => onPick(o.value)}
+          title={o.title || o.label}
+        >
+          {o.icon ? <o.icon size={14} /> : o.label}
         </button>
       ))}
     </div>
@@ -496,11 +512,17 @@ export default function PropertiesPanel({
             </div>
             <div className="prop-group">
               <span className="prop-label">Flip Horizontal</span>
-              {renderChoiceRow([{ value: false, label: 'Normal' }, { value: true, label: 'Mirrored' }], !!dev.mirror, (m) => updateProp('mirror', m))}
+              {renderIconChoiceRow([
+                { value: false, icon: FlipHorizontal2, title: 'Normal (Unflipped)' },
+                { value: true, icon: FlipHorizontal2, title: 'Flip Horizontally (Mirrored)' }
+              ], !!dev.mirror, (m) => updateProp('mirror', m))}
             </div>
             <div className="prop-group">
               <span className="prop-label">Flip Vertical</span>
-              {renderChoiceRow([{ value: false, label: 'Normal' }, { value: true, label: 'Flipped' }], !!dev.flipY, (f) => updateProp('flipY', f))}
+              {renderIconChoiceRow([
+                { value: false, icon: FlipVertical2, title: 'Normal (Unflipped)' },
+                { value: true, icon: FlipVertical2, title: 'Flip Vertically (Flipped)' }
+              ], !!dev.flipY, (f) => updateProp('flipY', f))}
             </div>
             <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
               <input type="checkbox" id="mosfet-show-pins" checked={!!dev.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
@@ -534,11 +556,17 @@ export default function PropertiesPanel({
             </div>
             <div className="prop-group">
               <span className="prop-label">Flip Horizontal</span>
-              {renderChoiceRow([{ value: false, label: 'Normal' }, { value: true, label: 'Flipped' }], !!sup.mirror, (m) => updateProp('mirror', m))}
+              {renderIconChoiceRow([
+                { value: false, icon: FlipHorizontal2, title: 'Normal (Unflipped)' },
+                { value: true, icon: FlipHorizontal2, title: 'Flip Horizontally (Mirrored)' }
+              ], !!sup.mirror, (m) => updateProp('mirror', m))}
             </div>
             <div className="prop-group">
               <span className="prop-label">Flip Vertical</span>
-              {renderChoiceRow([{ value: false, label: 'Normal' }, { value: true, label: 'Flipped' }], !!sup.flipY, (f) => updateProp('flipY', f))}
+              {renderIconChoiceRow([
+                { value: false, icon: FlipVertical2, title: 'Normal (Unflipped)' },
+                { value: true, icon: FlipVertical2, title: 'Flip Vertically (Flipped)' }
+              ], !!sup.flipY, (f) => updateProp('flipY', f))}
             </div>
           </>
         );
@@ -820,17 +848,6 @@ export default function PropertiesPanel({
         </div>
       )}
 
-      <div className="prop-btn-row" style={{ marginTop: '12px', gap: '6px', flexWrap: 'wrap' }}>
-        {selectedElements.some(el => ['line', 'measure', 'rect', 'mosfet', 'supply'].includes(el.type)) && (
-          <button className="prop-btn" onClick={rotateSelected} title="Rotate 90°"><RotateCw size={12} /> Rotate 90°</button>
-        )}
-        {selectedElements.some(el => ['mosfet', 'supply', 'rect', 'line'].includes(el.type)) && (
-          <>
-            <button className="prop-btn" onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal size={12} /> Flip H</button>
-            <button className="prop-btn" onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical size={12} /> Flip V</button>
-          </>
-        )}
-      </div>
 
       {(selectedElements.length >= 2 || selectedElements.some(el => el.groupId)) && (
         <div className="prop-btn-row" style={{ marginTop: '8px' }}>
