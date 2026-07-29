@@ -218,16 +218,56 @@ function drawMosfetSymbol(ctx, el, options) {
     ctx.stroke();
   }
 
-  // Captions sit to the right of the anchor and stay upright at any rotation.
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  if (el.label) {
+  // Captions sit on the open side opposite the gate and adjust position/alignment dynamically based on rotation & mirror.
+  if (el.label || el.wl) {
+    const rot = normalizeRotation(el.rotation);
+    const pos = P(0.6 * G, 0);
+
     ctx.font = '11px "Roboto Mono", monospace';
-    ctx.fillText(el.label, el.x + 0.4 * G, el.y - (el.wl ? 0.35 * G : 0));
-  }
-  if (el.wl) {
-    ctx.font = '10px "Roboto Mono", monospace';
-    ctx.fillText(el.wl, el.x + 0.4 * G, el.y + (el.label ? 0.35 * G : 0));
+    if (rot === 0 || rot === 180) {
+      ctx.textAlign = pos.x >= el.x ? 'left' : 'right';
+      ctx.textBaseline = 'middle';
+      if (el.label && el.wl) {
+        ctx.fillText(el.label, pos.x, pos.y - 0.35 * G);
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.fillText(el.wl, pos.x, pos.y + 0.35 * G);
+      } else if (el.label) {
+        ctx.fillText(el.label, pos.x, pos.y);
+      } else if (el.wl) {
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.fillText(el.wl, pos.x, pos.y);
+      }
+    } else {
+      // rot === 90 or rot === 270
+      ctx.textAlign = 'center';
+      if (pos.y >= el.y) {
+        // Text is below the transistor
+        ctx.textBaseline = 'top';
+        if (el.label && el.wl) {
+          ctx.fillText(el.label, pos.x, pos.y + 4);
+          ctx.font = '10px "Roboto Mono", monospace';
+          ctx.fillText(el.wl, pos.x, pos.y + 17);
+        } else if (el.label) {
+          ctx.fillText(el.label, pos.x, pos.y + 4);
+        } else if (el.wl) {
+          ctx.font = '10px "Roboto Mono", monospace';
+          ctx.fillText(el.wl, pos.x, pos.y + 4);
+        }
+      } else {
+        // Text is above the transistor
+        ctx.textBaseline = 'bottom';
+        if (el.label && el.wl) {
+          ctx.fillText(el.label, pos.x, pos.y - 17);
+          ctx.font = '10px "Roboto Mono", monospace';
+          ctx.fillText(el.wl, pos.x, pos.y - 4);
+        } else if (el.label) {
+          ctx.fillText(el.label, pos.x, pos.y - 4);
+        } else if (el.wl) {
+          ctx.font = '10px "Roboto Mono", monospace';
+          ctx.fillText(el.wl, pos.x, pos.y - 4);
+        }
+      }
+    }
   }
 
   // Optional G / D / S terminal markers
