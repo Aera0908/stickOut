@@ -1,4 +1,4 @@
-import { GRID_PITCH, LINE_WIDTH, WIRE_THICKNESS } from './constants.js';
+import { GRID_PITCH, LINE_WIDTH, WIRE_THICKNESS, JUNCTION_SIZES, SYMBOL_STROKE_WIDTH } from './constants.js';
 
 let nextId = 1;
 export const uid = () => `el-${nextId++}`;
@@ -45,6 +45,11 @@ let nextLayerId = 1;
 export const layerUid = () => `layer_${nextLayerId++}`;
 export const setNextLayerId = (id) => { nextLayerId = id; };
 
+// Element types anchored by a single (x, y) point — everything except lines and
+// measures, which carry two endpoints. Used wherever elements are translated.
+export const POINT_TYPES = ['contact', 'via', 'label', 'image', 'brush', 'rect', 'mosfet', 'supply', 'junction'];
+export const isPointType = (type) => POINT_TYPES.includes(type);
+
 export function snapToGrid(val, pitch) {
   return Math.round(val / pitch) * pitch;
 }
@@ -84,7 +89,214 @@ export function getContactSize(el) {
   return 0.5 * GRID_PITCH;
 }
 
+// ─── CMOS schematic symbols ──────────────────────────────────────────
+// Symbols are authored in a local frame around the element's (x, y) anchor,
+// then mirrored → rotated → translated into world space. Every terminal sits a
+// whole number of grid cells from the anchor, so wires drawn with snapping land
+// exactly on gate / drain / source.
+
+// Ink for schematic strokes: honours a per-element color override, follows the
+// export text colour when exporting, otherwise tracks the UI theme.
+export function schematicInk(el, options = {}) {
+  if (el.elementColor) return el.elementColor;
+  if (el.color) return el.color;
+  if (options.isExport) return options.exportInk || '#111111';
+  return document.documentElement.getAttribute('data-theme') !== 'light' ? '#E6E2D8' : '#111111';
+}
+
+export function normalizeRotation(rotation) {
+  return (((rotation || 0) % 360) + 360) % 360;
+}
+
+// Map a point from a symbol's local frame into world coordinates.
+export function transformSymbolPoint(el, lx, ly) {
+  let x = el.mirror ? -lx : lx;
+  let y = ly;
+  switch (normalizeRotation(el.rotation)) {
+    case 90:  { const t = x; x = -y; y = t; break; }
+    case 180: { x = -x; y = -y; break; }
+    case 270: { const t = x; x = y; y = -t; break; }
+    default: break;
+  }
+  return { x: el.x + x, y: el.y + y };
+}
+
+// Same transform applied to an axis-aligned local extent box.
+function transformExtents(ext, el) {
+  let { minX, minY, maxX, maxY } = ext;
+  if (el.mirror) { const t = minX; minX = -maxX; maxX = -t; }
+  switch (normalizeRotation(el.rotation)) {
+    case 90:  return { minX: -maxY, minY: minX, maxX: -minY, maxY: maxX };
+    case 180: return { minX: -maxX, minY: -maxY, maxX: -minX, maxY: -minY };
+    case 270: return { minX: minY, minY: -maxX, maxX: maxY, maxY: -minX };
+    default:  return { minX, minY, maxX, maxY };
+  }
+}
+
+// Terminal positions, named by device type: an NMOS sinks to VSS (drain up),
+// a PMOS hangs off VDD (source up).
+export function getMosfetTerminals(el) {
+  const gate = transformSymbolPoint(el, -2 * GRID_PITCH, 0);
+  const top = transformSymbolPoint(el, 0, -2 * GRID_PITCH);
+  const bottom = transformSymbolPoint(el, 0, 2 * GRID_PITCH);
+  return el.device === 'pmos'
+    ? { gate, source: top, drain: bottom }
+    : { gate, drain: top, source: bottom };
+}
+
+export function getSupplyTerminal(el) {
+  return { x: el.x, y: el.y };
+}
+
+function getSymbolExtents(el) {
+  const G = GRID_PITCH;
+  if (el.type === 'mosfet') {
+    const labelW = el.label ? 0.4 * G + el.label.length * 7 : 0;
+    const wlW = el.wl ? 0.4 * G + el.wl.length * 6 : 0;
+    return transformExtents({ minX: -2 * G, minY: -2 * G, maxX: Math.max(labelW, wlW), maxY: 2 * G }, el);
+  }
+  // Supply: stem + bar on one side of the terminal, with room for the caption.
+  const isVdd = (el.kind || 'vdd') === 'vdd';
+  const local = isVdd
+    ? { minX: -0.8 * G, minY: -2 * G, maxX: 0.8 * G, maxY: 0 }
+    : { minX: -0.8 * G, minY: 0, maxX: 0.8 * G, maxY: 2.4 * G };
+  return transformExtents(local, el);
+}
+
+export function getJunctionRadius(el) {
+  return JUNCTION_SIZES[el.size] || JUNCTION_SIZES.medium;
+}
+
+// Build a CMOS palette element at (x, y). Shared by placement and the
+// drag-in ghost preview, so both always agree.
+export function createCmosElement(kind, x, y, extra = {}) {
+  // `extra.id` short-circuits the id generator so ghost previews don't burn ids.
+  if (kind === 'pmos' || kind === 'nmos') {
+    return { type: 'mosfet', device: kind, x, y, rotation: 0, mirror: false, label: '', wl: '', ...extra, id: extra.id || uid() };
+  }
+  if (kind === 'vdd' || kind === 'vss') {
+    return { type: 'supply', kind, x, y, rotation: 0, label: kind === 'vdd' ? 'VDD' : 'VSS', ...extra, id: extra.id || uid() };
+  }
+  return null;
+}
+
+function drawMosfetSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const isP = el.device === 'pmos';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Gate lead — stops short of the inversion bubble on a PMOS.
+  seg(-2 * G, 0, isP ? -1.6 * G : -G, 0);
+  // Gate plate and channel bar
+  seg(-G, -G, -G, G);
+  seg(-0.5 * G, -G, -0.5 * G, G);
+  // Top and bottom leads out to the drain / source terminals
+  seg(-0.5 * G, -G, 0, -G);
+  seg(0, -G, 0, -2 * G);
+  seg(-0.5 * G, G, 0, G);
+  seg(0, G, 0, 2 * G);
+  ctx.stroke();
+
+  if (isP) {
+    const c = P(-1.3 * G, 0);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 0.3 * G, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Captions sit to the right of the anchor and stay upright at any rotation.
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  if (el.label) {
+    ctx.font = '11px "Roboto Mono", monospace';
+    ctx.fillText(el.label, el.x + 0.4 * G, el.y - (el.wl ? 0.35 * G : 0));
+  }
+  if (el.wl) {
+    ctx.font = '10px "Roboto Mono", monospace';
+    ctx.fillText(el.wl, el.x + 0.4 * G, el.y + (el.label ? 0.35 * G : 0));
+  }
+
+  // Optional G / D / S terminal markers
+  if (el.showPins) {
+    const t = getMosfetTerminals(el);
+    ctx.font = '9px "Roboto Mono", monospace';
+    ctx.textAlign = 'center';
+    const pin = (label, pt, dy) => ctx.fillText(label, pt.x, pt.y + dy);
+    pin('G', t.gate, -8);
+    pin(el.device === 'pmos' ? 'S' : 'D', el.device === 'pmos' ? t.source : t.drain, -8);
+    pin(el.device === 'pmos' ? 'D' : 'S', el.device === 'pmos' ? t.drain : t.source, 10);
+  }
+  ctx.restore();
+}
+
+function drawSupplySymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const isVdd = (el.kind || 'vdd') === 'vdd';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  if (isVdd) {
+    // Stem up to a single supply bar.
+    seg(0, 0, 0, -G);
+    seg(-0.7 * G, -G, 0.7 * G, -G);
+  } else {
+    // Stem down to a three-bar earth symbol.
+    seg(0, 0, 0, G);
+    seg(-0.7 * G, G, 0.7 * G, G);
+    seg(-0.42 * G, 1.28 * G, 0.42 * G, 1.28 * G);
+    seg(-0.16 * G, 1.56 * G, 0.16 * G, 1.56 * G);
+  }
+  ctx.stroke();
+
+  if (el.label) {
+    const at = P(0, isVdd ? -1.6 * G : 2.05 * G);
+    ctx.font = '11px "Roboto Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(el.label, at.x, at.y);
+  }
+  ctx.restore();
+}
+
 export function getElementBounds(el) {
+  if (el.type === 'mosfet' || el.type === 'supply') {
+    const e = getSymbolExtents(el);
+    return { x: el.x + e.minX, y: el.y + e.minY, w: e.maxX - e.minX, h: e.maxY - e.minY };
+  }
+  if (el.type === 'junction') {
+    const r = getJunctionRadius(el);
+    return { x: el.x - r, y: el.y - r, w: r * 2, h: r * 2 };
+  }
+  return getBaseElementBounds(el);
+}
+
+function getBaseElementBounds(el) {
   if (el.type === 'line' || el.type === 'measure') {
     const minX = Math.min(el.x1, el.x2);
     const minY = Math.min(el.y1, el.y2);
@@ -257,7 +469,10 @@ export function drawElement(ctx, el, isSelected, options = {}) {
           allLayers = {}, customLayerColors = {}, canvasLayers = [] } = options;
 
   if (el.type === 'line') {
-    const color = resolveLayerColor(el, allLayers, customLayerColors, canvasLayers);
+    // CMOS schematic wires carry no process layer — they ink with the theme.
+    const color = el.schematic
+      ? schematicInk(el, options)
+      : resolveLayerColor(el, allLayers, customLayerColors, canvasLayers);
     ctx.strokeStyle = color;
 
     // Check if on a custom canvas layer
@@ -671,6 +886,40 @@ export function drawElement(ctx, el, isSelected, options = {}) {
       ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
       ctx.restore();
     }
+  } else if (el.type === 'mosfet' || el.type === 'supply') {
+    if (el.type === 'mosfet') drawMosfetSymbol(ctx, el, options);
+    else drawSupplySymbol(ctx, el, options);
+
+    if (isSelected && !isExport) {
+      ctx.save();
+      const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      const b = getElementBounds(el);
+      ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
+      ctx.restore();
+    }
+  } else if (el.type === 'junction') {
+    // Connection dot: marks crossing wires as electrically joined.
+    const r = getJunctionRadius(el);
+    ctx.save();
+    ctx.fillStyle = schematicInk(el, options);
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(el.x, el.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    if (isSelected && !isExport) {
+      ctx.save();
+      const isDarkSel = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.strokeStyle = isDarkSel ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(el.x - r - 4, el.y - r - 4, r * 2 + 8, r * 2 + 8);
+      ctx.restore();
+    }
   }
 }
 
@@ -787,6 +1036,38 @@ export function createTemplateElements(defaultCanvasLayerId) {
   ];
 
   return [...rails, ...polys, ...metals, ...contacts, ...labels];
+}
+
+// A CMOS inverter drawn with the schematic primitives: VDD → PMOS → output
+// node → NMOS → VSS, with the shared gate net tapped by a connection dot.
+export function createCmosTemplateElements(canvasLayerId = 'layer_1') {
+  const W = (x1, y1, x2, y2) => ({ id: uid(), type: 'line', x1, y1, x2, y2, schematic: true, thickness: 'medium', label: '', canvasLayerId });
+  const D = (device, x, y, label) => ({ id: uid(), type: 'mosfet', device, x, y, rotation: 0, mirror: false, label, wl: '', canvasLayerId });
+  const S = (kind, x, y) => ({ id: uid(), type: 'supply', kind, x, y, rotation: 0, label: kind === 'vdd' ? 'VDD' : 'VSS', canvasLayerId });
+  const J = (x, y) => ({ id: uid(), type: 'junction', x, y, size: 'medium', canvasLayerId });
+  const L = (x, y, text, align = 'left') => ({ id: uid(), type: 'label', x, y, text, align, hasBg: false, canvasLayerId });
+
+  return [
+    S('vdd', 240, 60),
+    W(240, 60, 240, 100),      // VDD → PMOS source
+    D('pmos', 240, 140, 'MP'),
+    W(240, 180, 240, 220),     // output node
+    D('nmos', 240, 260, 'MN'),
+    W(240, 300, 240, 340),     // NMOS source → VSS
+    S('vss', 240, 340),
+
+    W(200, 140, 160, 140),     // PMOS gate → input rail
+    W(160, 140, 160, 260),
+    W(160, 260, 200, 260),     // NMOS gate → input rail
+    W(160, 200, 100, 200),     // input tap
+    J(160, 200),
+
+    W(240, 200, 320, 200),     // output tap
+    J(240, 200),
+
+    L(84, 200, 'A', 'center'),
+    L(336, 200, 'Y', 'center'),
+  ];
 }
 
 export function getContentBounds(elementsList) {

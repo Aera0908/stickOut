@@ -29,7 +29,7 @@ export default function MenuBar({
     <div className="menu-bar">
       <Link to="/" className="menu-home-btn" title="Back to Home"><Home size={15} /></Link>
       <span className="app-title"><Cpu size={14} />StickOut</span>
-      <span className="menu-mode-badge">{mode === 'floorplan' ? 'Floor Planning' : 'Stick Diagram'}</span>
+      <span className="menu-mode-badge">{mode === 'floorplan' ? 'Floor Planning' : (mode === 'cmos' ? 'CMOS Diagram' : 'Stick Diagram')}</span>
 
       <div className="menu-item">
         <button className={openMenu === 'file' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === 'file' ? null : 'file'); }}>File</button>

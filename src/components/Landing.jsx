@@ -67,7 +67,7 @@ const LANDING_HTML = `
 
   /* Tools / two choices */
   .lp .tools { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .lp .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .lp .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
   .lp .tool-card { display: block; text-decoration: none; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: all 0.25s; }
   .lp .tool-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
   .lp .tool-card-icon { width: 52px; height: 52px; background: var(--surface-2); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 18px; }
@@ -161,12 +161,16 @@ const LANDING_HTML = `
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.9L21 11l-6.6 2.1L12 20l-2.4-6.9L3 11l6.6-2.1z"/></svg>
         <span>100% Free</span> · No sign-up required · Works in your browser
       </div>
-      <h1>VLSI Layout Tools — <span class="highlight">Stick Diagrams &amp; Floor Planning</span></h1>
-      <p>Draw professional CMOS stick diagrams and plan block-level floor plans online, on an interactive snap-grid canvas. Design with Metal, Polysilicon, Diffusion, Contacts and Vias — then export publication-ready PNGs in seconds.</p>
+      <h1>VLSI Design Tools — <span class="highlight">Stick Diagrams, CMOS Schematics &amp; Floor Planning</span></h1>
+      <p>Draw professional CMOS stick diagrams, transistor-level schematics and block-level floor plans online, on an interactive snap-grid canvas. Design with Metal, Polysilicon, Diffusion, Contacts and Vias — then export publication-ready PNGs in seconds.</p>
       <div class="hero-actions">
         <a href="/stick-diagram" class="btn-primary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
           Stick Diagram Editor
+        </a>
+        <a href="/cmos-diagram" class="btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5"/><circle cx="8.6" cy="12" r="1.6"/><path d="M10.2 6v12M13 6v12M13 7h5V2M13 17h5v5"/></svg>
+          CMOS Diagram
         </a>
         <a href="/floor-planning" class="btn-secondary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
@@ -179,8 +183,8 @@ const LANDING_HTML = `
   <section class="tools" id="tools">
     <div class="container">
       <span class="section-label">Choose Your Tool</span>
-      <h2 class="section-title">Two Ways to Design</h2>
-      <p class="section-desc">StickOut now includes a stick diagram editor and a block-level floor planner. Pick where you want to start — both share the same fast, snap-grid canvas.</p>
+      <h2 class="section-title">Three Ways to Design</h2>
+      <p class="section-desc">StickOut includes a stick diagram editor, a transistor-level CMOS schematic maker, and a block-level floor planner. Pick where you want to start — all three share the same fast, snap-grid canvas.</p>
       <div class="tools-grid">
         <a class="tool-card" href="/stick-diagram">
           <div class="tool-card-icon">
@@ -189,6 +193,14 @@ const LANDING_HTML = `
           <h3>Stick Diagram</h3>
           <p>Draw CMOS stick diagrams with Metal, Poly, Diffusion, Contacts and Vias. Smart wire jumps, layer management, boolean-gate generation, and high-res PNG export.</p>
           <span class="tool-card-cta">Open Stick Diagram <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></span>
+        </a>
+        <a class="tool-card" href="/cmos-diagram">
+          <div class="tool-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5"/><circle cx="8.6" cy="12" r="1.6"/><path d="M10.2 6v12M13 6v12M13 7h5V2M13 17h5v5"/></svg>
+          </div>
+          <h3>CMOS Diagram</h3>
+          <p>Build transistor-level CMOS schematics from PMOS, NMOS, VDD and VSS symbols. Wires hop automatically where they cross, and connection dots mark the nets you actually tie together.</p>
+          <span class="tool-card-cta">Open CMOS Diagram <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></span>
         </a>
         <a class="tool-card" href="/floor-planning">
           <div class="tool-card-icon">
@@ -380,6 +392,10 @@ const LANDING_HTML = `
         <a href="/stick-diagram" class="btn-primary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
           Open Stick Diagram
+        </a>
+        <a href="/cmos-diagram" class="btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5"/><circle cx="8.6" cy="12" r="1.6"/><path d="M10.2 6v12M13 6v12M13 7h5V2M13 17h5v5"/></svg>
+          Open CMOS Diagram
         </a>
         <a href="/floor-planning" class="btn-secondary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>

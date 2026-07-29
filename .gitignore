@@ -27,3 +27,5 @@ dist-ssr
 
 # Exclude local release notes / LinkedIn post captions documentation
 release_notes.md
+
+graphify-out/

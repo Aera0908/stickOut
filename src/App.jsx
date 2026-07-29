@@ -19,7 +19,8 @@ import {
   WIRE_THICKNESS,
   RECT_DEFAULT_STROKE,
   RECT_DEFAULT_STROKE_WIDTH,
-  FP_WIRE_TYPES
+  FP_WIRE_TYPES,
+  CMOS_DEVICES
 } from './constants';
 
 import {
@@ -44,8 +45,14 @@ import {
   expandGroupIds,
   remapGroupIds,
   isFloorplanPin,
-  clampPinToBlockEdge
+  clampPinToBlockEdge,
+  createCmosElement,
+  createCmosTemplateElements,
+  getJunctionRadius,
+  isPointType
 } from './helpers';
+
+import { createGateElements, GATE_PRESETS, GATES_NEEDING_COMPLEMENTS } from './cmos/gates';
 
 import MenuBar from './components/MenuBar';
 import Toolbar from './components/Toolbar';
@@ -56,10 +63,14 @@ import StatusBar from './components/StatusBar';
 import Modals from './components/Modals';
 import BooleanModal from './components/BooleanModal';
 
+// Element types the "Rotate 90°" action understands.
+const ROTATABLE_TYPES = ['line', 'measure', 'rect', 'mosfet', 'supply'];
+
 // ─── Main App ────────────────────────────────────────────────────────
 export default function App({ mode = 'stick' }) {
   const isFloorplan = mode === 'floorplan';
-  const autosaveKey = isFloorplan ? 'stickout-fp-autosave' : AUTOSAVE_KEY;
+  const isCmos = mode === 'cmos';
+  const autosaveKey = isFloorplan ? 'stickout-fp-autosave' : (isCmos ? 'stickout-cmos-autosave' : AUTOSAVE_KEY);
 
   // ─── State ──────────────────────────────────────────────────
   const [elements, setElements] = useState([]);
@@ -76,6 +87,15 @@ export default function App({ mode = 'stick' }) {
   const [fpWireType, setFpWireType] = useState('vcc');
   const [fpCustomWireColor, setFpCustomWireColor] = useState(FP_WIRE_TYPES.custom.color);
   const [fpCustomWireLabel, setFpCustomWireLabel] = useState(FP_WIRE_TYPES.custom.label);
+
+  // CMOS schematic: pending device from the palette, its orientation, and the
+  // live ghost position while the device tool is armed.
+  const [deviceKind, setDeviceKind] = useState('nmos');
+  const [deviceRotation, setDeviceRotation] = useState(0);
+  const [deviceMirror, setDeviceMirror] = useState(false);
+  const [devicePreview, setDevicePreview] = useState(null);
+  // Connection-dot size for newly placed junctions
+  const [junctionSize, setJunctionSize] = useState('medium');
 
   // Rectangle tool defaults (used for newly drawn rectangles)
   const [rectStrokeColor, setRectStrokeColor] = useState(RECT_DEFAULT_STROKE);
@@ -493,9 +513,12 @@ export default function App({ mode = 'stick' }) {
       } else if (el.type === 'label') {
         const bounds = getElementBounds(el);
         if (pointInRect(wx, wy, bounds.x - 4, bounds.y - 4, bounds.w + 8, bounds.h + 8)) return el;
-      } else if (el.type === 'image' || el.type === 'rect') {
+      } else if (el.type === 'image' || el.type === 'rect' || el.type === 'mosfet' || el.type === 'supply') {
         const bounds = getElementBounds(el);
         if (pointInRect(wx, wy, bounds.x, bounds.y, bounds.w, bounds.h)) return el;
+      } else if (el.type === 'junction') {
+        const r = getJunctionRadius(el) + 5 / zoom;
+        if (Math.hypot(wx - el.x, wy - el.y) < r) return el;
       } else if (el.type === 'brush') {
         const bThreshold = (el.size || 5) / 2 + 8 / zoom;
         for (let j = 0; j < el.points.length - 1; j++) {
@@ -593,6 +616,18 @@ export default function App({ mode = 'stick' }) {
     return layers;
   }, [allLayers]);
 
+  // A same-layer crossing draws a hop unless the user toggled it off by
+  // right-click, or a connection dot marks the two nets as joined.
+  const filterJumps = useCallback((crossovers, elementsList) => {
+    if (crossovers.length === 0) return crossovers;
+    const dots = new Set();
+    elementsList.forEach(el => { if (el.type === 'junction') dots.add(`${el.x},${el.y}`); });
+    return crossovers.filter(c => {
+      const key = `${c.x},${c.y}`;
+      return !jumpOverrides.has(key) && !dots.has(key);
+    });
+  }, [jumpOverrides]);
+
   // ─── Canvas rendering ──────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -657,7 +692,7 @@ export default function App({ mode = 'stick' }) {
         if (el.type === 'line' || el.type === 'measure') {
           return { ...el, x1: el.x1 + dragOffset.x, y1: el.y1 + dragOffset.y, x2: el.x2 + dragOffset.x, y2: el.y2 + dragOffset.y };
         }
-        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush' || el.type === 'rect') {
+        if (isPointType(el.type)) {
           let nx = el.x + dragOffset.x, ny = el.y + dragOffset.y;
           // Floor-plan pins lock onto a block's edge/corner while dragged over it.
           if (isFloorplan && isFloorplanPin(el)) {
@@ -711,11 +746,13 @@ export default function App({ mode = 'stick' }) {
       });
     }
 
-    // Crossover jumps are a stick-diagram convention; floor-plan wires cross flat.
+    // Crossover jumps are a stick-diagram / schematic convention; floor-plan
+    // wires cross flat. A connection dot on a crossing means the nets are tied
+    // together, so the hop is suppressed there.
     const crossovers = isFloorplan ? [] : getCrossovers(renderElements);
-    const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
+    const activeCrossovers = filterJumps(crossovers, renderElements);
     const originalCrossovers = isFloorplan ? [] : getCrossovers(elements);
-    const activeOriginalCrossovers = originalCrossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
+    const activeOriginalCrossovers = filterJumps(originalCrossovers, elements);
 
     const drawOpts = {
       imageCache: imageCacheRef.current,
@@ -869,6 +906,8 @@ export default function App({ mode = 'stick' }) {
         if (isFloorplan) {
           const wt = FP_WIRE_TYPES[fpWireType] || FP_WIRE_TYPES.custom;
           color = fpWireType === 'custom' ? fpCustomWireColor : wt.color;
+        } else if (isCmos) {
+          color = theme === 'dark' ? '#E6E2D8' : '#111111';
         } else {
           const layerDef = allLayers[activeLayerId];
           color = customLayerColors[activeLayerId] || layerDef?.hex || '#4A90E2';
@@ -907,6 +946,19 @@ export default function App({ mode = 'stick' }) {
       ctx.strokeRect(rx, ry, rw, rh);
       ctx.setLineDash([]);
       ctx.restore();
+    }
+
+    // CMOS device ghost — follows the cursor while the palette is armed
+    if (activeTool === TOOLS.device && devicePreview) {
+      const ghost = createCmosElement(deviceKind, devicePreview.x, devicePreview.y, {
+        id: 'device-ghost', rotation: deviceRotation, mirror: deviceMirror,
+      });
+      if (ghost) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        drawElement(ctx, ghost, false, drawOpts);
+        ctx.restore();
+      }
     }
 
     // Brush preview
@@ -967,7 +1019,7 @@ export default function App({ mode = 'stick' }) {
       ctx.setLineDash([]);
     }
 
-  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeLayerId, customLayerColors, jumpOverrides, selectionBox, isDragging, dragOffset, theme, brushStroke, resizeState, activeTool, canvasLayers, allLayers, groupScaleState, triggerRedraw, rectDraw, rectFillColor, rectStrokeColor, rectStrokeWidth, wireThickness, isFloorplan, fpWireType, fpCustomWireColor, fpCustomWireLabel]);
+  }, [elements, selectedIds, showGrid, zoom, pan, lineStart, linePreview, activeLayerId, customLayerColors, filterJumps, selectionBox, isDragging, dragOffset, theme, brushStroke, resizeState, activeTool, canvasLayers, allLayers, groupScaleState, triggerRedraw, rectDraw, rectFillColor, rectStrokeColor, rectStrokeWidth, wireThickness, isFloorplan, isCmos, fpWireType, fpCustomWireColor, fpCustomWireLabel, devicePreview, deviceKind, deviceRotation, deviceMirror]);
 
   // ─── Resize observer ───────────────────────────────────────
   useEffect(() => {
@@ -1016,6 +1068,15 @@ export default function App({ mode = 'stick' }) {
         let closest = null, minDist = Infinity;
         crossovers.forEach(c => { const dist = Math.hypot(world.x - c.x, world.y - c.y); if (dist < minDist) { minDist = dist; closest = c; } });
         if (closest && minDist < 15) {
+          if (isCmos) {
+            // In a schematic a dot on a crossing means "these nets are tied" —
+            // right-click toggles it, and the hop disappears with it.
+            const existing = elements.find(el => el.type === 'junction' && el.x === closest.x && el.y === closest.y);
+            pushUndoSnapshot();
+            if (existing) setElements(prev => prev.filter(el => el.id !== existing.id));
+            else setElements(prev => [...prev, { id: uid(), type: 'junction', x: closest.x, y: closest.y, size: junctionSize, canvasLayerId: activeCanvasLayerId }]);
+            return;
+          }
           const key = `${closest.x},${closest.y}`;
           setJumpOverrides(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
           return;
@@ -1169,7 +1230,16 @@ export default function App({ mode = 'stick' }) {
         const end = getOrthoEnd(lineStart, world);
         if (end.x !== lineStart.x || end.y !== lineStart.y) {
           let line;
-          if (isFloorplan) {
+          if (isCmos) {
+            // Schematic wires carry no process layer — they ink with the theme
+            // and hop over same-net crossings unless a dot joins them.
+            line = {
+              id: uid(), type: 'line',
+              x1: lineStart.x, y1: lineStart.y, x2: end.x, y2: end.y,
+              schematic: true, label: '',
+              thickness: wireThickness, canvasLayerId: activeCanvasLayerId,
+            };
+          } else if (isFloorplan) {
             // Floor-planning wires carry a net type (VDD/VSS/custom) with their own color + label.
             const wt = FP_WIRE_TYPES[fpWireType] || FP_WIRE_TYPES.custom;
             const wColor = fpWireType === 'custom' ? fpCustomWireColor : wt.color;
@@ -1226,6 +1296,24 @@ export default function App({ mode = 'stick' }) {
         canvasLayerId: `canvas_vlsi_${activeLayerId}`,
       };
       addElement(newEl);
+    } else if (activeTool === TOOLS.junction) {
+      // Land the dot exactly on a nearby wire crossing so it suppresses that
+      // crossing's hop; otherwise drop it where the user clicked.
+      let px = world.x, py = world.y;
+      let best = null;
+      getCrossovers(elements).forEach(c => {
+        const d = Math.hypot(world.x - c.x, world.y - c.y);
+        if (!best || d < best.d) best = { d, c };
+      });
+      if (best && best.d <= GRID_PITCH) { px = best.c.x; py = best.c.y; }
+      // One dot per point — clicking an existing dot is a no-op, not a stack.
+      if (elements.some(el => el.type === 'junction' && el.x === px && el.y === py)) return;
+      addElement({ id: uid(), type: 'junction', x: px, y: py, size: junctionSize, canvasLayerId: activeCanvasLayerId });
+    } else if (activeTool === TOOLS.device) {
+      const newDevice = createCmosElement(deviceKind, snapToGrid(world.x, GRID_PITCH), snapToGrid(world.y, GRID_PITCH), {
+        rotation: deviceRotation, mirror: deviceMirror, canvasLayerId: activeCanvasLayerId,
+      });
+      if (newDevice) addElement(newDevice);
     } else if (activeTool === TOOLS.rect) {
       setRectDraw({ x1: world.x, y1: world.y, x2: world.x, y2: world.y });
     } else if (activeTool === TOOLS.label) {
@@ -1250,7 +1338,7 @@ export default function App({ mode = 'stick' }) {
       const rawWorld = screenToWorld(sx, sy, pan, zoom);
       eraseBrushPoints(rawWorld.x, rawWorld.y, brushSize);
     }
-  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId, eraseBrushPoints, sampleCanvasColor, wireThickness, isFloorplan, fpWireType, fpCustomWireColor, fpCustomWireLabel, pushUndoSnapshot]);
+  }, [showModal, activeTool, spaceHeld, pan, zoom, getWorldPos, hitTest, selectedIds, lineStart, activeLayerId, customLayerColors, addElement, getOrthoEnd, elements, sidebarOpen, contactSize, contactShape, brushColor, brushSize, brushOpacity, allLayers, activeCanvasLayerId, eraseBrushPoints, sampleCanvasColor, wireThickness, isFloorplan, isCmos, fpWireType, fpCustomWireColor, fpCustomWireLabel, pushUndoSnapshot, junctionSize, deviceKind, deviceRotation, deviceMirror]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1261,6 +1349,14 @@ export default function App({ mode = 'stick' }) {
 
     let rawWorld = screenToWorld(sx, sy, pan, zoom);
     setCursorGrid({ x: Math.round(rawWorld.x / GRID_PITCH), y: Math.round(rawWorld.y / GRID_PITCH) });
+
+    // Ghost for the armed CMOS device. Always grid-aligned, so its terminals
+    // land on grid points no matter how the snap toggle is set.
+    if (activeTool === TOOLS.device) {
+      const gx = snapToGrid(rawWorld.x, GRID_PITCH);
+      const gy = snapToGrid(rawWorld.y, GRID_PITCH);
+      setDevicePreview(prev => (prev && prev.x === gx && prev.y === gy) ? prev : { x: gx, y: gy });
+    }
 
     if (isPanning && panStart) { setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y }); return; }
 
@@ -1496,7 +1592,7 @@ export default function App({ mode = 'stick' }) {
       setElements(prev => prev.map(el => {
         if (!selectedIds.has(el.id)) return el;
         if (el.type === 'line' || el.type === 'measure') return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
-        if (el.type === 'contact' || el.type === 'via' || el.type === 'label' || el.type === 'image' || el.type === 'brush' || el.type === 'rect') {
+        if (isPointType(el.type)) {
           let nx = el.x + dx, ny = el.y + dy;
           // Match the drag preview: pins land clamped to a block's edge/corner.
           if (isFloorplan && isFloorplanPin(el)) {
@@ -1686,7 +1782,7 @@ export default function App({ mode = 'stick' }) {
               const n = JSON.parse(JSON.stringify(el));
               n.id = uid();
               if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-              else if (['contact', 'via', 'label', 'image', 'brush', 'rect'].includes(n.type)) { n.x += offset; n.y += offset; }
+              else if (isPointType(n.type)) { n.x += offset; n.y += offset; }
               return n;
             }));
             setElements(prev => [...prev, ...newEls]);
@@ -1717,10 +1813,16 @@ export default function App({ mode = 'stick' }) {
       const key = e.key.toLowerCase();
       if (key === 'v') setActiveTool(TOOLS.select);
       else if (key === 'w') { setActiveTool(TOOLS.line); setLineStart(null); setLinePreview(null); }
-      else if (key === 'p') { if (!isFloorplan) setActiveTool(TOOLS.contact); } // stick-diagram only
+      else if (key === 'p') {
+        // P arms the PMOS in CMOS mode; elsewhere it's the Contact tool.
+        if (isCmos) { setDeviceKind('pmos'); setActiveTool(TOOLS.device); }
+        else if (!isFloorplan) setActiveTool(TOOLS.contact);
+      }
+      else if (key === 'n') { if (isCmos) { setDeviceKind('nmos'); setActiveTool(TOOLS.device); } } // CMOS only
+      else if (key === 'd') { if (isCmos) setActiveTool(TOOLS.junction); } // CMOS only
       else if (key === 'r') setActiveTool(TOOLS.rect);
       else if (key === 'l' || key === 't') setActiveTool(TOOLS.label);
-      else if (key === 'b') { if (!isFloorplan) setActiveTool(TOOLS.brush); } // stick-diagram only
+      else if (key === 'b') { if (!isFloorplan && !isCmos) setActiveTool(TOOLS.brush); } // stick-diagram only
       else if (key === 'e') setActiveTool(TOOLS.eraser);
       else if (key === 'm') { setActiveTool(TOOLS.measure); setLineStart(null); setLinePreview(null); }
       else if (key === 'g') setShowGrid(prev => !prev);
@@ -1746,7 +1848,7 @@ export default function App({ mode = 'stick' }) {
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); window.removeEventListener('blur', handleBlur); };
-  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool, groupSelected, ungroupSelected, zoomInStep, zoomOutStep, zoomReset, isFloorplan]);
+  }, [lineStart, labelInput, deleteSelected, doUndo, doRedo, elements, selectedIds, pushUndoSnapshot, canvasLayers, activeCanvasLayerId, activeTool, groupSelected, ungroupSelected, zoomInStep, zoomOutStep, zoomReset, isFloorplan, isCmos]);
 
   // Touch handlers
   const handleTouchStart = useCallback((e) => {
@@ -1851,7 +1953,7 @@ export default function App({ mode = 'stick' }) {
   // Selected element properties
   const selectedElements = elements.filter(el => selectedIds.has(el.id));
   const rotateSelected = useCallback(() => {
-    const editableElements = elements.filter(el => selectedIds.has(el.id) && (el.type === 'line' || el.type === 'measure' || el.type === 'rect'));
+    const editableElements = elements.filter(el => selectedIds.has(el.id) && ROTATABLE_TYPES.includes(el.type));
     if (editableElements.length === 0) return;
     pushUndoSnapshot();
     setElements(prev => prev.map(el => {
@@ -1862,6 +1964,11 @@ export default function App({ mode = 'stick' }) {
         const dx1 = el.x1 - cx, dy1 = el.y1 - cy;
         const dx2 = el.x2 - cx, dy2 = el.y2 - cy;
         return { ...el, x1: cx - dy1, y1: cy + dx1, x2: cx - dy2, y2: cy + dx2 };
+      }
+      if (el.type === 'mosfet' || el.type === 'supply') {
+        // Schematic symbols pivot about their anchor; the drawing code applies
+        // the rotation, so terminals stay on grid.
+        return { ...el, rotation: ((el.rotation || 0) + 90) % 360 };
       }
       if (el.type === 'rect') {
         // Rotate a pin/block 90° about its centre: swap the footprint (w↔h),
@@ -1969,6 +2076,23 @@ export default function App({ mode = 'stick' }) {
     }
     setZoom(1); setShowModal(false);
   }, [theme]);
+
+  const startCmosTemplate = useCallback(() => {
+    const templateEls = createCmosTemplateElements('layer_1');
+    setCanvasLayers([{ id: 'layer_1', name: 'Schematic', visible: true, opacity: 1.0, isCustom: true }]);
+    setActiveCanvasLayerId('layer_1');
+    setElements(templateEls);
+    setUndoStack([]); setRedoStack([]); setSelectedIds(new Set());
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const b = getContentBounds(templateEls);
+      setPan({ x: rect.width / 2 - (b.x + b.w / 2), y: rect.height / 2 - (b.y + b.h / 2) });
+    } else {
+      setPan({ x: 50, y: 50 });
+    }
+    setZoom(1); setShowModal(false);
+  }, []);
 
   // Insert elements produced by the boolean expression generator as regular
   // editable elements, centered in the current viewport.
@@ -2174,7 +2298,7 @@ export default function App({ mode = 'stick' }) {
               const n = JSON.parse(JSON.stringify(el));
               n.id = uid();
               if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-              else if (['contact', 'via', 'label', 'image', 'brush', 'rect'].includes(n.type)) { n.x += offset; n.y += offset; }
+              else if (isPointType(n.type)) { n.x += offset; n.y += offset; }
               return n;
             }));
             setElements(prev => [...prev, ...newEls]);
@@ -2236,7 +2360,7 @@ export default function App({ mode = 'stick' }) {
             const n = JSON.parse(JSON.stringify(el));
             n.id = uid();
             if (n.type === 'line') { n.x1 += offset; n.y1 += offset; n.x2 += offset; n.y2 += offset; }
-            else if (['contact', 'via', 'label', 'image', 'brush', 'rect'].includes(n.type)) { n.x += offset; n.y += offset; }
+            else if (isPointType(n.type)) { n.x += offset; n.y += offset; }
             return n;
           }));
           setElements(prev => [...prev, ...newEls]);
@@ -2256,6 +2380,12 @@ export default function App({ mode = 'stick' }) {
     if (elements.length === 0) { alert("Canvas is empty."); return; }
     setShowExportModal(true); setOpenMenu(null);
   }, [elements]);
+
+  // Ink for CMOS schematic strokes in exports: follows the chosen label style,
+  // falling back to whatever stays legible on the chosen background.
+  const exportSymbolInk = exportTextColor === 'light'
+    ? '#FFFFFF'
+    : (exportTextColor === 'dark' ? '#111111' : (exportBgType === 'dark' ? '#E6E2D8' : '#111111'));
 
   const updateExportPreview = useCallback(() => {
     const canvas = previewCanvasRef.current;
@@ -2278,8 +2408,8 @@ export default function App({ mode = 'stick' }) {
     if (exportTextColor === 'dark') { textColor = '#111111'; hasPill = false; }
     else if (exportTextColor === 'light') { textColor = '#FFFFFF'; hasPill = false; }
     const crossovers = isFloorplan ? [] : getCrossovers(elements);
-    const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
-    const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
+    const activeCrossovers = filterJumps(crossovers, elements);
+    const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, exportInk: exportSymbolInk, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
     // Detect stacked via+contact pairs for export
     const exportStackedOffsets = {};
     const exportContacts = elements.filter(el => el.type === 'contact');
@@ -2302,7 +2432,7 @@ export default function App({ mode = 'stick' }) {
       ctx.restore();
     });
     ctx.restore();
-  }, [elements, exportBgType, exportTextColor, exportMargin, jumpOverrides, triggerRedraw, allLayers, customLayerColors, canvasLayers, isFloorplan]);
+  }, [elements, exportBgType, exportTextColor, exportMargin, filterJumps, triggerRedraw, allLayers, customLayerColors, canvasLayers, isFloorplan, exportSymbolInk]);
 
   useEffect(() => { if (showExportModal) { const t = setTimeout(updateExportPreview, 50); return () => clearTimeout(t); } }, [showExportModal, updateExportPreview]);
 
@@ -2324,8 +2454,8 @@ export default function App({ mode = 'stick' }) {
     if (exportTextColor === 'dark') { textColor = '#111111'; hasPill = false; }
     else if (exportTextColor === 'light') { textColor = '#FFFFFF'; hasPill = false; }
     const crossovers = isFloorplan ? [] : getCrossovers(elements);
-    const activeCrossovers = crossovers.filter(c => !jumpOverrides.has(`${c.x},${c.y}`));
-    const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
+    const activeCrossovers = filterJumps(crossovers, elements);
+    const drawOpts = { isExport: true, exportTextColor: textColor, exportHasBg: hasPill, exportInk: exportSymbolInk, imageCache: imageCacheRef.current, triggerRedraw, allLayers, customLayerColors, canvasLayers };
     // Detect stacked via+contact pairs for full-res export
     const dlStackedOffsets = {};
     const dlContacts = elements.filter(el => el.type === 'contact');
@@ -2351,7 +2481,7 @@ export default function App({ mode = 'stick' }) {
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
     setShowExportModal(false);
-  }, [elements, exportBgType, exportTextColor, exportMargin, jumpOverrides, allLayers, customLayerColors, canvasLayers, triggerRedraw, isFloorplan]);
+  }, [elements, exportBgType, exportTextColor, exportMargin, filterJumps, allLayers, customLayerColors, canvasLayers, triggerRedraw, isFloorplan, exportSymbolInk]);
 
   useEffect(() => { if (!openMenu) return; const handler = () => setOpenMenu(null); window.addEventListener('click', handler); return () => window.removeEventListener('click', handler); }, [openMenu]);
 
@@ -2476,30 +2606,67 @@ export default function App({ mode = 'stick' }) {
     setActiveTool(TOOLS.select);
   }, [theme, pan, zoom, addElement, activeCanvasLayerId]);
 
+  // Drop a complete transistor-level gate schematic, centred in the viewport
+  // and grouped so it drags as one block.
+  const insertGatePreset = useCallback((id) => {
+    const preset = GATE_PRESETS.find(p => p.id === id);
+    const gateEls = createGateElements(id, activeCanvasLayerId);
+    if (gateEls.length === 0) return;
+
+    const bounds = getContentBounds(gateEls);
+    let dx = 0, dy = 0;
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const center = screenToWorld(rect.width / 2, rect.height / 2, pan, zoom);
+      dx = snapToGrid(center.x - (bounds.x + bounds.w / 2), GRID_PITCH);
+      dy = snapToGrid(center.y - (bounds.y + bounds.h / 2), GRID_PITCH);
+    }
+    const moved = gateEls.map(el => el.type === 'line'
+      ? { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy }
+      : { ...el, x: el.x + dx, y: el.y + dy });
+
+    pushUndoSnapshot();
+    setElements(prev => [...prev, ...moved]);
+    setSelectedIds(new Set(moved.map(el => el.id)));
+    setActiveTool(TOOLS.select);
+    const note = GATES_NEEDING_COMPLEMENTS.includes(id)
+      ? ` — drive A' and B' from inverters`
+      : '';
+    showToast(`Inserted ${preset.label} gate — ${preset.transistors} transistors${note}`);
+  }, [activeCanvasLayerId, pan, zoom, pushUndoSnapshot, showToast]);
+
+  // Arm a CMOS palette item — the next canvas click drops it at the cursor.
+  const armCmosDevice = useCallback((kind) => {
+    setDeviceKind(kind);
+    setActiveTool(TOOLS.device);
+  }, []);
+
   const canvasClass = `canvas-container ${activeTool === TOOLS.select ? 'tool-select' : ''} ${isPanning || spaceHeld ? 'panning' : ''} ${isAltDropperActive ? 'tool-dropper' : ''}`;
 
   useEffect(() => { if (isDragging) setPan(p => ({ ...p })); }, [isDragging, dragOffset]);
 
   // Track last wire-compatible layer (stick-diagram only)
   useEffect(() => {
-    if (isFloorplan) return;
+    if (isFloorplan || isCmos) return;
     const wireCompatible = ['poly', 'ndiff', 'pdiff', 'metal1', 'metal2', 'nwell', 'demarcation', 'nimplant', 'pimplant', 'silicideblock', 'thickoxide'];
     if (wireCompatible.includes(activeLayerId) || activeLayerId.startsWith('metal')) {
       setLastWireLayerId(activeLayerId);
     }
-  }, [activeLayerId, isFloorplan]);
+  }, [activeLayerId, isFloorplan, isCmos]);
 
   // Clear selection when switching away from select tool (fixes properties panel sync)
   useEffect(() => {
     if (activeTool !== TOOLS.select) {
       setSelectedIds(new Set());
     }
+    if (activeTool !== TOOLS.device) setDevicePreview(null);
   }, [activeTool]);
 
   useEffect(() => {
     // VLSI layer auto-switching is a stick-diagram behavior; floor-plan wires
-    // use their own VCC/VSS/custom net types instead of process layers.
-    if (isFloorplan) return;
+    // use VCC/VSS/custom net types and schematic wires have no process layer.
+    if (isFloorplan || isCmos) return;
     if (activeTool === TOOLS.contact) {
       if (activeLayerId !== 'via' && activeLayerId !== 'buriedcontact' && activeLayerId !== 'contact') {
         setActiveLayerId('contact');
@@ -2517,17 +2684,19 @@ export default function App({ mode = 'stick' }) {
         showStatusMessage(`Layer auto-set to ${layerName}`);
       }
     }
-  }, [activeTool, activeLayerId, showStatusMessage, lastWireLayerId, allLayers, isFloorplan]);
+  }, [activeTool, activeLayerId, showStatusMessage, lastWireLayerId, allLayers, isFloorplan, isCmos]);
 
   const toolNames = {
     [TOOLS.select]: 'Select',
-    [TOOLS.line]: isFloorplan ? 'Wire (VCC/VSS/Custom)' : 'Wire / Line',
+    [TOOLS.line]: isFloorplan ? 'Wire (VCC/VSS/Custom)' : (isCmos ? 'Wire (schematic)' : 'Wire / Line'),
     [TOOLS.contact]: 'Contact',
     [TOOLS.rect]: isFloorplan ? 'Block / Pin' : 'Rectangle',
     [TOOLS.label]: 'Label',
     [TOOLS.brush]: 'Brush',
     [TOOLS.eraser]: 'Eraser',
     [TOOLS.measure]: 'Measure',
+    [TOOLS.junction]: 'Connection Dot',
+    [TOOLS.device]: `Place ${CMOS_DEVICES[deviceKind]?.label || 'Device'}`,
   };
 
   // Build palette
@@ -2574,6 +2743,9 @@ export default function App({ mode = 'stick' }) {
         <Toolbar
           mode={mode}
           insertFloorplanShape={insertFloorplanShape}
+          armCmosDevice={armCmosDevice}
+          insertGatePreset={insertGatePreset}
+          deviceKind={deviceKind}
           activeTool={activeTool}
           setActiveTool={setActiveTool}
           contactShape={contactShape}
@@ -2633,6 +2805,15 @@ export default function App({ mode = 'stick' }) {
           {rightTab === 'properties' ? (
             <PropertiesPanel
               isFloorplan={isFloorplan}
+              isCmos={isCmos}
+              deviceKind={deviceKind}
+              setDeviceKind={setDeviceKind}
+              deviceRotation={deviceRotation}
+              setDeviceRotation={setDeviceRotation}
+              deviceMirror={deviceMirror}
+              setDeviceMirror={setDeviceMirror}
+              junctionSize={junctionSize}
+              setJunctionSize={setJunctionSize}
               fpWireType={fpWireType}
               setFpWireType={setFpWireType}
               fpCustomWireColor={fpCustomWireColor}
@@ -2722,7 +2903,7 @@ export default function App({ mode = 'stick' }) {
         hasAutosave={hasAutosave}
         resumeAutosave={resumeAutosave}
         startBlank={startBlank}
-        startTemplate={isFloorplan ? startFloorplanTemplate : startTemplate}
+        startTemplate={isFloorplan ? startFloorplanTemplate : (isCmos ? startCmosTemplate : startTemplate)}
         handleLoadProject={handleLoadProject}
         showExportModal={showExportModal}
         setShowExportModal={setShowExportModal}

@@ -1,9 +1,46 @@
-import { MousePointer2, Minus, Square, Type, Paintbrush, Eraser, Image as ImageIcon, Plus, Pencil, X as XIcon, FunctionSquare, Ruler } from 'lucide-react';
-import { TOOLS } from '../constants';
+import { MousePointer2, Minus, Square, Type, Paintbrush, Eraser, Image as ImageIcon, Plus, Pencil, X as XIcon, FunctionSquare, Ruler, Circle } from 'lucide-react';
+import { TOOLS, CMOS_DEVICES } from '../constants';
+import { GATE_PRESETS } from '../cmos/gates';
+
+// Miniature previews for the CMOS palette buttons.
+function DeviceGlyph({ kind }) {
+  const stroke = 'currentColor';
+  if (kind === 'pmos' || kind === 'nmos') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="2" y1="12" x2={kind === 'pmos' ? '6.4' : '9'} y2="12" />
+        {kind === 'pmos' && <circle cx="7.7" cy="12" r="1.3" />}
+        <line x1="9" y1="6" x2="9" y2="18" />
+        <line x1="12" y1="6" x2="12" y2="18" />
+        <path d="M12 6 H17 V2" />
+        <path d="M12 18 H17 V22" />
+      </svg>
+    );
+  }
+  if (kind === 'vdd') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="5" y1="7" x2="19" y2="7" />
+        <line x1="12" y1="7" x2="12" y2="19" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+      <line x1="12" y1="4" x2="12" y2="13" />
+      <line x1="5" y1="13" x2="19" y2="13" />
+      <line x1="8" y1="17" x2="16" y2="17" />
+      <line x1="10.5" y1="20.5" x2="13.5" y2="20.5" />
+    </svg>
+  );
+}
 
 export default function Toolbar({
   mode = 'stick',
   insertFloorplanShape,
+  armCmosDevice,
+  insertGatePreset,
+  deviceKind,
   activeTool,
   setActiveTool,
   contactShape,
@@ -23,6 +60,54 @@ export default function Toolbar({
   triggerImageImport,
   openBooleanModal
 }) {
+  if (mode === 'cmos') {
+    return (
+      <div className="left-toolbar">
+        <button className={`tool-btn ${activeTool === TOOLS.select ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.select)} title="Select (V)"><MousePointer2 size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.line ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.line)} title="Wire (W)"><Minus size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.junction ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.junction)} title="Connection Dot (D)"><Circle size={12} fill="currentColor" /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.label ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.label)} title="Label (L / T)"><Type size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.rect ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.rect)} title="Rectangle (R)"><Square size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.eraser ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.eraser)} title="Eraser (E)"><Eraser size={18} /></button>
+        <button className={`tool-btn ${activeTool === TOOLS.measure ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.measure)} title="Ruler / Measure (M)"><Ruler size={18} /></button>
+        <button className="tool-btn" onClick={triggerImageImport} title="Import Image"><ImageIcon size={18} /></button>
+
+        <div className="toolbar-divider" />
+
+        <div className="layer-palette-scroll" style={{ alignItems: 'center' }}>
+          <div className="palette-divider-label" style={{ fontSize: '6px', marginBottom: '4px' }}>PLACE</div>
+          {Object.keys(CMOS_DEVICES).map(kind => {
+            const armed = activeTool === TOOLS.device && deviceKind === kind;
+            return (
+              <button
+                key={kind}
+                className={`tool-btn ${armed ? 'active' : ''}`}
+                title={CMOS_DEVICES[kind].title}
+                onClick={() => armCmosDevice && armCmosDevice(kind)}
+                style={{ marginBottom: '4px' }}
+              >
+                <DeviceGlyph kind={kind} />
+              </button>
+            );
+          })}
+
+          <div className="palette-divider-label" style={{ fontSize: '6px', marginTop: '8px', marginBottom: '4px' }}>GATES</div>
+          {GATE_PRESETS.map(gate => (
+            <button
+              key={gate.id}
+              className="tool-btn gate-preset-btn"
+              title={gate.title}
+              onClick={() => insertGatePreset && insertGatePreset(gate.id)}
+              style={{ marginBottom: '4px', fontSize: '9px', fontWeight: 700, letterSpacing: '-0.02em' }}
+            >
+              {gate.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (mode === 'floorplan') {
     const fpItems = [
       { kind: 'boundary', label: 'Chip Boundary', color: 'transparent', border: 'var(--text-primary)', text: 'BND' },

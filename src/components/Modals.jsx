@@ -106,7 +106,7 @@ export default function Modals({
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <div className="modal-header"><Cpu size={20} /><h2>{mode === 'floorplan' ? 'New Floor Plan' : 'New Stick Diagram'}</h2></div>
+            <div className="modal-header"><Cpu size={20} /><h2>{mode === 'floorplan' ? 'New Floor Plan' : (mode === 'cmos' ? 'New CMOS Diagram' : 'New Stick Diagram')}</h2></div>
             <div className="modal-body">
               {hasAutosave && (
                 <div className="template-option" onClick={resumeAutosave} style={{ borderColor: 'var(--accent)' }}>
@@ -121,9 +121,9 @@ export default function Modals({
               <div className="template-option" onClick={startTemplate}>
                 <div className="tpl-icon"><FileText size={20} /></div>
                 <div className="tpl-info">
-                  {mode === 'floorplan'
-                    ? <><h3>Chip Boundary Starter</h3><p>Start with a chip boundary rectangle, ready for pins &amp; blocks.</p></>
-                    : <><h3>Basic Stick Diagram Template</h3><p>Pre-loaded VDD/VSS rails, PMOS &amp; NMOS diffusion.</p></>}
+                  {mode === 'floorplan' && <><h3>Chip Boundary Starter</h3><p>Start with a chip boundary rectangle, ready for pins &amp; blocks.</p></>}
+                  {mode === 'cmos' && <><h3>CMOS Inverter Template</h3><p>Pre-wired PMOS &amp; NMOS between VDD and VSS, with connection dots.</p></>}
+                  {mode !== 'floorplan' && mode !== 'cmos' && <><h3>Basic Stick Diagram Template</h3><p>Pre-loaded VDD/VSS rails, PMOS &amp; NMOS diffusion.</p></>}
                 </div>
               </div>
               <div className="template-option" onClick={() => { handleLoadProject(); }}>

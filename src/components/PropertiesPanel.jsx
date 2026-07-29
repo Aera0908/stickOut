@@ -1,8 +1,17 @@
 import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette, Group, Ungroup } from 'lucide-react';
-import { TOOLS, HIGHER_METAL_COLORS, FP_WIRE_TYPES } from '../constants';
+import { TOOLS, HIGHER_METAL_COLORS, FP_WIRE_TYPES, CMOS_DEVICES, JUNCTION_SIZES } from '../constants';
 
 export default function PropertiesPanel({
   isFloorplan = false,
+  isCmos = false,
+  deviceKind,
+  setDeviceKind,
+  deviceRotation,
+  setDeviceRotation,
+  deviceMirror,
+  setDeviceMirror,
+  junctionSize,
+  setJunctionSize,
   fpWireType,
   setFpWireType,
   fpCustomWireColor,
@@ -47,6 +56,23 @@ export default function PropertiesPanel({
   ungroupSelected
 }) {
   const THICKNESS_OPTS = ['small', 'medium', 'large'];
+  // Generic segmented control used across the CMOS panels.
+  const renderChoiceRow = (options, current, onPick) => (
+    <div className="prop-btn-row">
+      {options.map(o => (
+        <button
+          key={o.value}
+          className={`prop-btn ${current === o.value ? 'active' : ''}`}
+          style={{ background: current === o.value ? 'var(--accent)' : 'var(--surface)', color: current === o.value ? '#fff' : 'var(--text-primary)' }}
+          onClick={() => onPick(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+  const ROTATION_OPTS = [0, 90, 180, 270].map(r => ({ value: r, label: `${r}°` }));
+  const JUNCTION_OPTS = Object.keys(JUNCTION_SIZES).map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }));
   const renderThicknessRow = (current, onPick) => (
     <div className="prop-btn-row">
       {THICKNESS_OPTS.map(t => (
@@ -225,6 +251,58 @@ export default function PropertiesPanel({
           )}
         </div>
       );
+    } else if (isCmos && activeTool === TOOLS.device) {
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Place Device</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '12px' }}>Click on the canvas to drop the device. Terminals always land on grid points, so wires snap straight onto them.</div>
+          <div className="prop-group">
+            <span className="prop-label">Device</span>
+            {renderChoiceRow(Object.keys(CMOS_DEVICES).map(k => ({ value: k, label: CMOS_DEVICES[k].label })), deviceKind, setDeviceKind)}
+          </div>
+          <div className="prop-group">
+            <span className="prop-label">Rotation</span>
+            {renderChoiceRow(ROTATION_OPTS, deviceRotation, setDeviceRotation)}
+          </div>
+          {(deviceKind === 'pmos' || deviceKind === 'nmos') && (
+            <div className="prop-group">
+              <span className="prop-label">Gate Side</span>
+              {renderChoiceRow([{ value: false, label: 'Left' }, { value: true, label: 'Right' }], deviceMirror, setDeviceMirror)}
+            </div>
+          )}
+        </div>
+      );
+    } else if (isCmos && activeTool === TOOLS.junction) {
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Connection Dot</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '12px' }}>Click to drop a dot. Dropped on a wire crossing it snaps onto it and turns the hop into a connection.</div>
+          <div className="prop-group">
+            <span className="prop-label">Dot Size</span>
+            {renderChoiceRow(JUNCTION_OPTS, junctionSize, setJunctionSize)}
+          </div>
+        </div>
+      );
+    } else if (isCmos && activeTool === TOOLS.line) {
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Wire Tool Settings</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '12px' }}>Click once to start a wire, again to finish it. Crossing wires hop automatically — add a dot where they should connect.</div>
+          <div className="prop-group">
+            <span className="prop-label">Wire Thickness</span>
+            {renderThicknessRow(wireThickness, setWireThickness)}
+          </div>
+        </div>
+      );
+    } else if (isCmos) {
+      return (
+        <div className="panel-content">
+          <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>CMOS Diagram</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+            Place PMOS / NMOS / VDD / VSS from the left palette, wire them up with the Wire tool (W), and mark connected crossings with the Dot tool (D). Select an element to edit its properties.
+          </div>
+        </div>
+      );
     } else if (isFloorplan && activeTool === TOOLS.line) {
       return (
         <div className="panel-content">
@@ -385,6 +463,90 @@ export default function PropertiesPanel({
         </>
       )}
 
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'mosfet') && (() => {
+        const dev = selectedElements[0];
+        const allSame = selectedElements.every(el => el.device === dev.device);
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Channel</span>
+              {renderChoiceRow(
+                [{ value: 'nmos', label: 'NMOS' }, { value: 'pmos', label: 'PMOS' }],
+                allSame ? dev.device : null,
+                (d) => updateProp('device', d)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Name</span>
+                  <input className="prop-input" value={dev.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. M1, MP1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">W / L</span>
+                  <input className="prop-input" value={dev.wl || ''} onChange={e => updateProp('wl', e.target.value)} placeholder="e.g. 2u/180n" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (dev.rotation || 0)) ? (dev.rotation || 0) : null, (r) => updateProp('rotation', r))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Gate Side</span>
+              {renderChoiceRow([{ value: false, label: 'Left' }, { value: true, label: 'Right' }], !!dev.mirror, (m) => updateProp('mirror', m))}
+            </div>
+            <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <input type="checkbox" id="mosfet-show-pins" checked={!!dev.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+              <label htmlFor="mosfet-show-pins" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Show G / D / S markers</label>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'supply') && (() => {
+        const sup = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Rail</span>
+              {renderChoiceRow(
+                [{ value: 'vdd', label: 'VDD' }, { value: 'vss', label: 'VSS' }],
+                selectedElements.every(el => (el.kind || 'vdd') === (sup.kind || 'vdd')) ? (sup.kind || 'vdd') : null,
+                (k) => { updateProp('kind', k); updateProp('label', k === 'vdd' ? 'VDD' : 'VSS'); }
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <div className="prop-group">
+                <span className="prop-label">Caption</span>
+                <input className="prop-input" value={sup.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. VDD, 1.8V, GND" />
+              </div>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (sup.rotation || 0)) ? (sup.rotation || 0) : null, (r) => updateProp('rotation', r))}
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'junction') && (
+        <div className="prop-group">
+          <span className="prop-label">Dot Size</span>
+          {renderChoiceRow(JUNCTION_OPTS, selectedElements[0].size || 'medium', (s) => updateProp('size', s))}
+        </div>
+      )}
+
+      {isCmos && selectedElements.some(el => el.type === 'line' || el.type === 'mosfet' || el.type === 'supply' || el.type === 'junction') && (
+        <div className="prop-group">
+          <span className="prop-label">Ink Color</span>
+          {renderInlineColorPicker(selectedElements[0].color || '#E6E2D8', (c) => updateProp('color', c))}
+          {selectedElements.some(el => el.color) && (
+            <button className="prop-btn" onClick={() => updateProp('color', undefined)} style={{ marginTop: '4px', fontSize: '10px' }}>Reset to Theme</button>
+          )}
+        </div>
+      )}
+
       {isFloorplan && selectedElements.some(el => el.type === 'line') && (() => {
         const lineEls = selectedElements.filter(el => el.type === 'line');
         // Old saves used 'vdd' before the rename to VCC.
@@ -435,7 +597,7 @@ export default function PropertiesPanel({
         );
       })()}
 
-      {!isFloorplan && selectedElements.some(el => el.type === 'line') && (
+      {!isFloorplan && !isCmos && selectedElements.some(el => el.type === 'line') && (
         <div className="prop-group">
           <span className="prop-label">Layer / Color</span>
           {Object.entries(allLayers).filter(([k]) => !['contact', 'via', 'buriedcontact'].includes(k)).map(([key, { label, hex }]) => (
@@ -645,7 +807,7 @@ export default function PropertiesPanel({
       )}
 
       <div className="prop-btn-row" style={{ marginTop: '12px' }}>
-        {selectedElements.some(el => el.type === 'line' || el.type === 'measure' || el.type === 'rect') && (
+        {selectedElements.some(el => ['line', 'measure', 'rect', 'mosfet', 'supply'].includes(el.type)) && (
           <button className="prop-btn" onClick={rotateSelected}><RotateCw size={12} /> Rotate 90°</button>
         )}
       </div>

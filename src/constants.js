@@ -36,15 +36,33 @@ export const PALETTE_ORDER_AFTER_METALS = [
 ];
 
 export const TOOLS = {
-  select:  'select',
-  line:    'line',
-  contact: 'contact',
-  rect:    'rect',
-  label:   'label',
-  brush:   'brush',
-  eraser:  'eraser',
-  measure: 'measure',
+  select:   'select',
+  line:     'line',
+  contact:  'contact',
+  rect:     'rect',
+  label:    'label',
+  brush:    'brush',
+  eraser:   'eraser',
+  measure:  'measure',
+  junction: 'junction',
+  device:   'device',
 };
+
+// ─── CMOS schematic mode ─────────────────────────────────────────────
+// Devices placed from the CMOS palette. PMOS/NMOS become `mosfet` elements,
+// VDD/VSS become `supply` elements.
+export const CMOS_DEVICES = {
+  pmos: { label: 'PMOS', title: 'PMOS transistor (P)', text: 'P' },
+  nmos: { label: 'NMOS', title: 'NMOS transistor (N)', text: 'N' },
+  vdd:  { label: 'VDD',  title: 'VDD supply rail',     text: 'VDD' },
+  vss:  { label: 'VSS',  title: 'VSS / ground',        text: 'VSS' },
+};
+
+// Connection-dot radii, in canvas pixels.
+export const JUNCTION_SIZES = { small: 3, medium: 4, large: 5.5 };
+
+// Default stroke width for CMOS schematic symbols, in canvas pixels.
+export const SYMBOL_STROKE_WIDTH = 2;
 
 // Floor-planning wire (power/ground/custom) presets.
 // VCC = supply (red), VSS = ground (dark blue), custom = user-recolorable signal net.

@@ -85,10 +85,13 @@ export default function CanvasArea({
             <div className="hud-grid">
               <div className="hud-row"><kbd>V</kbd> <span>Select Tool</span></div>
               <div className="hud-row"><kbd>W</kbd> <span>{mode === 'floorplan' ? 'Wire (VCC/VSS)' : 'Wire Tool'}</span></div>
-              {mode !== 'floorplan' && <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>}
+              {mode === 'cmos' && <div className="hud-row"><kbd>P</kbd> / <kbd>N</kbd> <span>Place PMOS / NMOS</span></div>}
+              {mode === 'cmos' && <div className="hud-row"><kbd>D</kbd> <span>Connection Dot</span></div>}
+              {mode === 'cmos' && <div className="hud-row"><kbd>Right-click</kbd> <span>Toggle Dot on Crossing</span></div>}
+              {mode === 'stick' && <div className="hud-row"><kbd>P</kbd> <span>Contact Tool</span></div>}
               <div className="hud-row"><kbd>R</kbd> <span>{mode === 'floorplan' ? 'Block / Pin' : 'Rectangle Tool'}</span></div>
               <div className="hud-row"><kbd>L</kbd> / <kbd>T</kbd> <span>Label Tool</span></div>
-              {mode !== 'floorplan' && <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>}
+              {mode === 'stick' && <div className="hud-row"><kbd>B</kbd> <span>Brush Tool</span></div>}
               <div className="hud-row"><kbd>M</kbd> <span>Measure Tool</span></div>
               <div className="hud-row"><kbd>+</kbd> / <kbd>-</kbd> <span>Zoom In / Out</span></div>
               <div className="hud-row"><kbd>0</kbd> <span>Reset Zoom</span></div>
