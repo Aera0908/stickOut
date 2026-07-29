@@ -1710,6 +1710,62 @@ export default function App({ mode = 'stick' }) {
     }));
   }, [selectedIds, elements, pushUndoSnapshot]);
 
+  const flipSelectedHorizontal = useCallback(() => {
+    const flippable = elements.filter(el => selectedIds.has(el.id));
+    if (flippable.length === 0) return;
+    pushUndoSnapshot();
+    if (flippable.length === 1) {
+      setElements(prev => prev.map(el => {
+        if (!selectedIds.has(el.id)) return el;
+        if (el.type === 'line' || el.type === 'measure') {
+          return { ...el, x1: el.x2, x2: el.x1 };
+        }
+        return { ...el, mirror: !el.mirror };
+      }));
+    } else {
+      const bounds = getContentBounds(flippable);
+      const cx = snapToGrid((bounds.minX + bounds.maxX) / 2);
+      setElements(prev => prev.map(el => {
+        if (!selectedIds.has(el.id)) return el;
+        if (el.type === 'line' || el.type === 'measure') {
+          return { ...el, x1: snapToGrid(2 * cx - el.x1), x2: snapToGrid(2 * cx - el.x2) };
+        }
+        if (isPointType(el.type)) {
+          return { ...el, x: snapToGrid(2 * cx - el.x), mirror: ['mosfet', 'supply', 'rect'].includes(el.type) ? !el.mirror : el.mirror };
+        }
+        return el;
+      }));
+    }
+  }, [selectedIds, elements, pushUndoSnapshot]);
+
+  const flipSelectedVertical = useCallback(() => {
+    const flippable = elements.filter(el => selectedIds.has(el.id));
+    if (flippable.length === 0) return;
+    pushUndoSnapshot();
+    if (flippable.length === 1) {
+      setElements(prev => prev.map(el => {
+        if (!selectedIds.has(el.id)) return el;
+        if (el.type === 'line' || el.type === 'measure') {
+          return { ...el, y1: el.y2, y2: el.y1 };
+        }
+        return { ...el, flipY: !el.flipY };
+      }));
+    } else {
+      const bounds = getContentBounds(flippable);
+      const cy = snapToGrid((bounds.minY + bounds.maxY) / 2);
+      setElements(prev => prev.map(el => {
+        if (!selectedIds.has(el.id)) return el;
+        if (el.type === 'line' || el.type === 'measure') {
+          return { ...el, y1: snapToGrid(2 * cy - el.y1), y2: snapToGrid(2 * cy - el.y2) };
+        }
+        if (isPointType(el.type)) {
+          return { ...el, y: snapToGrid(2 * cy - el.y), flipY: ['mosfet', 'supply', 'rect'].includes(el.type) ? !el.flipY : el.flipY };
+        }
+        return el;
+      }));
+    }
+  }, [selectedIds, elements, pushUndoSnapshot]);
+
   // Keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -2840,6 +2896,8 @@ export default function App({ mode = 'stick' }) {
               setElements={setElements}
               pushUndoSnapshot={pushUndoSnapshot}
               rotateSelected={rotateSelected}
+              flipSelectedHorizontal={flipSelectedHorizontal}
+              flipSelectedVertical={flipSelectedVertical}
               deleteSelected={deleteSelected}
               canvasLayers={canvasLayers}
               moveLayerInStack={moveLayerInStack}

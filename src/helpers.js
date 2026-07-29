@@ -111,7 +111,7 @@ export function normalizeRotation(rotation) {
 // Map a point from a symbol's local frame into world coordinates.
 export function transformSymbolPoint(el, lx, ly) {
   let x = el.mirror ? -lx : lx;
-  let y = ly;
+  let y = el.flipY ? -ly : ly;
   switch (normalizeRotation(el.rotation)) {
     case 90:  { const t = x; x = -y; y = t; break; }
     case 180: { x = -x; y = -y; break; }
@@ -125,6 +125,7 @@ export function transformSymbolPoint(el, lx, ly) {
 function transformExtents(ext, el) {
   let { minX, minY, maxX, maxY } = ext;
   if (el.mirror) { const t = minX; minX = -maxX; maxX = -t; }
+  if (el.flipY) { const t = minY; minY = -maxY; maxY = -t; }
   switch (normalizeRotation(el.rotation)) {
     case 90:  return { minX: -maxY, minY: minX, maxX: -minY, maxY: maxX };
     case 180: return { minX: -maxX, minY: -maxY, maxX: -minX, maxY: -minY };
