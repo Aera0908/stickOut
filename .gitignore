@@ -29,3 +29,10 @@ dist-ssr
 release_notes.md
 
 graphify-out/
+
+# Claude / AI tools
+.claude/
+
+# Project summary & promo media
+PROJECT_SUMMARY.md
+promo-video/

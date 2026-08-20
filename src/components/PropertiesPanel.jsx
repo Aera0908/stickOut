@@ -860,6 +860,13 @@ export default function PropertiesPanel({
         </div>
       )}
 
+      {/* Rotate for plain shapes (MOSFET / supply have their own Rotation + Flip controls above). */}
+      {selectedElements.some(el => ['line', 'measure', 'rect'].includes(el.type)) && (
+        <div className="prop-btn-row" style={{ marginTop: '8px' }}>
+          <button className="prop-btn" onClick={rotateSelected}><RotateCw size={12} /> Rotate 90°</button>
+        </div>
+      )}
+
       <button className="prop-btn danger" onClick={deleteSelected} style={{ marginTop: '8px', width: '100%' }}><Trash2 size={12} /> Delete</button>
     </div>
   );
