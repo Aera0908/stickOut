@@ -1,5 +1,10 @@
 {
+  "redirects": [
+    { "source": "/landing.html", "destination": "/", "statusCode": 301 },
+    { "source": "/landing", "destination": "/", "statusCode": 301 }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
+

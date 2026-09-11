@@ -18,6 +18,10 @@ function Root() {
     } else {
       document.title = 'StickOut — Free Online VLSI Stick Diagram Maker & Editor';
     }
+
+    if (path === '/landing.html' || path === '/landing') {
+      window.history.replaceState({}, '', '/');
+    }
   }, [path]);
 
   if (path === '/stick-diagram') return <App mode="stick" />;
