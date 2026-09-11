@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { navigate } from '../router.jsx';
 
 // The marketing / landing page shown at the base URL ("/"). Rendered as HTML so
 // the existing markup and SVGs are preserved. Recolored to the blue theme,
@@ -429,5 +430,21 @@ export default function Landing() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  return <div dangerouslySetInnerHTML={{ __html: LANDING_HTML }} />;
+  const handleClick = (e) => {
+    const anchor = e.target.closest('a');
+    if (!anchor) return;
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+    // Allow hash anchors to smoothly scroll
+    if (href.startsWith('#')) return;
+    // External links or new tab
+    if (href.startsWith('http') || href.startsWith('mailto') || anchor.target === '_blank') return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    e.preventDefault();
+    navigate(href);
+  };
+
+  return <div onClick={handleClick} dangerouslySetInnerHTML={{ __html: LANDING_HTML }} />;
 }
+

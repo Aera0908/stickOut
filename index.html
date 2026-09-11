@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary Meta Tags -->
-    <title>StickOut — Free Online VLSI Stick Diagram Maker & Editor</title>
-    <meta name="title" content="StickOut — Free Online VLSI Stick Diagram Maker & Editor" />
-    <meta name="description" content="Free online stick diagram maker and editor for VLSI and CMOS IC design. Draw Metal, Polysilicon, Diffusion, Contacts, and Vias on an interactive canvas. Export high-resolution PNGs. Perfect for electrical engineering students, IC designers, and academic papers." />
-    <meta name="keywords" content="stick diagram, stick diagram maker, stick diagram editor, stick diagram tool, VLSI stick diagram, CMOS stick diagram, VLSI layout editor, CMOS layout tool, IC design tool, stick diagram online, stick diagram generator, VLSI design tool, semiconductor layout, transistor layout editor, EDA tool, electronic design automation, MOSFET layout, NMOS PMOS layout, stick diagram drawing, free VLSI tool" />
+    <title>StickOut — Free Online VLSI Stick Diagram Maker, CMOS &amp; Floor Planning</title>
+    <meta name="title" content="StickOut — Free Online VLSI Stick Diagram Maker, CMOS &amp; Floor Planning" />
+    <meta name="description" content="Free online VLSI stick diagram maker, CMOS schematic editor, and floor planning tool. Draw Metal, Polysilicon, Diffusion, Contacts, and Vias on an interactive canvas. Export high-resolution PNGs. Perfect for electrical engineering students, IC designers, and academic papers." />
+    <meta name="keywords" content="stick diagram, stick diagram maker, stick diagram editor, stick diagram tool, CMOS diagram, CMOS schematic, CMOS diagram maker, VLSI stick diagram, CMOS stick diagram, floor planning, VLSI floor planning, VLSI layout editor, CMOS layout tool, IC design tool, stick diagram online, stick diagram generator, VLSI design tool, semiconductor layout, transistor layout editor, EDA tool, electronic design automation, MOSFET layout, NMOS PMOS layout, stick diagram drawing, free VLSI tool" />
     <meta name="author" content="Aira Josh Ynte" />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#4A90E2" />
@@ -26,8 +26,8 @@
     <!-- Open Graph / Facebook / Discord / LinkedIn -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://stickout.vercel.app/" />
-    <meta property="og:title" content="StickOut — Free Online VLSI Stick Diagram Maker & Editor" />
-    <meta property="og:description" content="Draw VLSI stick diagrams online for free. Interactive canvas with Metal, Poly, Diffusion layers, wire jumps, contacts, and vias. Export publication-ready high-res PNGs. Built for IC design students and engineers." />
+    <meta property="og:title" content="StickOut — Free Online VLSI Stick Diagram Maker, CMOS &amp; Floor Planning" />
+    <meta property="og:description" content="Draw VLSI stick diagrams, transistor-level CMOS schematics, and floor plans online for free. Interactive canvas with Metal, Poly, Diffusion layers, wire jumps, contacts, and vias. Export publication-ready high-res PNGs." />
     <meta property="og:image" content="https://stickout.vercel.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -38,21 +38,21 @@
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://stickout.vercel.app/" />
-    <meta name="twitter:title" content="StickOut — Free Online VLSI Stick Diagram Maker & Editor" />
-    <meta name="twitter:description" content="Draw VLSI stick diagrams online for free. Interactive canvas with Metal, Poly, Diffusion layers, wire jumps, contacts, and vias. Export high-res PNGs." />
+    <meta name="twitter:title" content="StickOut — Free Online VLSI Stick Diagram Maker, CMOS &amp; Floor Planning" />
+    <meta name="twitter:description" content="Draw VLSI stick diagrams, CMOS schematics, and floor plans online for free. Interactive canvas with Metal, Poly, Diffusion layers, wire jumps, contacts, and vias. Export high-res PNGs." />
     <meta name="twitter:image" content="https://stickout.vercel.app/og-image.png" />
     <meta name="twitter:image:alt" content="StickOut VLSI Stick Diagram Editor preview" />
     <meta name="twitter:creator" content="@aera0908" />
 
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data: WebApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "StickOut",
-      "alternateName": ["StickOut VLSI Editor", "Stick Diagram Maker", "Stick Diagram Editor"],
+      "alternateName": ["StickOut VLSI Editor", "Stick Diagram Maker", "Stick Diagram Editor", "CMOS Diagram Maker", "VLSI Floor Planning Tool"],
       "url": "https://stickout.vercel.app/",
-      "description": "Free online VLSI stick diagram maker and editor. Draw CMOS layouts with Metal, Polysilicon, Diffusion, Contacts, and Vias on an interactive canvas. Export publication-ready high-resolution PNGs for academic papers and presentations.",
+      "description": "Free online VLSI stick diagram maker, CMOS schematic editor, and floor planning tool. Draw CMOS layouts with Metal, Polysilicon, Diffusion, Contacts, and Vias on an interactive canvas. Export publication-ready high-resolution PNGs for academic papers and presentations.",
       "applicationCategory": "DesignApplication",
       "applicationSubCategory": "Electronic Design Automation (EDA)",
       "operatingSystem": "Any (Web Browser)",
@@ -65,6 +65,9 @@
       },
       "featureList": [
         "Interactive stick diagram drawing canvas",
+        "CMOS schematic and transistor layout editor (PMOS, NMOS, VDD, VSS)",
+        "Automatic CMOS gate synthesis from Boolean expressions",
+        "VLSI block-level floor planning tool",
         "VLSI layer management (Metal 1, Metal 2, Poly, N-Diffusion, P-Diffusion)",
         "Contacts, Vias, and stacked connections",
         "Wire jump detection for same-layer crossings",
@@ -87,14 +90,182 @@
       "license": "https://opensource.org/licenses/MIT",
       "isAccessibleForFree": true,
       "inLanguage": "en",
-      "keywords": "stick diagram, VLSI, CMOS, IC design, layout editor, EDA, stick diagram maker, stick diagram editor, semiconductor, transistor layout"
+      "keywords": "stick diagram, stick diagram maker, VLSI, CMOS, IC design, layout editor, EDA, semiconductor, transistor layout, floor planning"
+    }
+    </script>
+
+    <!-- JSON-LD Structured Data: FAQPage -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is a stick diagram in VLSI design?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring (metal interconnects), polysilicon gates, and diffusion regions without specifying exact physical dimensions. It uses color-coded lines for each fabrication layer and is a critical step between circuit schematics and full mask layouts in CMOS IC design."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I draw a stick diagram online?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "With StickOut, open the Stick Diagram editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Contact tool for connections and the Label tool for annotations. Export as high-resolution PNG when done."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is StickOut free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, StickOut is 100% free. There are no ads, no sign-ups, and no usage limits. Use it as much as you want for homework, research, teaching, or professional IC design work."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between a stick diagram and a layout diagram?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A stick diagram is an abstracted, topological representation showing relative placement and connectivity without precise dimensions. A layout diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication. Stick diagrams are drawn first to plan the layout."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I save and share my stick diagrams?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. StickOut auto-saves to your browser and supports .stk project files for sharing. You can also export PNG images with customizable backgrounds and margins."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What VLSI layers does StickOut support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "StickOut supports Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers with customizable colors."
+          }
+        }
+      ]
     }
     </script>
   </head>
   <body>
     <noscript>
-      <meta http-equiv="refresh" content="0;url=/landing.html" />
-      <p>StickOut is a free online VLSI stick diagram maker and editor. <a href="/landing.html">Learn more about StickOut</a>.</p>
+      <header style="padding: 20px 24px; border-bottom: 1px solid #2A2A36; background: #16161D; color: #F0F0F5;">
+        <div style="max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <a href="/" style="font-size: 20px; font-weight: 800; color: #F0F0F5; text-decoration: none;">StickOut</a>
+          <nav style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <a href="/stick-diagram" style="color: #4A90E2; font-weight: 600; text-decoration: none;">Stick Diagram</a>
+            <a href="/cmos-diagram" style="color: #4A90E2; font-weight: 600; text-decoration: none;">CMOS Diagram</a>
+            <a href="/floor-planning" style="color: #4A90E2; font-weight: 600; text-decoration: none;">Floor Planning</a>
+          </nav>
+        </div>
+      </header>
+
+      <main style="max-width: 1100px; margin: 0 auto; padding: 48px 24px; color: #F0F0F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.7;">
+        <section style="text-align: center; margin-bottom: 64px;">
+          <span style="font-size: 13px; font-weight: 700; color: #2F6FED; text-transform: uppercase; letter-spacing: 0.1em;">100% Free · No Sign-Up Required · Works In Browser</span>
+          <h1 style="font-size: 38px; font-weight: 900; margin: 16px 0;">VLSI Design Tools — Stick Diagrams, CMOS Schematics &amp; Floor Planning</h1>
+          <p style="font-size: 18px; color: #9898A6; max-width: 760px; margin: 0 auto 32px;">
+            StickOut is a free online VLSI stick diagram maker, transistor-level CMOS schematic editor, and block-level floor planner. Draw on an interactive snap-grid canvas with standard semiconductor layers (Metal, Polysilicon, Diffusion, Contacts, Vias) and export publication-ready high-resolution PNGs.
+          </p>
+          <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+            <a href="/stick-diagram" style="background: #2F6FED; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">Open Stick Diagram Editor</a>
+            <a href="/cmos-diagram" style="background: #1E1E28; border: 1px solid #2A2A36; color: #F0F0F5; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">Open CMOS Diagram</a>
+            <a href="/floor-planning" style="background: #1E1E28; border: 1px solid #2A2A36; color: #F0F0F5; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">Open Floor Planning</a>
+          </div>
+        </section>
+
+        <section style="margin-bottom: 64px;">
+          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Three Ways to Design</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+            <article style="background: #16161D; border: 1px solid #2A2A36; border-radius: 12px; padding: 24px;">
+              <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><a href="/stick-diagram" style="color: #4A90E2; text-decoration: none;">Stick Diagram</a></h3>
+              <p style="color: #9898A6;">Draw CMOS stick diagrams with Metal, Poly, Diffusion, Contacts, and Vias. Smart wire jumps, layer management, boolean-gate generation, and high-res PNG export.</p>
+            </article>
+            <article style="background: #16161D; border: 1px solid #2A2A36; border-radius: 12px; padding: 24px;">
+              <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><a href="/cmos-diagram" style="color: #4A90E2; text-decoration: none;">CMOS Diagram</a></h3>
+              <p style="color: #9898A6;">Build transistor-level CMOS schematics from PMOS, NMOS, VDD, and VSS symbols. Wires hop automatically where they cross, and connection dots mark connected nets.</p>
+            </article>
+            <article style="background: #16161D; border: 1px solid #2A2A36; border-radius: 12px; padding: 24px;">
+              <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><a href="/floor-planning" style="color: #4A90E2; text-decoration: none;">Floor Planning</a></h3>
+              <p style="color: #9898A6;">Plan block-level floor plans — chip boundary, I/O pins, power/ground rings, and device blocks. Group, label, and arrange blocks with rectangles and wires.</p>
+            </article>
+          </div>
+        </section>
+
+        <section style="margin-bottom: 64px;">
+          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 16px;">What is a Stick Diagram?</h2>
+          <p style="color: #9898A6; font-size: 16px; margin-bottom: 16px;">
+            A <strong>stick diagram</strong> is a simplified, abstracted representation of a VLSI (Very-Large-Scale Integration) integrated circuit layout. It maps the topology of a CMOS circuit — showing transistors, wiring, and connections — without specifying exact physical dimensions.
+          </p>
+          <p style="color: #9898A6; font-size: 16px; margin-bottom: 16px;">
+            Stick diagrams are essential in <strong>IC design education</strong> and early-stage <strong>CMOS layout planning</strong>. They bridge the gap between a circuit schematic and a full mask layout, helping engineers visualize how transistors, metal interconnects, polysilicon gates, and diffusion regions are physically arranged on silicon.
+          </p>
+          <p style="color: #9898A6; font-size: 16px; margin-bottom: 16px;">
+            Standard VLSI layer color coding in StickOut:
+          </p>
+          <ul style="color: #9898A6; padding-left: 20px; margin-bottom: 24px;">
+            <li><strong>Metal 1</strong>: Blue (#4A90E2)</li>
+            <li><strong>Metal 2</strong>: Red (#C0392B)</li>
+            <li><strong>Polysilicon</strong>: Purple (#9B59B6)</li>
+            <li><strong>P-Diffusion</strong>: Yellow (#F1C40F)</li>
+            <li><strong>N-Diffusion</strong>: Green (#27AE60)</li>
+            <li><strong>Contacts &amp; Vias</strong>: Black with white outline</li>
+          </ul>
+        </section>
+
+        <section style="margin-bottom: 64px;">
+          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Key Features</h2>
+          <ul style="color: #9898A6; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; list-style: none; padding: 0;">
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Complete VLSI Layer Support</strong>: Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well, Implants, and dynamically added higher metal layers.</li>
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Interactive Grid Canvas</strong>: Pan, zoom, and snap to grid on an HTML5 canvas for aligned manufacturing pitch.</li>
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Smart Wire Jumps</strong>: Same-layer wire crossings automatically render bridge arcs to indicate no electrical connection.</li>
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>High-Resolution PNG Export</strong>: Export crisp 2× PNGs with transparent or solid backgrounds ready for IEEE papers and presentations.</li>
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Layer Management</strong>: Toggle visibility, adjust opacity, and drag to reorder the layer rendering stack.</li>
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>LaTeX-Style Subscripts</strong>: Label rails with V_{DD} and V_{SS} rendered as elegant serif italic subscripts.</li>
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Auto-Save &amp; Project Files</strong>: Auto-saved to browser storage, with import/export of .stk files.</li>
+            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Full Keyboard Shortcuts</strong>: Hotkeys for fast editing (V, W, Q, R, P, N, D, L, E, M, and clipboard operations).</li>
+          </ul>
+        </section>
+
+        <section style="margin-bottom: 64px;">
+          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Frequently Asked Questions</h2>
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">What is a stick diagram in VLSI design?</h3>
+              <p style="color: #9898A6;">A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring, polysilicon gates, and diffusion regions without exact physical dimensions. It uses color-coded lines for each fabrication layer and is a critical step between circuit schematics and full mask layouts in CMOS IC design.</p>
+            </div>
+            <div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">How do I draw a stick diagram online?</h3>
+              <p style="color: #9898A6;">With StickOut, open the Stick Diagram editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Contact tool to place connections and the Label tool to annotate rails like V<sub>DD</sub> and V<sub>SS</sub>. When done, export as a high-resolution PNG.</p>
+            </div>
+            <div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Is StickOut free to use?</h3>
+              <p style="color: #9898A6;">Yes, StickOut is 100% free. There are no ads, no sign-ups, and no usage limits. Use it as much as you want for homework, research, teaching, or professional IC design work.</p>
+            </div>
+            <div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">What is the difference between a stick diagram and a layout diagram?</h3>
+              <p style="color: #9898A6;">A stick diagram is an abstracted, topological representation showing relative placement and connectivity without precise dimensions. A layout diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication. Stick diagrams are drawn first to plan the layout.</p>
+            </div>
+            <div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Can I save and share my stick diagrams?</h3>
+              <p style="color: #9898A6;">Yes. StickOut auto-saves to your browser and supports .stk project files for sharing. You can also export PNG images with customizable backgrounds and margins.</p>
+            </div>
+            <div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">What VLSI layers does StickOut support?</h3>
+              <p style="color: #9898A6;">StickOut supports Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers with customizable colors.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer style="padding: 32px 24px; border-top: 1px solid #2A2A36; text-align: center; color: #606070; font-size: 14px;">
+        <p>Created by <a href="https://github.com/Aera0908" target="_blank" rel="noopener" style="color: #9898A6;">Aira Josh Ynte</a> · Free online VLSI stick diagram maker, CMOS schematic &amp; floor planning editor.</p>
+      </footer>
     </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
