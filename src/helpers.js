@@ -824,6 +824,7 @@ export function drawElement(ctx, el, isSelected, options = {}) {
       ctx.restore();
     }
     // Label — resizable (labelSize), movable (labelOffsetX/Y) and rotatable (rotation)
+    // Floorplan pins (input, output, power, ground) are locked centered without offsets.
     if (el.label) {
       ctx.save();
       const fontSize = el.labelSize || 12;
@@ -836,8 +837,9 @@ export function drawElement(ctx, el, isSelected, options = {}) {
       ctx.fillStyle = labelColor;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const lx = el.x + el.w / 2 + (el.labelOffsetX || 0);
-      const ly = el.y + el.h / 2 + (el.labelOffsetY || 0);
+      const isPin = isFloorplanPin(el) || (el.fpKind && ['input', 'output', 'power', 'ground'].includes(el.fpKind));
+      const lx = el.x + el.w / 2 + (isPin ? 0 : (el.labelOffsetX || 0));
+      const ly = el.y + el.h / 2 + (isPin ? 0 : (el.labelOffsetY || 0));
       const rot = el.rotation || 0;
       if (rot) {
         ctx.translate(lx, ly);
