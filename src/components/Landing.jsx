@@ -1,418 +1,728 @@
 import { useEffect, useState } from 'react';
 import { navigate } from '../router.jsx';
 
-// The marketing / landing page shown at the base URL ("/"). Rendered as HTML so
-// the existing markup and SVGs are preserved. Recolored to the blue theme,
-// emojis replaced with inline icons, and a two-tool selector added.
+// ============================================================================
+// STICKOUT — MINIMALIST INDUSTRIAL VLSI CAD INTERFACE
+// Utilitarian, flat, quiet engineering aesthetic.
+// No oblong tags, no rounded cards, no glowing sci-fi gimmicks.
+// ============================================================================
 
 const LANDING_HTML = `
 <style>
-  /* Allow the long landing page to scroll (app's global CSS locks overflow) */
-  html, body { overflow-y: auto !important; height: auto !important; }
+  /* Allow landing page to scroll */
+  html, body { overflow-y: auto !important; height: auto !important; background: #0E0F12 !important; }
   #root { height: auto !important; overflow: visible !important; }
 
-  .lp *, .lp *::before, .lp *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  .lp {
-    --bg: #0D0D12; --surface: #16161D; --surface-2: #1E1E28; --border: #2A2A36;
-    --accent: #2F6FED; --accent-glow: rgba(47, 111, 237, 0.28);
-    --text: #F0F0F5; --text-secondary: #9898A6; --text-muted: #606070;
-    --blue: #4A90E2; --red: #C0392B; --yellow: #F1C40F; --green: #27AE60; --purple: #9B59B6;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg); color: var(--text); line-height: 1.7; -webkit-font-smoothing: antialiased;
+  .min-eda *, .min-eda *::before, .min-eda *::after {
+    margin: 0; padding: 0; box-sizing: border-box; border-radius: 0 !important;
+  }
+
+  .min-eda {
+    --bg: #0E0F12;
+    --surface: #14161B;
+    --surface-hover: #1A1D23;
+    --border: #23262E;
+    --border-subtle: #1C1E25;
+    --border-hover: #383D4A;
+    --text: #EDEDF2;
+    --text-secondary: #8E93A0;
+    --text-muted: #575B66;
+    --accent: #3B82F6;
+    --accent-hover: #2563EB;
+    --mono: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
     min-height: 100vh;
   }
-  .lp a { color: inherit; }
 
-  .lp nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  .min-eda a { color: inherit; text-decoration: none; }
+
+  /* Navigation Bar */
+  .min-eda .navbar {
+    position: sticky; top: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 48px; background: rgba(13, 13, 18, 0.85);
-    backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+    height: 52px; padding: 0 32px;
+    background: #0E0F12f2;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
   }
-  .lp .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--text); text-decoration: none; }
-  .lp .nav-brand svg { width: 28px; height: 28px; }
-  .lp .nav-links { display: flex; gap: 32px; }
-  .lp .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
-  .lp .nav-links a:hover { color: var(--text); }
-  .lp .nav-cta { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #fff; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; text-decoration: none; transition: all 0.2s; }
-  .lp .nav-cta:hover { filter: brightness(1.15); transform: translateY(-1px); }
-  .lp .nav-cta svg { width: 15px; height: 15px; }
-
-  .lp .hero {
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    text-align: center; padding: 120px 24px 80px;
-    background:
-      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(47, 111, 237, 0.10), transparent),
-      radial-gradient(ellipse 40% 40% at 80% 60%, rgba(74, 144, 226, 0.06), transparent),
-      var(--bg);
+  .min-eda .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text);
   }
-  .lp .hero-inner { max-width: 820px; }
-  .lp .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 16px; border-radius: 100px; font-size: 13px; color: var(--text-secondary); margin-bottom: 32px; }
-  .lp .hero-badge svg { width: 14px; height: 14px; color: var(--accent); }
-  .lp .hero-badge span { color: var(--accent); font-weight: 600; }
-  .lp .hero h1 { font-size: clamp(36px, 6vw, 62px); font-weight: 900; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 24px; }
-  .lp .hero h1 .highlight { background: linear-gradient(135deg, #2F6FED, #5B9BFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .lp .hero p { font-size: 18px; color: var(--text-secondary); max-width: 620px; margin: 0 auto 40px; line-height: 1.8; }
-  .lp .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-  .lp .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 700; text-decoration: none; transition: all 0.25s; box-shadow: 0 4px 24px var(--accent-glow); }
-  .lp .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
-  .lp .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; text-decoration: none; transition: all 0.25s; }
-  .lp .btn-secondary:hover { border-color: var(--text-muted); transform: translateY(-2px); }
-  .lp .btn-primary svg, .lp .btn-secondary svg { width: 20px; height: 20px; }
+  .min-eda .nav-brand-badge {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    color: var(--text-muted); border: 1px solid var(--border); padding: 1px 6px;
+  }
+  .min-eda .nav-links { display: flex; align-items: center; gap: 28px; }
+  .min-eda .nav-link {
+    font-size: 13px; color: var(--text-secondary); transition: color 0.15s;
+  }
+  .min-eda .nav-link:hover { color: var(--text); }
+  .min-eda .nav-btn {
+    display: inline-flex; align-items: center;
+    background: var(--text); color: var(--bg);
+    font-size: 12px; font-weight: 600; padding: 7px 14px;
+    border: 1px solid var(--text); transition: all 0.15s;
+  }
+  .min-eda .nav-btn:hover { background: #fff; border-color: #fff; }
 
-  .lp section { padding: 100px 24px; }
-  .lp .container { max-width: 1100px; margin: 0 auto; }
-  .lp .section-label { display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 16px; }
-  .lp .section-title { font-size: clamp(28px, 4vw, 42px); font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 20px; }
-  .lp .section-desc { font-size: 17px; color: var(--text-secondary); max-width: 640px; line-height: 1.8; margin-bottom: 48px; }
+  /* Container */
+  .min-eda .container { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
 
-  /* Tools / two choices */
-  .lp .tools { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .lp .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
-  .lp .tool-card { display: block; text-decoration: none; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: all 0.25s; }
-  .lp .tool-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-  .lp .tool-card-icon { width: 52px; height: 52px; background: var(--surface-2); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 18px; }
-  .lp .tool-card-icon svg { width: 26px; height: 26px; }
-  .lp .tool-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-  .lp .tool-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; }
-  .lp .tool-card-cta { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; font-size: 14px; }
-  .lp .tool-card-cta svg { width: 16px; height: 16px; }
+  /* Hero Section */
+  .min-eda .hero {
+    padding: 72px 0 64px;
+    border-bottom: 1px solid var(--border);
+  }
+  .min-eda .eyebrow {
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    color: var(--text-secondary); margin-bottom: 16px;
+  }
+  .min-eda .hero-title {
+    font-size: clamp(32px, 4.5vw, 48px);
+    font-weight: 700; line-height: 1.15; letter-spacing: -0.03em;
+    color: var(--text); margin-bottom: 20px; max-width: 820px;
+  }
+  .min-eda .hero-desc {
+    font-size: 16px; color: var(--text-secondary); max-width: 680px;
+    line-height: 1.7; margin-bottom: 32px;
+  }
+  .min-eda .hero-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 48px; }
+  .min-eda .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: #fff; border: 1px solid var(--accent);
+    padding: 11px 22px; font-size: 13px; font-weight: 600; transition: background 0.15s;
+  }
+  .min-eda .btn-primary:hover { background: var(--accent-hover); }
+  .min-eda .btn-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    padding: 11px 22px; font-size: 13px; font-weight: 500; transition: all 0.15s;
+  }
+  .min-eda .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-hover); }
 
-  .lp .what-is { border-bottom: 1px solid var(--border); }
-  .lp .what-is-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
-  .lp .what-is-text h2 { margin-bottom: 20px; }
-  .lp .what-is-text p { color: var(--text-secondary); font-size: 16px; margin-bottom: 16px; }
-  .lp .layer-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
-  .lp .layer-chip { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; }
-  .lp .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .lp .diagram-visual { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 40px; display: flex; align-items: center; justify-content: center; min-height: 320px; }
-  .lp .diagram-visual svg { width: 100%; max-width: 380px; }
+  /* Schematic Preview Canvas Frame */
+  .min-eda .preview-frame {
+    border: 1px solid var(--border); background: #0A0B0E;
+    position: relative;
+  }
+  .min-eda .preview-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    background: var(--surface); font-family: var(--mono); font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .min-eda .preview-body {
+    padding: 24px; display: flex; justify-content: center; align-items: center;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .min-eda .preview-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; border-top: 1px solid var(--border);
+    background: var(--surface); font-family: var(--mono); font-size: 11px;
+    color: var(--text-muted);
+  }
 
-  .lp .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
-  .lp .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: all 0.3s; }
-  .lp .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-  .lp .feature-icon { width: 44px; height: 44px; background: var(--surface-2); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 20px; }
-  .lp .feature-icon svg { width: 22px; height: 22px; }
-  .lp .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
-  .lp .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+  /* Section Styles */
+  .min-eda section.block { padding: 64px 0; border-bottom: 1px solid var(--border); }
+  .min-eda .section-title {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 8px; color: var(--text);
+  }
+  .min-eda .section-desc {
+    font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; max-width: 640px;
+  }
 
-  .lp .use-cases { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .lp .use-case-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
-  .lp .use-case-item { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 28px; text-align: center; transition: border-color 0.25s; }
-  .lp .use-case-item:hover { border-color: var(--accent); }
-  .lp .use-case-item .u-icon { color: var(--accent); margin-bottom: 16px; display: flex; justify-content: center; }
-  .lp .use-case-item .u-icon svg { width: 34px; height: 34px; }
-  .lp .use-case-item h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-  .lp .use-case-item p { font-size: 13px; color: var(--text-secondary); }
+  /* Tools Split (3-Column Clean Flat) */
+  .min-eda .tools-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--border); background: var(--border); gap: 1px;
+  }
+  .min-eda .tool-item {
+    background: var(--surface); padding: 32px 24px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: background 0.15s;
+  }
+  .min-eda .tool-item:hover { background: var(--surface-hover); }
+  .min-eda .tool-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+  .min-eda .tool-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px; }
+  .min-eda .tool-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    color: var(--accent); transition: color 0.15s;
+  }
+  .min-eda .tool-link:hover { color: #60A5FA; }
 
-  .lp .faq-list { max-width: 720px; }
-  .lp .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
-  .lp .faq-item h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
-  .lp .faq-item p { font-size: 15px; color: var(--text-secondary); line-height: 1.8; }
+  /* Minimal Data Table */
+  .min-eda .table-container {
+    border: 1px solid var(--border); overflow-x: auto;
+  }
+  .min-eda .data-table {
+    width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;
+    background: var(--surface);
+  }
+  .min-eda .data-table th {
+    background: #111317; color: var(--text-muted); font-family: var(--mono);
+    font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 10px 16px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+  }
+  .min-eda .data-table td {
+    padding: 12px 16px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+    color: var(--text-secondary); vertical-align: middle;
+  }
+  .min-eda .data-table tr:last-child td { border-bottom: none; }
+  .min-eda .data-table tr:hover td { background: rgba(255, 255, 255, 0.015); }
+  .min-eda .layer-name-cell {
+    display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text);
+  }
+  .min-eda .layer-color-sq {
+    width: 10px; height: 10px; flex-shrink: 0;
+  }
 
-  .lp .cta-section { text-align: center; background: radial-gradient(ellipse 50% 60% at 50% 100%, rgba(47, 111, 237, 0.12), transparent), var(--bg); }
-  .lp .cta-section .section-title { max-width: 620px; margin: 0 auto 20px; }
-  .lp .cta-section .section-desc { margin: 0 auto 40px; text-align: center; }
+  /* Features Grid (Clean 3-Column) */
+  .min-eda .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--border); background: var(--border); gap: 1px;
+  }
+  .min-eda .feature-box {
+    background: var(--surface); padding: 28px 24px;
+  }
+  .min-eda .feature-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+  .min-eda .feature-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
 
-  .lp footer { padding: 48px 24px; border-top: 1px solid var(--border); text-align: center; }
-  .lp footer p { color: var(--text-muted); font-size: 13px; }
-  .lp footer a { color: var(--text-secondary); text-decoration: none; }
-  .lp footer a:hover { color: var(--text); }
-  .lp .footer-socials { display: flex; gap: 12px; justify-content: center; margin: 20px 0 0; }
-  .lp .footer-socials a { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-secondary); transition: all 0.2s; }
-  .lp .footer-socials a:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
-  .lp .footer-socials svg { width: 16px; height: 16px; }
+  /* Shortcuts Matrix */
+  .min-eda .shortcuts-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--border); background: var(--border); gap: 1px;
+  }
+  .min-eda .sc-box {
+    background: var(--surface); padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .min-eda .sc-label { font-size: 12px; color: var(--text-secondary); }
+  .min-eda .sc-key {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--text); background: #0D0F12; border: 1px solid var(--border);
+    padding: 2px 7px;
+  }
 
-  @media (max-width: 768px) {
-    .lp nav { padding: 12px 20px; }
-    .lp .nav-links { display: none; }
-    .lp .tools-grid { grid-template-columns: 1fr; }
-    .lp .what-is-grid { grid-template-columns: 1fr; gap: 32px; }
-    .lp .diagram-visual { order: -1; }
-    .lp section { padding: 64px 20px; }
+  /* FAQ List */
+  .min-eda .faq-list {
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .min-eda .faq-entry {
+    padding: 24px 28px; border-bottom: 1px solid var(--border);
+  }
+  .min-eda .faq-entry:last-child { border-bottom: none; }
+  .min-eda .faq-question {
+    font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px;
+  }
+  .min-eda .faq-answer {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.7;
+  }
+
+  /* Bottom Launch Action */
+  .min-eda .launch-block {
+    padding: 48px; border: 1px solid var(--border); background: var(--surface);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 24px; margin: 64px 0;
+  }
+  .min-eda .launch-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .min-eda .launch-sub { font-size: 13px; color: var(--text-secondary); }
+
+  /* Footer */
+  .min-eda footer {
+    border-top: 1px solid var(--border); padding: 36px 0;
+    font-size: 12px; color: var(--text-muted); background: #0A0B0E;
+  }
+  .min-eda .footer-content {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .min-eda .footer-links { display: flex; gap: 20px; }
+  .min-eda .footer-links a { color: var(--text-secondary); }
+  .min-eda .footer-links a:hover { color: var(--text); }
+
+  @media (max-width: 860px) {
+    .min-eda .navbar { padding: 0 20px; }
+    .min-eda .container { padding: 0 20px; }
+    .min-eda .tools-grid { grid-template-columns: 1fr; }
+    .min-eda .features-grid { grid-template-columns: 1fr; }
+    .min-eda .shortcuts-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .min-eda .nav-links { display: none; }
+    .min-eda .shortcuts-grid { grid-template-columns: 1fr; }
+    .min-eda .launch-block { padding: 24px; }
   }
 </style>
 
-<div class="lp">
-  <nav>
-    <a href="/" class="nav-brand" aria-label="StickOut Home">
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="6" fill="#1A1A2E"/>
-        <line x1="6" y1="8" x2="26" y2="8" stroke="#4A90E2" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="6" y1="24" x2="26" y2="24" stroke="#4A90E2" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="16" y1="8" x2="16" y2="14" stroke="#F1C40F" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="16" y1="18" x2="16" y2="24" stroke="#27AE60" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="10" y1="16" x2="22" y2="16" stroke="#9B59B6" stroke-width="2.5" stroke-linecap="round"/>
-        <rect x="14" y="14" width="4" height="4" fill="#111" stroke="#fff" stroke-width="0.5"/>
-      </svg>
-      StickOut
-    </a>
-    <div class="nav-links">
-      <a href="#tools">Tools</a>
-      <a href="#what-is">What is a Stick Diagram?</a>
-      <a href="#features">Features</a>
-      <a href="#faq">FAQ</a>
+<div class="min-eda">
+  <!-- Minimal Header -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <a href="/">StickOut</a>
+      <span class="nav-brand-badge">VLSI CAD</span>
     </div>
-    <a href="#tools" class="nav-cta">Launch App <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></a>
+    <div class="nav-links">
+      <a href="#tools" class="nav-link">Tools</a>
+      <a href="#layers" class="nav-link">Layers</a>
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#shortcuts" class="nav-link">Shortcuts</a>
+      <a href="#faq" class="nav-link">FAQ</a>
+      <a href="/stick-diagram" class="nav-btn">Launch Editor</a>
+    </div>
   </nav>
 
-  <section class="hero">
-    <div class="hero-inner">
-      <div class="hero-badge">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.9L21 11l-6.6 2.1L12 20l-2.4-6.9L3 11l6.6-2.1z"/></svg>
-        <span>100% Free</span> · No sign-up required · Works in your browser
-      </div>
-      <h1>VLSI Design Tools — <span class="highlight">Stick Diagrams, CMOS Schematics &amp; Floor Planning</span></h1>
-      <p>Draw professional CMOS stick diagrams, transistor-level schematics and block-level floor plans online, on an interactive snap-grid canvas. Design with Metal, Polysilicon, Diffusion, Contacts and Vias — then export publication-ready PNGs in seconds.</p>
-      <div class="hero-actions">
-        <a href="/stick-diagram" class="btn-primary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
-          Stick Diagram Editor
-        </a>
-        <a href="/cmos-diagram" class="btn-secondary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5"/><circle cx="8.6" cy="12" r="1.6"/><path d="M10.2 6v12M13 6v12M13 7h5V2M13 17h5v5"/></svg>
-          CMOS Diagram
-        </a>
-        <a href="/floor-planning" class="btn-secondary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-          Floor Planning
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <section class="tools" id="tools">
+  <!-- Hero -->
+  <header class="hero">
     <div class="container">
-      <span class="section-label">Choose Your Tool</span>
-      <h2 class="section-title">Three Ways to Design</h2>
-      <p class="section-desc">StickOut includes a stick diagram editor, a transistor-level CMOS schematic maker, and a block-level floor planner. Pick where you want to start — all three share the same fast, snap-grid canvas.</p>
-      <div class="tools-grid">
-        <a class="tool-card" href="/stick-diagram">
-          <div class="tool-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
-          </div>
-          <h3>Stick Diagram</h3>
-          <p>Draw CMOS stick diagrams with Metal, Poly, Diffusion, Contacts and Vias. Smart wire jumps, layer management, boolean-gate generation, and high-res PNG export.</p>
-          <span class="tool-card-cta">Open Stick Diagram <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></span>
-        </a>
-        <a class="tool-card" href="/cmos-diagram">
-          <div class="tool-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5"/><circle cx="8.6" cy="12" r="1.6"/><path d="M10.2 6v12M13 6v12M13 7h5V2M13 17h5v5"/></svg>
-          </div>
-          <h3>CMOS Diagram</h3>
-          <p>Build transistor-level CMOS schematics from PMOS, NMOS, VDD and VSS symbols. Wires hop automatically where they cross, and connection dots mark the nets you actually tie together.</p>
-          <span class="tool-card-cta">Open CMOS Diagram <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></span>
-        </a>
-        <a class="tool-card" href="/floor-planning">
-          <div class="tool-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-          </div>
-          <h3>Floor Planning</h3>
-          <p>Plan block-level floor plans — chip boundary, I/O pins, power/ground rings, and device blocks. Group, label and arrange blocks with rectangles and wires.</p>
-          <span class="tool-card-cta">Open Floor Planning <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></span>
-        </a>
-      </div>
-    </div>
-  </section>
+      <div class="eyebrow">Free, browser-based VLSI design suite</div>
+      <h1 class="hero-title">VLSI stick diagram and CMOS layout editor.</h1>
+      <p class="hero-desc">
+        Draw CMOS stick diagrams, transistor-level schematics, and block floor plans directly in your browser. Design with standard semiconductor fabrication layers, automatic wire jumpers, and export publication-ready PNGs. No sign-ups or installation required.
+      </p>
 
-  <section class="what-is" id="what-is">
-    <div class="container">
-      <div class="what-is-grid">
-        <div class="what-is-text">
-          <span class="section-label">Understanding the Basics</span>
-          <h2 class="section-title">What is a Stick Diagram?</h2>
-          <p>A <strong>stick diagram</strong> is a simplified, abstracted representation of a VLSI (Very-Large-Scale Integration) integrated circuit layout. It maps the topology of a CMOS circuit — showing transistors, wiring, and connections — without specifying exact physical dimensions.</p>
-          <p>Stick diagrams are essential in <strong>IC design education</strong> and early-stage <strong>CMOS layout planning</strong>. They bridge the gap between a circuit schematic and a full mask layout, helping engineers visualize how transistors, metal interconnects, polysilicon gates, and diffusion regions are physically arranged on silicon.</p>
-          <p>Each layer in a stick diagram is represented by a <strong>different color</strong>:</p>
-          <div class="layer-legend">
-            <div class="layer-chip"><div class="layer-dot" style="background:#4A90E2"></div> Metal 1</div>
-            <div class="layer-chip"><div class="layer-dot" style="background:#C0392B"></div> Metal 2</div>
-            <div class="layer-chip"><div class="layer-dot" style="background:#9B59B6"></div> Polysilicon</div>
-            <div class="layer-chip"><div class="layer-dot" style="background:#F1C40F"></div> P-Diffusion</div>
-            <div class="layer-chip"><div class="layer-dot" style="background:#27AE60"></div> N-Diffusion</div>
-            <div class="layer-chip"><div class="layer-dot" style="background:#111;border:1px solid #888"></div> Contacts</div>
-          </div>
+      <div class="hero-buttons">
+        <a href="/stick-diagram" class="btn-primary">Stick Diagram Editor</a>
+        <a href="/cmos-diagram" class="btn-secondary">CMOS Schematic</a>
+        <a href="/floor-planning" class="btn-secondary">Floor Planning</a>
+      </div>
+
+      <!-- Clean Schematic Viewport Preview -->
+      <div class="preview-frame">
+        <div class="preview-header">
+          <span>CMOS 2-Input NAND Gate Stick Diagram</span>
+          <span>Grid: 20λ Pitch</span>
         </div>
-        <div class="diagram-visual" aria-label="Example two-input CMOS gate stick diagram">
-          <svg viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg">
-            <line x1="40" y1="40" x2="280" y2="40" stroke="#4A90E2" stroke-width="4" stroke-linecap="round"/>
-            <text x="10" y="44" fill="#4A90E2" font-size="13" font-family="Inter, sans-serif" font-weight="600">V<tspan font-size="9" dy="3">DD</tspan></text>
-            <line x1="40" y1="220" x2="280" y2="220" stroke="#4A90E2" stroke-width="4" stroke-linecap="round"/>
-            <text x="10" y="224" fill="#4A90E2" font-size="13" font-family="Inter, sans-serif" font-weight="600">V<tspan font-size="9" dy="3">SS</tspan></text>
-            <line x1="60" y1="95" x2="250" y2="95" stroke="#F1C40F" stroke-width="4" stroke-linecap="round"/>
-            <line x1="60" y1="165" x2="250" y2="165" stroke="#27AE60" stroke-width="4" stroke-linecap="round"/>
-            <line x1="110" y1="75" x2="110" y2="185" stroke="#9B59B6" stroke-width="3" stroke-linecap="round"/>
-            <line x1="200" y1="75" x2="200" y2="185" stroke="#9B59B6" stroke-width="3" stroke-linecap="round"/>
-            <line x1="75" y1="40" x2="75" y2="95" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
-            <line x1="235" y1="40" x2="235" y2="95" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
-            <line x1="155" y1="95" x2="155" y2="130" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
-            <line x1="155" y1="130" x2="275" y2="130" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
-            <line x1="235" y1="130" x2="235" y2="165" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
-            <line x1="75" y1="165" x2="75" y2="220" stroke="#4A90E2" stroke-width="3" stroke-linecap="round"/>
-            <text x="118" y="152" fill="#9B59B6" font-size="13" font-family="Inter, sans-serif" font-weight="600">A</text>
-            <text x="208" y="152" fill="#9B59B6" font-size="13" font-family="Inter, sans-serif" font-weight="600">B</text>
-            <text x="280" y="134" fill="#4A90E2" font-size="13" font-family="Inter, sans-serif" font-weight="600">L</text>
-            <rect x="70.5" y="35.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
-            <rect x="230.5" y="35.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
-            <rect x="70.5" y="90.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
-            <rect x="150.5" y="90.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
-            <rect x="230.5" y="90.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
-            <rect x="70.5" y="160.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
-            <rect x="230.5" y="160.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
-            <rect x="70.5" y="215.5" width="9" height="9" fill="#1A1A2E" stroke="#fff" stroke-width="1.5" rx="1"/>
+        <div class="preview-body">
+          <svg viewBox="0 0 340 240" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:340px; display:block;">
+            <!-- Grid Lines -->
+            <g stroke="#1A1D24" stroke-width="1">
+              <line x1="20" y1="30" x2="320" y2="30"/>
+              <line x1="20" y1="85" x2="320" y2="85"/>
+              <line x1="20" y1="155" x2="320" y2="155"/>
+              <line x1="20" y1="210" x2="320" y2="210"/>
+              <line x1="110" y1="15" x2="110" y2="225"/>
+              <line x1="190" y1="15" x2="190" y2="225"/>
+            </g>
+
+            <!-- VDD Rail (Metal 1) -->
+            <line x1="20" y1="30" x2="320" y2="30" stroke="#4A90E2" stroke-width="4"/>
+            <text x="24" y="24" fill="#4A90E2" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="600">VDD (M1)</text>
+
+            <!-- VSS Rail (Metal 1) -->
+            <line x1="20" y1="210" x2="320" y2="210" stroke="#4A90E2" stroke-width="4"/>
+            <text x="24" y="226" fill="#4A90E2" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="600">VSS (M1)</text>
+
+            <!-- P-Diffusion Active Strip (Yellow) -->
+            <line x1="50" y1="85" x2="270" y2="85" stroke="#F1C40F" stroke-width="4"/>
+            <text x="276" y="89" fill="#F1C40F" font-family="'JetBrains Mono', monospace" font-size="9">P-DIFF</text>
+
+            <!-- N-Diffusion Active Strip (Green) -->
+            <line x1="50" y1="155" x2="270" y2="155" stroke="#27AE60" stroke-width="4"/>
+            <text x="276" y="159" fill="#27AE60" font-family="'JetBrains Mono', monospace" font-size="9">N-DIFF</text>
+
+            <!-- Demarcation Line -->
+            <line x1="20" y1="120" x2="320" y2="120" stroke="#6E554D" stroke-width="1" stroke-dasharray="6,4"/>
+
+            <!-- Polysilicon Gates (Purple) -->
+            <line x1="120" y1="60" x2="120" y2="180" stroke="#9B59B6" stroke-width="3.5"/>
+            <text x="116" y="52" fill="#9B59B6" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600">A</text>
+
+            <line x1="200" y1="60" x2="200" y2="180" stroke="#9B59B6" stroke-width="3.5"/>
+            <text x="196" y="52" fill="#9B59B6" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600">B</text>
+
+            <!-- Vertical M1 Interconnects -->
+            <line x1="75" y1="30" x2="75" y2="85" stroke="#4A90E2" stroke-width="2.5"/>
+            <line x1="245" y1="30" x2="245" y2="85" stroke="#4A90E2" stroke-width="2.5"/>
+            <line x1="160" y1="85" x2="160" y2="120" stroke="#4A90E2" stroke-width="2.5"/>
+            <line x1="160" y1="120" x2="250" y2="120" stroke="#4A90E2" stroke-width="2.5"/>
+            <line x1="245" y1="120" x2="245" y2="155" stroke="#4A90E2" stroke-width="2.5"/>
+            <line x1="75" y1="155" x2="75" y2="210" stroke="#4A90E2" stroke-width="2.5"/>
+
+            <!-- Output Label -->
+            <text x="258" y="124" fill="#4A90E2" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600">Y = !(A·B)</text>
+
+            <!-- Contacts (Clean Boxes with cross) -->
+            <rect x="71" y="26" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="71" y1="26" x2="79" y2="34" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="71" y1="34" x2="79" y2="26" stroke="#FFF" stroke-width="0.8"/>
+
+            <rect x="241" y="26" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="241" y1="26" x2="249" y2="34" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="241" y1="34" x2="249" y2="26" stroke="#FFF" stroke-width="0.8"/>
+
+            <rect x="71" y="81" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="71" y1="81" x2="79" y2="89" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="71" y1="89" x2="79" y2="81" stroke="#FFF" stroke-width="0.8"/>
+
+            <rect x="156" y="81" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="156" y1="81" x2="164" y2="89" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="156" y1="89" x2="164" y2="81" stroke="#FFF" stroke-width="0.8"/>
+
+            <rect x="241" y="81" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="241" y1="81" x2="249" y2="89" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="241" y1="89" x2="249" y2="81" stroke="#FFF" stroke-width="0.8"/>
+
+            <rect x="71" y="151" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="71" y1="151" x2="79" y2="159" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="71" y1="159" x2="79" y2="151" stroke="#FFF" stroke-width="0.8"/>
+
+            <rect x="241" y="151" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="241" y1="151" x2="249" y2="159" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="241" y1="159" x2="249" y2="151" stroke="#FFF" stroke-width="0.8"/>
+
+            <rect x="71" y="206" width="8" height="8" fill="#0A0B0E" stroke="#FFF" stroke-width="1.2"/>
+            <line x1="71" y1="206" x2="79" y2="214" stroke="#FFF" stroke-width="0.8"/>
+            <line x1="71" y1="214" x2="79" y2="206" stroke="#FFF" stroke-width="0.8"/>
           </svg>
         </div>
+        <div class="preview-footer">
+          <span>Layers: Metal 1 · Polysilicon · P-Diffusion · N-Diffusion · Contacts</span>
+          <span>Output: High-res PNG &amp; .stk files</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Three Tools -->
+  <section class="block" id="tools">
+    <div class="container">
+      <h2 class="section-title">Design Tools</h2>
+      <p class="section-desc">Choose an editor to start. All three share the same snap-grid canvas, hotkeys, and export engine.</p>
+
+      <div class="tools-grid">
+        <div class="tool-item">
+          <div>
+            <h3 class="tool-title">Stick Diagram</h3>
+            <p class="tool-text">
+              Draw topological CMOS stick diagrams using Metal, Polysilicon, Diffusion, Contacts, and Vias. Includes automatic same-layer wire jump detection, full layer hierarchy management, and Boolean gate generation.
+            </p>
+          </div>
+          <a href="/stick-diagram" class="tool-link">Open Stick Diagram &rarr;</a>
+        </div>
+
+        <div class="tool-item">
+          <div>
+            <h3 class="tool-title">CMOS Schematic</h3>
+            <p class="tool-text">
+              Assemble transistor-level schematics with PMOS, NMOS, VDD, and VSS symbols. Crossing lines form automatic bridge arcs, and connection nodes mark electrically tied nets.
+            </p>
+          </div>
+          <a href="/cmos-diagram" class="tool-link">Open CMOS Schematic &rarr;</a>
+        </div>
+
+        <div class="tool-item">
+          <div>
+            <h3 class="tool-title">Floor Planning</h3>
+            <p class="tool-text">
+              Plan chip boundaries, peripheral I/O pad rings, and core power/ground mesh trunks. Group and arrange block functional units with dimensions and interconnects.
+            </p>
+          </div>
+          <a href="/floor-planning" class="tool-link">Open Floor Planning &rarr;</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="features">
+  <!-- Layer Specification Table -->
+  <section class="block" id="layers">
     <div class="container">
-      <span class="section-label">Powerful Tools</span>
-      <h2 class="section-title">Everything You Need in a Stick Diagram Editor</h2>
-      <p class="section-desc">StickOut is a professional-grade, browser-based EDA tool for drawing VLSI stick diagrams. No downloads, no installations — just open and start designing.</p>
+      <h2 class="section-title">Fabrication Layers</h2>
+      <p class="section-desc">Color-coded standard layers adhering to Mead-Conway VLSI design rules.</p>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Color Code</th>
+              <th>Material</th>
+              <th>Function</th>
+              <th>Minimum Width</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#4A90E2"></span>
+                  <span>Metal 1 (M1)</span>
+                </div>
+              </td>
+              <td><code>#4A90E2</code></td>
+              <td>Aluminum / Copper</td>
+              <td>Primary horizontal interconnect &amp; power rails</td>
+              <td>3λ</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#C0392B"></span>
+                  <span>Metal 2 (M2)</span>
+                </div>
+              </td>
+              <td><code>#C0392B</code></td>
+              <td>Aluminum / Copper</td>
+              <td>Orthogonal vertical routing &amp; global buses</td>
+              <td>4λ</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#9B59B6"></span>
+                  <span>Polysilicon</span>
+                </div>
+              </td>
+              <td><code>#9B59B6</code></td>
+              <td>Polycrystalline Silicon</td>
+              <td>Transistor gates &amp; local interconnects</td>
+              <td>2λ</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#27AE60"></span>
+                  <span>N-Diffusion</span>
+                </div>
+              </td>
+              <td><code>#27AE60</code></td>
+              <td>N+ Doped Silicon</td>
+              <td>NMOS channels, source &amp; drain active regions</td>
+              <td>2λ</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#F1C40F"></span>
+                  <span>P-Diffusion</span>
+                </div>
+              </td>
+              <td><code>#F1C40F</code></td>
+              <td>P+ Doped Silicon</td>
+              <td>PMOS channels, source &amp; drain active regions</td>
+              <td>2λ</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#111; border:1px solid #888;"></span>
+                  <span>Contact Cut</span>
+                </div>
+              </td>
+              <td><code>#111111</code></td>
+              <td>Tungsten (W) Plug</td>
+              <td>Vertical junction: Metal 1 to Poly or Diffusion</td>
+              <td>2λ × 2λ</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#FF00FF"></span>
+                  <span>Via Cut</span>
+                </div>
+              </td>
+              <td><code>#FF00FF</code></td>
+              <td>Tungsten / Copper</td>
+              <td>Vertical junction: Metal 1 to Metal 2</td>
+              <td>2λ × 2λ</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="layer-name-cell">
+                  <span class="layer-color-sq" style="background:#795548"></span>
+                  <span>N-Well / P-Well</span>
+                </div>
+              </td>
+              <td><code>#795548</code></td>
+              <td>Doped Well Region</td>
+              <td>Tub isolation for complementary transistors</td>
+              <td>Boundary</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features -->
+  <section class="block" id="features">
+    <div class="container">
+      <h2 class="section-title">Features</h2>
+      <p class="section-desc">Focused capabilities designed for electronic engineering workflows.</p>
+
       <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-          <h3>Complete VLSI Layer Support</h3>
-          <p>Draw with Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well, Implants, and dynamically added higher metal layers — all color-coded to industry standards.</p>
+        <div class="feature-box">
+          <h3 class="feature-title">Boolean Gate Synthesis</h3>
+          <p class="feature-body">
+            Input arbitrary logic equations like <code>!(A &amp; B) | C</code>. The synthesizer discovers dual-graph Euler paths to minimize diffusion breaks and produce standard cell layouts.
+          </p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></div>
-          <h3>Interactive Grid Canvas</h3>
-          <p>Pan, zoom, and snap to grid on a fully interactive HTML5 Canvas. Grid snapping keeps your wiring perfectly aligned to the manufacturing grid pitch.</p>
+        <div class="feature-box">
+          <h3 class="feature-title">Automatic Wire Jumpers</h3>
+          <p class="feature-body">
+            Crossing wires on the same fabrication layer automatically render jumper arcs to indicate no electrical connection. Toggle connection dots with the junction tool.
+          </p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg></div>
-          <h3>Smart Wire Jumps</h3>
-          <p>Same-layer wire crossings automatically render bridge arcs to indicate no electrical connection. Right-click any jump to toggle connection state.</p>
+        <div class="feature-box">
+          <h3 class="feature-title">Grid Pitch Snapping</h3>
+          <p class="feature-body">
+            Strict 20px grid snapping keeps lines and contacts aligned to scalable lambda pitches. Supports pan and smooth zoom from 0.25× to 4.0×.
+          </p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></div>
-          <h3>High-Resolution PNG Export</h3>
-          <p>Export your diagrams as crisp 2× PNGs with adjustable margins, transparent or solid backgrounds, and customizable label styles — ready for papers and presentations.</p>
+        <div class="feature-box">
+          <h3 class="feature-title">Layer Management</h3>
+          <p class="feature-body">
+            Toggle visibility, adjust opacity, and reorder the rendering stack. Supports 14 standard masks plus dynamic higher-metal layers up to Metal 10.
+          </p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
-          <h3>Layer Management</h3>
-          <p>Photoshop-style layer controls: toggle visibility, adjust opacity, and drag-and-drop to reorder the rendering stack. Organize complex CMOS layouts with ease.</p>
+        <div class="feature-box">
+          <h3 class="feature-title">LaTeX-Style Labels</h3>
+          <p class="feature-body">
+            Label supply rails and input pins with standard subscript syntax (e.g. <code>V_{DD}</code> and <code>V_{SS}</code>) rendered as serif mathematical typography.
+          </p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></div>
-          <h3>LaTeX-Style Subscripts</h3>
-          <p>Label your rails with V_{DD}, V_{SS}, and other notation — StickOut renders elegant, publication-quality serif italic subscripts, just like LaTeX.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/></svg></div>
-          <h3>Freehand Paintbrush</h3>
-          <p>Annotate your diagrams with freehand brush strokes. Adjustable brush size and opacity let you mark up designs during review sessions or lectures.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></div>
-          <h3>Auto-Save &amp; Project Files</h3>
-          <p>Your work is automatically saved to browser storage. Save and load complete projects as .stk files to share diagrams with classmates or colleagues.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg></div>
-          <h3>Full Keyboard Shortcuts</h3>
-          <p>Professional hotkeys: V for select, W for wire, P for contact, R for rectangle, Copy/Cut/Paste, Undo/Redo, Group, and layer reordering — all from the keyboard.</p>
+        <div class="feature-box">
+          <h3 class="feature-title">High-Resolution Export</h3>
+          <p class="feature-body">
+            Export 2× resolution PNGs with transparent or solid backgrounds, optimized for IEEE papers, lecture slides, and lab reports. Save and reload <code>.stk</code> project files.
+          </p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="use-cases" id="use-cases">
+  <!-- Shortcuts -->
+  <section class="block" id="shortcuts">
     <div class="container">
-      <span class="section-label">Who is StickOut For?</span>
-      <h2 class="section-title">Built for Students, Engineers &amp; Educators</h2>
-      <p class="section-desc">Whether you're studying VLSI design, teaching a circuits class, or planning a silicon layout, StickOut is the fastest way to draw stick diagrams and floor plans online.</p>
-      <div class="use-case-list">
-        <div class="use-case-item">
-          <div class="u-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2.5 3 6 3s6-2 6-3v-5"/></svg></div>
-          <h3>Engineering Students</h3>
-          <p>Complete VLSI homework and lab assignments with a free online stick diagram maker. Export clean diagrams for your reports.</p>
+      <h2 class="section-title">Keyboard Shortcuts</h2>
+      <p class="section-desc">Direct keyboard hotkeys for rapid diagram creation.</p>
+
+      <div class="shortcuts-grid">
+        <div class="sc-box">
+          <span class="sc-label">Select / Move</span>
+          <span class="sc-key">V</span>
         </div>
-        <div class="use-case-item">
-          <div class="u-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="M12 16v5"/><path d="M8 21h8"/></svg></div>
-          <h3>Professors &amp; Educators</h3>
-          <p>Create lecture materials and demonstration diagrams. The interactive canvas is perfect for live classroom walkthroughs of CMOS layout concepts.</p>
+        <div class="sc-box">
+          <span class="sc-label">Draw Wire</span>
+          <span class="sc-key">W</span>
         </div>
-        <div class="use-case-item">
-          <div class="u-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg></div>
-          <h3>IC Design Engineers</h3>
-          <p>Quickly sketch transistor-level layouts and floor plans before committing to full EDA tools — ideal for early-stage CMOS exploration and peer reviews.</p>
+        <div class="sc-box">
+          <span class="sc-label">Place Contact / Via</span>
+          <span class="sc-key">P</span>
         </div>
-        <div class="use-case-item">
-          <div class="u-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg></div>
-          <h3>Research &amp; Publishing</h3>
-          <p>Generate publication-quality figures for IEEE papers, theses, and technical reports with high-resolution PNG export.</p>
+        <div class="sc-box">
+          <span class="sc-label">Draw Rectangle</span>
+          <span class="sc-key">R</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Add Text Label</span>
+          <span class="sc-key">L</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Boolean Synthesis</span>
+          <span class="sc-key">B</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Measure Distance</span>
+          <span class="sc-key">M</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Toggle Junction</span>
+          <span class="sc-key">J</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Eraser</span>
+          <span class="sc-key">E</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Undo</span>
+          <span class="sc-key">Ctrl+Z</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Redo</span>
+          <span class="sc-key">Ctrl+Y</span>
+        </div>
+        <div class="sc-box">
+          <span class="sc-label">Save Project</span>
+          <span class="sc-key">Ctrl+S</span>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="faq">
+  <!-- FAQ -->
+  <section class="block" id="faq">
     <div class="container">
-      <span class="section-label">Frequently Asked Questions</span>
-      <h2 class="section-title">Common Questions About Stick Diagrams</h2>
+      <h2 class="section-title">Frequently Asked Questions</h2>
+      <p class="section-desc">Common questions regarding VLSI stick diagrams and the editor.</p>
+
       <div class="faq-list">
-        <div class="faq-item">
-          <h3>What is a stick diagram in VLSI design?</h3>
-          <p>A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring, polysilicon gates, and diffusion regions without exact physical dimensions. It uses color-coded lines for each fabrication layer and is a critical step between circuit schematics and full mask layouts in CMOS IC design.</p>
+        <div class="faq-entry">
+          <h3 class="faq-question">What is a stick diagram in VLSI design?</h3>
+          <p class="faq-answer">
+            A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring, polysilicon gates, and diffusion regions without specifying exact geometric dimensions. It bridges the gap between circuit schematics and full mask layouts (GDSII).
+          </p>
         </div>
-        <div class="faq-item">
-          <h3>How do I draw a stick diagram online?</h3>
-          <p>With StickOut, open the Stick Diagram editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Contact tool to place connections and the Label tool to annotate rails like V<sub>DD</sub> and V<sub>SS</sub>. When done, export as a high-resolution PNG.</p>
+        <div class="faq-entry">
+          <h3 class="faq-question">How do I draw a stick diagram online?</h3>
+          <p class="faq-answer">
+            Open the Stick Diagram editor, choose a fabrication layer (Metal, Poly, Diffusion, etc.), select the Wire tool (W), and click on the grid to route paths. Place Contacts (P) at layer junctions, and add Labels (L) for pins and power rails like V<sub>DD</sub> and V<sub>SS</sub>.
+          </p>
         </div>
-        <div class="faq-item">
-          <h3>Is StickOut free to use?</h3>
-          <p>Yes, StickOut is 100% free. There are no ads, no sign-ups, and no usage limits. Use it as much as you want for homework, research, teaching, or professional IC design work.</p>
+        <div class="faq-entry">
+          <h3 class="faq-question">Is StickOut free to use?</h3>
+          <p class="faq-answer">
+            Yes, StickOut is 100% free and open-source. There are no accounts, subscriptions, or ads. All work runs locally in your browser and auto-saves to your local storage.
+          </p>
         </div>
-        <div class="faq-item">
-          <h3>What is the difference between a stick diagram and a layout diagram?</h3>
-          <p>A stick diagram is an abstracted, topological representation showing relative placement and connectivity without precise dimensions. A layout (mask) diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication. Stick diagrams are drawn first to plan the layout.</p>
+        <div class="faq-entry">
+          <h3 class="faq-question">What is the difference between a stick diagram and a mask layout?</h3>
+          <p class="faq-answer">
+            A stick diagram is an abstracted, topological plan showing relative placement and connectivity without exact dimensions. A geometric layout is physically accurate with precise widths, spacings, and coordinates ready for lithography. Stick diagrams are drawn first to optimize transistor ordering and routing channels.
+          </p>
         </div>
-        <div class="faq-item">
-          <h3>Can I save and share my work?</h3>
-          <p>Yes. StickOut auto-saves to your browser, and you can save projects as .stk files to share with others. For images, use the Export PNG feature with customizable backgrounds and margins.</p>
+      </div>
+
+      <!-- Simple Launch CTA Box -->
+      <div class="launch-block">
+        <div>
+          <h3 class="launch-title">Start designing in your browser</h3>
+          <p class="launch-sub">Free, instant access. No account or downloads needed.</p>
         </div>
-        <div class="faq-item">
-          <h3>What VLSI layers does StickOut support?</h3>
-          <p>Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, N+ and P+ Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers with customizable colors.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <a href="/stick-diagram" class="btn-primary">Open Stick Diagram</a>
+          <a href="/cmos-diagram" class="btn-secondary">Open CMOS Schematic</a>
+          <a href="/floor-planning" class="btn-secondary">Open Floor Planning</a>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="cta-section">
-    <div class="container">
-      <span class="section-label">Get Started</span>
-      <h2 class="section-title">Start Designing Now</h2>
-      <p class="section-desc">No sign-up. No downloads. Pick a tool and start designing in seconds.</p>
-      <div class="hero-actions" style="justify-content:center">
-        <a href="/stick-diagram" class="btn-primary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
-          Open Stick Diagram
-        </a>
-        <a href="/cmos-diagram" class="btn-secondary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5"/><circle cx="8.6" cy="12" r="1.6"/><path d="M10.2 6v12M13 6v12M13 7h5V2M13 17h5v5"/></svg>
-          Open CMOS Diagram
-        </a>
-        <a href="/floor-planning" class="btn-secondary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-          Open Floor Planning
-        </a>
-      </div>
-    </div>
-  </section>
-
+  <!-- Minimal Footer -->
   <footer>
-    <p>Created by <a href="https://www.appbuildersph.com/makers/aera0908" target="_blank" rel="noopener">Aira Josh Ynte</a> · Free online VLSI stick diagram &amp; floor planning tool.</p>
-    <div class="footer-socials">
-      <a href="https://github.com/Aera0908" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.06-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22 0 1.6-.01 2.9-.01 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg></a>
-      <a href="https://www.linkedin.com/in/aira-josh-ynte/" target="_blank" rel="noopener" title="LinkedIn" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg></a>
-      <a href="https://ganknow.com/Aera0908" target="_blank" rel="noopener" title="Support on Gank" aria-label="Gank"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.35-10-9.28C.36 8.07 1.9 4.5 5.2 4.5c2 0 3.3 1.06 4.05 2.13L12 9l2.75-2.37C15.5 5.56 16.8 4.5 18.8 4.5c3.3 0 4.84 3.57 3.2 7.22C19.5 16.65 12 21 12 21z"/></svg></a>
-      <a href="https://appbuildersph.com/apps/stickout" target="_blank" rel="noopener" title="AppBuildersPH" aria-label="AppBuildersPH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></a>
+    <div class="container">
+      <div class="footer-content">
+        <div>
+          <span>StickOut — Open-source VLSI stick diagram and CMOS layout tool.</span>
+          <span style="margin-left:8px;">Created by <a href="https://github.com/Aera0908" target="_blank" rel="noopener" style="color:var(--text-secondary);">Aira Josh Ynte</a>.</span>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/Aera0908/stick-diagram" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://www.linkedin.com/in/aira-josh-ynte/" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="https://ganknow.com/Aera0908" target="_blank" rel="noopener">Support</a>
+        </div>
+      </div>
     </div>
   </footer>
 </div>
@@ -424,8 +734,6 @@ export default function Landing() {
     catch { return 'dark'; }
   });
 
-  // The landing page has its own dark palette; keep the document theme in sync
-  // so any shared chrome matches.
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
@@ -447,4 +755,3 @@ export default function Landing() {
 
   return <div onClick={handleClick} dangerouslySetInnerHTML={{ __html: LANDING_HTML }} />;
 }
-

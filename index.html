@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary Meta Tags -->
-    <title>StickOut — Free Online VLSI Stick Diagram Maker, CMOS &amp; Floor Planning</title>
+    <title>StickOut — VLSI CAD Suite</title>
+    <script>
+      (function() {
+        var p = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
+        if (p === '/stick-diagram') document.title = 'Stick Diagram — StickOut';
+        else if (p === '/cmos-diagram' || p === '/cmos') document.title = 'CMOS Schematic — StickOut';
+        else if (p === '/floor-planning' || p === '/floorplan') document.title = 'Floor Planning — StickOut';
+        else document.title = 'StickOut — VLSI CAD Suite';
+      })();
+    </script>
     <meta name="title" content="StickOut — Free Online VLSI Stick Diagram Maker, CMOS &amp; Floor Planning" />
     <meta name="description" content="Free online VLSI stick diagram maker, CMOS schematic editor, and floor planning tool. Draw Metal, Polysilicon, Diffusion, Contacts, and Vias on an interactive canvas. Export high-resolution PNGs. Perfect for electrical engineering students, IC designers, and academic papers." />
     <meta name="keywords" content="stick diagram, stick diagram maker, stick diagram editor, stick diagram tool, CMOS diagram, CMOS schematic, CMOS diagram maker, VLSI stick diagram, CMOS stick diagram, floor planning, VLSI floor planning, VLSI layout editor, CMOS layout tool, IC design tool, stick diagram online, stick diagram generator, VLSI design tool, semiconductor layout, transistor layout editor, EDA tool, electronic design automation, MOSFET layout, NMOS PMOS layout, stick diagram drawing, free VLSI tool" />
@@ -22,6 +31,11 @@
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
+
+    <!-- Google Fonts: JetBrains Mono & Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
     <!-- Open Graph / Facebook / Discord / LinkedIn -->
     <meta property="og:type" content="website" />
@@ -154,117 +168,136 @@
   </head>
   <body>
     <noscript>
-      <header style="padding: 20px 24px; border-bottom: 1px solid #2A2A36; background: #16161D; color: #F0F0F5;">
-        <div style="max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <a href="/" style="font-size: 20px; font-weight: 800; color: #F0F0F5; text-decoration: none;">StickOut</a>
-          <nav style="display: flex; gap: 16px; flex-wrap: wrap;">
-            <a href="/stick-diagram" style="color: #4A90E2; font-weight: 600; text-decoration: none;">Stick Diagram</a>
-            <a href="/cmos-diagram" style="color: #4A90E2; font-weight: 600; text-decoration: none;">CMOS Diagram</a>
-            <a href="/floor-planning" style="color: #4A90E2; font-weight: 600; text-decoration: none;">Floor Planning</a>
+      <header style="padding: 14px 32px; border-bottom: 1px solid #23262E; background: #0E0F12; color: #EDEDF2; font-size: 14px;">
+        <div style="max-width: 1120px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <a href="/" style="font-weight: 700; color: #FFFFFF; text-decoration: none;">StickOut <span style="font-size: 11px; color: #575B66; border: 1px solid #23262E; padding: 1px 6px; margin-left: 6px;">VLSI CAD</span></a>
+          <nav style="display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px;">
+            <a href="/stick-diagram" style="color: #3B82F6; text-decoration: none;">Stick Diagram</a>
+            <a href="/cmos-diagram" style="color: #3B82F6; text-decoration: none;">CMOS Schematic</a>
+            <a href="/floor-planning" style="color: #3B82F6; text-decoration: none;">Floor Planning</a>
           </nav>
         </div>
       </header>
 
-      <main style="max-width: 1100px; margin: 0 auto; padding: 48px 24px; color: #F0F0F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.7;">
-        <section style="text-align: center; margin-bottom: 64px;">
-          <span style="font-size: 13px; font-weight: 700; color: #2F6FED; text-transform: uppercase; letter-spacing: 0.1em;">100% Free · No Sign-Up Required · Works In Browser</span>
-          <h1 style="font-size: 38px; font-weight: 900; margin: 16px 0;">VLSI Design Tools — Stick Diagrams, CMOS Schematics &amp; Floor Planning</h1>
-          <p style="font-size: 18px; color: #9898A6; max-width: 760px; margin: 0 auto 32px;">
-            StickOut is a free online VLSI stick diagram maker, transistor-level CMOS schematic editor, and block-level floor planner. Draw on an interactive snap-grid canvas with standard semiconductor layers (Metal, Polysilicon, Diffusion, Contacts, Vias) and export publication-ready high-resolution PNGs.
+      <main style="max-width: 1120px; margin: 0 auto; padding: 56px 32px; color: #EDEDF2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6;">
+        <section style="margin-bottom: 56px; border-bottom: 1px solid #23262E; padding-bottom: 48px;">
+          <div style="font-family: monospace; font-size: 12px; color: #8E93A0; margin-bottom: 16px;">
+            Free, browser-based VLSI design suite
+          </div>
+          <h1 style="font-size: 38px; font-weight: 700; margin: 0 0 18px; letter-spacing: -0.02em;">
+            VLSI stick diagram and CMOS layout editor.
+          </h1>
+          <p style="font-size: 16px; color: #8E93A0; max-width: 760px; margin-bottom: 32px; line-height: 1.7;">
+            Draw CMOS stick diagrams, transistor-level schematics, and block floor plans directly in your browser. Design with standard semiconductor fabrication layers, automatic wire jumpers, and export publication-ready PNGs. No sign-ups or installation required.
           </p>
-          <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-            <a href="/stick-diagram" style="background: #2F6FED; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">Open Stick Diagram Editor</a>
-            <a href="/cmos-diagram" style="background: #1E1E28; border: 1px solid #2A2A36; color: #F0F0F5; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">Open CMOS Diagram</a>
-            <a href="/floor-planning" style="background: #1E1E28; border: 1px solid #2A2A36; color: #F0F0F5; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700;">Open Floor Planning</a>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px;">
+            <a href="/stick-diagram" style="background: #3B82F6; color: #fff; padding: 11px 22px; text-decoration: none; font-weight: 600;">Stick Diagram Editor</a>
+            <a href="/cmos-diagram" style="background: #14161B; border: 1px solid #23262E; color: #EDEDF2; padding: 11px 22px; text-decoration: none; font-weight: 500;">CMOS Schematic</a>
+            <a href="/floor-planning" style="background: #14161B; border: 1px solid #23262E; color: #EDEDF2; padding: 11px 22px; text-decoration: none; font-weight: 500;">Floor Planning</a>
           </div>
         </section>
 
-        <section style="margin-bottom: 64px;">
-          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Three Ways to Design</h2>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
-            <article style="background: #16161D; border: 1px solid #2A2A36; border-radius: 12px; padding: 24px;">
-              <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><a href="/stick-diagram" style="color: #4A90E2; text-decoration: none;">Stick Diagram</a></h3>
-              <p style="color: #9898A6;">Draw CMOS stick diagrams with Metal, Poly, Diffusion, Contacts, and Vias. Smart wire jumps, layer management, boolean-gate generation, and high-res PNG export.</p>
+        <section style="margin-bottom: 56px; border-bottom: 1px solid #23262E; padding-bottom: 48px;">
+          <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">Design Tools</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1px; background: #23262E; border: 1px solid #23262E;">
+            <article style="background: #14161B; padding: 28px;">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 10px;"><a href="/stick-diagram" style="color: #FFFFFF; text-decoration: none;">Stick Diagram</a></h3>
+              <p style="color: #8E93A0; font-size: 13px; margin-bottom: 20px; line-height: 1.6;">Draw CMOS stick diagrams using Metal, Polysilicon, Diffusion, Contacts, and Vias. Includes automatic wire jumps, layer hierarchy controls, and Boolean gate generation.</p>
+              <a href="/stick-diagram" style="color: #3B82F6; font-size: 13px; font-weight: 500; text-decoration: none;">Open Stick Diagram &rarr;</a>
             </article>
-            <article style="background: #16161D; border: 1px solid #2A2A36; border-radius: 12px; padding: 24px;">
-              <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><a href="/cmos-diagram" style="color: #4A90E2; text-decoration: none;">CMOS Diagram</a></h3>
-              <p style="color: #9898A6;">Build transistor-level CMOS schematics from PMOS, NMOS, VDD, and VSS symbols. Wires hop automatically where they cross, and connection dots mark connected nets.</p>
+            <article style="background: #14161B; padding: 28px;">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 10px;"><a href="/cmos-diagram" style="color: #FFFFFF; text-decoration: none;">CMOS Schematic</a></h3>
+              <p style="color: #8E93A0; font-size: 13px; margin-bottom: 20px; line-height: 1.6;">Assemble transistor-level schematics with PMOS, NMOS, VDD, and VSS symbols. Crossing lines form automatic bridge arcs, with connection dots at net junctions.</p>
+              <a href="/cmos-diagram" style="color: #3B82F6; font-size: 13px; font-weight: 500; text-decoration: none;">Open CMOS Schematic &rarr;</a>
             </article>
-            <article style="background: #16161D; border: 1px solid #2A2A36; border-radius: 12px; padding: 24px;">
-              <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><a href="/floor-planning" style="color: #4A90E2; text-decoration: none;">Floor Planning</a></h3>
-              <p style="color: #9898A6;">Plan block-level floor plans — chip boundary, I/O pins, power/ground rings, and device blocks. Group, label, and arrange blocks with rectangles and wires.</p>
+            <article style="background: #14161B; padding: 28px;">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 10px;"><a href="/floor-planning" style="color: #FFFFFF; text-decoration: none;">Floor Planning</a></h3>
+              <p style="color: #8E93A0; font-size: 13px; margin-bottom: 20px; line-height: 1.6;">Plan chip boundaries, peripheral I/O pad rings, and core power/ground mesh trunks. Group and arrange block functional units with dimensions and interconnects.</p>
+              <a href="/floor-planning" style="color: #3B82F6; font-size: 13px; font-weight: 500; text-decoration: none;">Open Floor Planning &rarr;</a>
             </article>
           </div>
         </section>
 
-        <section style="margin-bottom: 64px;">
-          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 16px;">What is a Stick Diagram?</h2>
-          <p style="color: #9898A6; font-size: 16px; margin-bottom: 16px;">
-            A <strong>stick diagram</strong> is a simplified, abstracted representation of a VLSI (Very-Large-Scale Integration) integrated circuit layout. It maps the topology of a CMOS circuit — showing transistors, wiring, and connections — without specifying exact physical dimensions.
-          </p>
-          <p style="color: #9898A6; font-size: 16px; margin-bottom: 16px;">
-            Stick diagrams are essential in <strong>IC design education</strong> and early-stage <strong>CMOS layout planning</strong>. They bridge the gap between a circuit schematic and a full mask layout, helping engineers visualize how transistors, metal interconnects, polysilicon gates, and diffusion regions are physically arranged on silicon.
-          </p>
-          <p style="color: #9898A6; font-size: 16px; margin-bottom: 16px;">
-            Standard VLSI layer color coding in StickOut:
-          </p>
-          <ul style="color: #9898A6; padding-left: 20px; margin-bottom: 24px;">
-            <li><strong>Metal 1</strong>: Blue (#4A90E2)</li>
-            <li><strong>Metal 2</strong>: Red (#C0392B)</li>
-            <li><strong>Polysilicon</strong>: Purple (#9B59B6)</li>
-            <li><strong>P-Diffusion</strong>: Yellow (#F1C40F)</li>
-            <li><strong>N-Diffusion</strong>: Green (#27AE60)</li>
-            <li><strong>Contacts &amp; Vias</strong>: Black with white outline</li>
-          </ul>
+        <section style="margin-bottom: 56px; border-bottom: 1px solid #23262E; padding-bottom: 48px;">
+          <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">Fabrication Layers</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: #14161B; border: 1px solid #23262E;">
+            <thead>
+              <tr style="background: #111317; text-align: left; color: #575B66; font-size: 11px; text-transform: uppercase;">
+                <th style="padding: 10px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E;">Layer</th>
+                <th style="padding: 10px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E;">Color Code</th>
+                <th style="padding: 10px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E;">Material</th>
+                <th style="padding: 10px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E;">Function</th>
+                <th style="padding: 10px 16px; border-bottom: 1px solid #23262E;">Width</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #4A90E2; font-weight: 600;">Metal 1 (M1)</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; font-family: monospace;">#4A90E2</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">Aluminum / Copper</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">Primary horizontal interconnect &amp; rails</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; color: #8E93A0;">3λ</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #C0392B; font-weight: 600;">Metal 2 (M2)</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; font-family: monospace;">#C0392B</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">Aluminum / Copper</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">Orthogonal vertical routing &amp; global buses</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; color: #8E93A0;">4λ</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #9B59B6; font-weight: 600;">Polysilicon</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; font-family: monospace;">#9B59B6</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">Polycrystalline Silicon</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">Transistor gates &amp; local interconnects</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; color: #8E93A0;">2λ</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #27AE60; font-weight: 600;">N-Diffusion</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; font-family: monospace;">#27AE60</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">N+ Doped Silicon</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">NMOS channels, source &amp; drain active regions</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; color: #8E93A0;">2λ</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #F1C40F; font-weight: 600;">P-Diffusion</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; font-family: monospace;">#F1C40F</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">P+ Doped Silicon</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; border-right: 1px solid #23262E; color: #8E93A0;">PMOS channels, source &amp; drain active regions</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #23262E; color: #8E93A0;">2λ</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 16px; border-right: 1px solid #23262E; color: #FFFFFF; font-weight: 600;">Contact &amp; Via</td>
+                <td style="padding: 12px 16px; border-right: 1px solid #23262E; font-family: monospace;">#111111 / #FF00FF</td>
+                <td style="padding: 12px 16px; border-right: 1px solid #23262E; color: #8E93A0;">Tungsten / Copper</td>
+                <td style="padding: 12px 16px; border-right: 1px solid #23262E; color: #8E93A0;">Vertical inter-layer connections</td>
+                <td style="padding: 12px 16px; color: #8E93A0;">2λ × 2λ</td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
-        <section style="margin-bottom: 64px;">
-          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Key Features</h2>
-          <ul style="color: #9898A6; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; list-style: none; padding: 0;">
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Complete VLSI Layer Support</strong>: Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well, Implants, and dynamically added higher metal layers.</li>
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Interactive Grid Canvas</strong>: Pan, zoom, and snap to grid on an HTML5 canvas for aligned manufacturing pitch.</li>
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Smart Wire Jumps</strong>: Same-layer wire crossings automatically render bridge arcs to indicate no electrical connection.</li>
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>High-Resolution PNG Export</strong>: Export crisp 2× PNGs with transparent or solid backgrounds ready for IEEE papers and presentations.</li>
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Layer Management</strong>: Toggle visibility, adjust opacity, and drag to reorder the layer rendering stack.</li>
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>LaTeX-Style Subscripts</strong>: Label rails with V_{DD} and V_{SS} rendered as elegant serif italic subscripts.</li>
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Auto-Save &amp; Project Files</strong>: Auto-saved to browser storage, with import/export of .stk files.</li>
-            <li style="background: #16161D; border: 1px solid #2A2A36; border-radius: 8px; padding: 16px;"><strong>Full Keyboard Shortcuts</strong>: Hotkeys for fast editing (V, W, Q, R, P, N, D, L, E, M, and clipboard operations).</li>
-          </ul>
-        </section>
-
-        <section style="margin-bottom: 64px;">
-          <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Frequently Asked Questions</h2>
-          <div style="display: flex; flex-direction: column; gap: 20px;">
+        <section style="margin-bottom: 56px;">
+          <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">Frequently Asked Questions</h2>
+          <div style="display: flex; flex-direction: column; gap: 20px; background: #14161B; border: 1px solid #23262E; padding: 28px;">
             <div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">What is a stick diagram in VLSI design?</h3>
-              <p style="color: #9898A6;">A stick diagram is a simplified representation of an integrated circuit layout that shows the relative positions of transistors, wiring, polysilicon gates, and diffusion regions without exact physical dimensions. It uses color-coded lines for each fabrication layer and is a critical step between circuit schematics and full mask layouts in CMOS IC design.</p>
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 6px; color: #FFFFFF;">What is a stick diagram in VLSI design?</h3>
+              <p style="color: #8E93A0; font-size: 13px; line-height: 1.6;">A stick diagram is a simplified, dimensionless topological representation of an integrated circuit layout that maps the relative positions of transistors, wiring, polysilicon gates, and diffusion regions. It serves as the primary stepping stone between a transistor schematic and a physical mask layout.</p>
             </div>
             <div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">How do I draw a stick diagram online?</h3>
-              <p style="color: #9898A6;">With StickOut, open the Stick Diagram editor, select a layer (Metal, Poly, Diffusion, etc.), choose the Wire tool, and click on the canvas grid to draw. Use the Contact tool to place connections and the Label tool to annotate rails like V<sub>DD</sub> and V<sub>SS</sub>. When done, export as a high-resolution PNG.</p>
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 6px; color: #FFFFFF;">Is StickOut free to use?</h3>
+              <p style="color: #8E93A0; font-size: 13px; line-height: 1.6;">Yes, StickOut is 100% free and open-source. There are no accounts, subscriptions, or ads. All work runs locally in your browser and auto-saves to your local storage.</p>
             </div>
             <div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Is StickOut free to use?</h3>
-              <p style="color: #9898A6;">Yes, StickOut is 100% free. There are no ads, no sign-ups, and no usage limits. Use it as much as you want for homework, research, teaching, or professional IC design work.</p>
-            </div>
-            <div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">What is the difference between a stick diagram and a layout diagram?</h3>
-              <p style="color: #9898A6;">A stick diagram is an abstracted, topological representation showing relative placement and connectivity without precise dimensions. A layout diagram is geometrically accurate with exact widths, spacings, and coordinates ready for fabrication. Stick diagrams are drawn first to plan the layout.</p>
-            </div>
-            <div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Can I save and share my stick diagrams?</h3>
-              <p style="color: #9898A6;">Yes. StickOut auto-saves to your browser and supports .stk project files for sharing. You can also export PNG images with customizable backgrounds and margins.</p>
-            </div>
-            <div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">What VLSI layers does StickOut support?</h3>
-              <p style="color: #9898A6;">StickOut supports Metal 1, Metal 2, Polysilicon, P-Diffusion, N-Diffusion, Contacts, Vias, N-Well/P-Well boundaries, Demarcation lines, Implants, Buried Contacts, Silicide Blocks, Thick Oxide regions, and dynamically added higher metal layers with customizable colors.</p>
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 6px; color: #FFFFFF;">What is the difference between a stick diagram and a mask layout?</h3>
+              <p style="color: #8E93A0; font-size: 13px; line-height: 1.6;">A stick diagram is an abstracted topological plan showing relative placement and connectivity without exact dimensions. A geometric layout is physically accurate with precise widths, spacings, and coordinates ready for lithography.</p>
             </div>
           </div>
         </section>
       </main>
 
-      <footer style="padding: 32px 24px; border-top: 1px solid #2A2A36; text-align: center; color: #606070; font-size: 14px;">
-        <p>Created by <a href="https://github.com/Aera0908" target="_blank" rel="noopener" style="color: #9898A6;">Aira Josh Ynte</a> · Free online VLSI stick diagram maker, CMOS schematic &amp; floor planning editor.</p>
+      <footer style="padding: 28px 32px; border-top: 1px solid #23262E; background: #0A0B0E; font-size: 12px; color: #575B66; text-align: center;">
+        <p>StickOut — Open-source VLSI stick diagram and CMOS layout tool · Created by <a href="https://github.com/Aera0908" target="_blank" rel="noopener" style="color: #8E93A0;">Aira Josh Ynte</a></p>
       </footer>
     </noscript>
     <div id="root"></div>

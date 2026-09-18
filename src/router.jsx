@@ -4,16 +4,28 @@ import { useState, useEffect } from 'react';
 // Clean URLs via the History API. Works with the Vercel SPA rewrite so
 // refresh / deep-links resolve to index.html.
 
+export function getTitleForPath(pathname) {
+  const p = (pathname || '/').replace(/\/+$/, '') || '/';
+  if (p === '/stick-diagram') return 'Stick Diagram — StickOut';
+  if (p === '/cmos-diagram' || p === '/cmos') return 'CMOS Schematic — StickOut';
+  if (p === '/floor-planning' || p === '/floorplan') return 'Floor Planning — StickOut';
+  return 'StickOut — VLSI CAD Suite';
+}
+
 export function navigate(to) {
   if (window.location.pathname === to) return;
   window.history.pushState({}, '', to);
+  document.title = getTitleForPath(to);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 export function usePathname() {
   const [path, setPath] = useState(() => window.location.pathname);
   useEffect(() => {
-    const onPop = () => setPath(window.location.pathname);
+    const onPop = () => {
+      setPath(window.location.pathname);
+      document.title = getTitleForPath(window.location.pathname);
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);

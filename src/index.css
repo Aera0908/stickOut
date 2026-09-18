@@ -238,7 +238,7 @@ input, select, textarea, button {
   background: var(--surface);
   border: 1px solid var(--ui-border);
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 2px;
   margin-right: 6px;
 }
 .fp-insert-btn:hover { border-color: var(--accent) !important; }

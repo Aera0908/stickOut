@@ -3,21 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import Landing from './components/Landing.jsx'
-import { usePathname } from './router.jsx'
+import { usePathname, getTitleForPath } from './router.jsx'
 
 function Root() {
-  const path = usePathname();
+  const rawPath = usePathname();
+  const path = (rawPath || '/').replace(/\/+$/, '') || '/';
 
   useEffect(() => {
-    if (path === '/stick-diagram') {
-      document.title = 'Stick Diagram — StickOut';
-    } else if (path === '/floor-planning' || path === '/floorplan') {
-      document.title = 'Floor Planning — StickOut';
-    } else if (path === '/cmos-diagram' || path === '/cmos') {
-      document.title = 'CMOS Diagram — StickOut';
-    } else {
-      document.title = 'StickOut — Free Online VLSI Stick Diagram Maker & Editor';
-    }
+    document.title = getTitleForPath(path);
 
     if (path === '/landing.html' || path === '/landing') {
       window.history.replaceState({}, '', '/');
