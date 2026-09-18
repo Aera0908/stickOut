@@ -1193,9 +1193,11 @@ export default function App({ mode = 'stick' }) {
 
       // Grab a selected rect's label to move it independently of the box.
       // Checked after the resize handles so handles keep priority on small pins.
+      // Floor planning pin labels (input, output, power, ground) are locked centered and cannot be moved independently.
       if (selectedIds.size === 1) {
         const selRect = elements.find(el => selectedIds.has(el.id) && el.type === 'rect' && el.label);
-        if (selRect) {
+        const isPin = selRect && (isFloorplanPin(selRect) || ['input', 'output', 'power', 'ground'].includes(selRect.fpKind));
+        if (selRect && !isPin) {
           const fs = selRect.labelSize || 12;
           const lw = Math.max(selRect.label.length * fs * 0.62, 12);
           const lx = selRect.x + selRect.w / 2 + (selRect.labelOffsetX || 0);
@@ -1374,9 +1376,12 @@ export default function App({ mode = 'stick' }) {
     if (labelDrag) {
       const dx = rawWorld.x - labelDrag.startRawX;
       const dy = rawWorld.y - labelDrag.startRawY;
-      setElements(prev => prev.map(el => el.id === labelDrag.id
-        ? { ...el, labelOffsetX: labelDrag.startOffX + dx, labelOffsetY: labelDrag.startOffY + dy }
-        : el));
+      setElements(prev => prev.map(el => {
+        if (el.id !== labelDrag.id) return el;
+        const isPin = isFloorplanPin(el) || (el.fpKind && ['input', 'output', 'power', 'ground'].includes(el.fpKind));
+        if (isPin) return { ...el, labelOffsetX: 0, labelOffsetY: 0 };
+        return { ...el, labelOffsetX: labelDrag.startOffX + dx, labelOffsetY: labelDrag.startOffY + dy };
+      }));
       return;
     }
 
@@ -1707,13 +1712,15 @@ export default function App({ mode = 'stick' }) {
         const cx = el.x + el.w / 2;
         const cy = el.y + el.h / 2;
         const nw = el.h, nh = el.w;
-        const offX = el.labelOffsetX || 0;
-        const offY = el.labelOffsetY || 0;
+        const isPin = isFloorplanPin(el) || (el.fpKind && ['input', 'output', 'power', 'ground'].includes(el.fpKind));
+        const offX = isPin ? 0 : (el.labelOffsetX || 0);
+        const offY = isPin ? 0 : (el.labelOffsetY || 0);
         return {
           ...el,
           x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh,
           rotation: ((el.rotation || 0) + 90) % 360,
-          labelOffsetX: -offY, labelOffsetY: offX,
+          labelOffsetX: isPin ? 0 : -offY,
+          labelOffsetY: isPin ? 0 : offX,
         };
       }
       return el;
@@ -2663,7 +2670,7 @@ export default function App({ mode = 'stick' }) {
       id: uid(), type: 'rect', x: cx, y: cy, w: p.w, h: p.h,
       strokeColor: p.strokeColor, strokeWidth: p.strokeWidth, fillColor: p.fillColor,
       label: p.label, labelColor: p.labelColor, canvasLayerId: activeCanvasLayerId,
-      fpKind: kind,
+      fpKind: kind, labelOffsetX: 0, labelOffsetY: 0,
     };
     addElement(el);
     setSelectedIds(new Set([el.id]));
