@@ -72,6 +72,16 @@ export default function App({ mode = 'stick' }) {
   const isCmos = mode === 'cmos';
   const autosaveKey = isFloorplan ? 'stickout-fp-autosave' : (isCmos ? 'stickout-cmos-autosave' : AUTOSAVE_KEY);
 
+  useEffect(() => {
+    if (isFloorplan) {
+      document.title = 'Floor Planning — StickOut';
+    } else if (isCmos) {
+      document.title = 'CMOS Schematic — StickOut';
+    } else {
+      document.title = 'Stick Diagram — StickOut';
+    }
+  }, [isFloorplan, isCmos]);
+
   // ─── State ──────────────────────────────────────────────────
   const [elements, setElements] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
