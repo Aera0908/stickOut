@@ -9,9 +9,19 @@ import { navigate } from '../router.jsx';
 
 const LANDING_HTML = `
 <style>
-  /* Allow landing page to scroll */
-  html, body { overflow-y: auto !important; height: auto !important; background: #0E0F12 !important; }
-  #root { height: auto !important; overflow: visible !important; }
+  /* Allow landing page to scroll with sticky fixed header offset */
+  html, body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    background: #0E0F12 !important;
+    scroll-behavior: smooth;
+    scroll-padding-top: 52px;
+  }
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
 
   .min-eda *, .min-eda *::before, .min-eda *::after {
     margin: 0; padding: 0; box-sizing: border-box; border-radius: 0 !important;
@@ -38,18 +48,29 @@ const LANDING_HTML = `
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
+    padding-top: 52px; /* Offset for fixed sticky navbar */
   }
 
   .min-eda a { color: inherit; text-decoration: none; }
 
-  /* Navigation Bar */
+  /* Navigation Bar — Sticky Fixed on Screen */
   .min-eda .navbar {
-    position: sticky; top: 0; z-index: 100;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 52px; padding: 0 32px;
-    background: #0E0F12f2;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+    padding: 0 32px;
+    background: rgba(14, 15, 18, 0.90);
     border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   }
   .min-eda .nav-brand {
     display: flex; align-items: center; gap: 10px;
@@ -718,8 +739,8 @@ const LANDING_HTML = `
           <span style="margin-left:8px;">Created by Aira Josh Ynte.</span>
         </div>
         <div class="footer-links">
-          <a href="https://github.com/Aera0908/stick-diagram" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://www.linkedin.com/in/aira-josh-ynte/" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="https://github.com/Aera0908/stickOut" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://aera0908.github.io" target="_blank" rel="noopener">Resume</a>
           <a href="https://ganknow.com/Aera0908" target="_blank" rel="noopener">Support</a>
         </div>
       </div>
