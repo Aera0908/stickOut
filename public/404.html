@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>404: Net Not Found — StickOut</title>
+    <meta name="robots" content="noindex, follow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --bg: #0E0F12;
+        --surface: #14161B;
+        --surface-hover: #1A1D23;
+        --border: #23262E;
+        --text: #EDEDF2;
+        --text-secondary: #8E93A0;
+        --text-muted: #575B66;
+        --accent: #3B82F6;
+        --accent-hover: #2563EB;
+        --warning: #F59E0B;
+        --danger: #EF4444;
+        --mono: 'JetBrains Mono', monospace;
+        --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      body {
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        display: flex;
+        flex-direction: column;
+        line-height: 1.6;
+        position: relative;
+        overflow-x: hidden;
+      }
+      /* CAD Grid Background */
+      .grid-bg {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        background-size: 32px 32px;
+        z-index: 0;
+      }
+      .grid-bg::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 30%, transparent 20%, rgba(14, 15, 18, 0.85) 85%);
+      }
+      /* Header */
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        background: rgba(14, 15, 18, 0.9);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        text-decoration: none;
+        letter-spacing: -0.01em;
+        text-transform: uppercase;
+      }
+      .brand-badge {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 7px;
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        margin-left: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .indicator {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--warning);
+        box-shadow: 0 0 6px var(--warning);
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+      /* Main Content */
+      main {
+        flex: 1;
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 40px 24px 64px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+      .telemetry {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 36px 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        position: relative;
+      }
+      .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--warning);
+      }
+      .code-badge {
+        font-family: var(--mono);
+        font-size: 48px;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--text);
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+      }
+      .code-badge small {
+        font-size: 13px;
+        color: var(--warning);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 6px;
+      }
+      p.desc {
+        font-size: 14px;
+        color: var(--text-secondary);
+        max-width: 640px;
+      }
+      .path-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #0A0B0E;
+        border: 1px dashed var(--border);
+        padding: 10px 14px;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .path-val {
+        color: var(--danger);
+        font-weight: 600;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 4px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 18px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+        border: 1px solid var(--accent);
+      }
+      .btn-primary:hover {
+        background: var(--accent-hover);
+      }
+      .btn-secondary {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-secondary:hover {
+        background: var(--surface-hover);
+      }
+      /* Grid of destinations */
+      .routes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+      }
+      .route-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 16px;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.15s ease;
+      }
+      .route-card:hover {
+        background: var(--surface-hover);
+        border-color: #383D4A;
+        transform: translateY(-1px);
+      }
+      .route-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .route-path {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent);
+      }
+      .route-desc {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 18px 24px;
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--text-muted);
+        text-align: center;
+        background: rgba(14, 15, 18, 0.95);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="grid-bg"></div>
+
+    <header>
+      <div style="display: flex; align-items: center;">
+        <a href="/" class="brand">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+          StickOut
+        </a>
+        <span class="brand-badge">
+          <span class="indicator"></span>
+          ERR_404 // NET_NOT_FOUND
+        </span>
+      </div>
+      <div>
+        <a href="/" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Home</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="telemetry">
+        <span>[ROUTING_RESOLVER] NODE_UNROUTED</span>
+        <span>IMPEDANCE: <strong>HIGH-Z</strong></span>
+        <span>STATE: <strong>OPEN_CIRCUIT</strong></span>
+      </div>
+
+      <div class="card">
+        <div class="code-badge">
+          404
+          <small>Net Unresolved</small>
+        </div>
+
+        <div>
+          <h1>Open Circuit: Node Not Found</h1>
+          <p class="desc">
+            The requested routing path does not exist on the active layout canvas or schematic netlist.
+            It may have been moved, renamed, or never routed.
+          </p>
+        </div>
+
+        <div class="path-box">
+          <span>Target Path: <span id="pathDisplay" class="path-val">/unknown</span></span>
+          <a href="/" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">Reset Route</a>
+        </div>
+
+        <div class="actions">
+          <a href="/stick-diagram" class="btn btn-primary">Launch Stick Diagram Editor</a>
+          <a href="/cmos-diagram" class="btn btn-secondary">CMOS Schematic</a>
+          <a href="/floor-planning" class="btn btn-secondary">Floor Planning</a>
+          <a href="/" class="btn btn-secondary">Homepage</a>
+        </div>
+      </div>
+
+      <div>
+        <h2 style="font-size: 12px; font-family: var(--mono); text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.05em;">
+          Available Circuit Workspaces
+        </h2>
+        <div class="routes-grid">
+          <a href="/stick-diagram" class="route-card">
+            <span class="route-title">Stick Diagram Editor</span>
+            <span class="route-path">/stick-diagram</span>
+            <span class="route-desc">Draw Metal, Poly, Diffusion, Contacts, and Vias with jump wires.</span>
+          </a>
+          <a href="/cmos-diagram" class="route-card">
+            <span class="route-title">CMOS Schematic Editor</span>
+            <span class="route-path">/cmos-diagram</span>
+            <span class="route-desc">Transistor layout with automatic Boolean gate synthesis.</span>
+          </a>
+          <a href="/floor-planning" class="route-card">
+            <span class="route-title">Floor Planning</span>
+            <span class="route-path">/floor-planning</span>
+            <span class="route-desc">Hierarchical block placement and silicon die area budgeting.</span>
+          </a>
+          <a href="/" class="route-card">
+            <span class="route-title">StickOut Homepage</span>
+            <span class="route-path">/</span>
+            <span class="route-desc">Full documentation, keyboard shortcuts, and export guidelines.</span>
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      StickOut CAD Suite · Open-source VLSI Layout Editor
+    </footer>
+
+    <script>
+      (function() {
+        var el = document.getElementById('pathDisplay');
+        if (el && window.location.pathname) {
+          el.textContent = window.location.pathname;
+        }
+      })();
+    </script>
+  </body>
+</html>

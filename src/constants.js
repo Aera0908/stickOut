@@ -49,14 +49,101 @@ export const TOOLS = {
 };
 
 // ─── CMOS schematic mode ─────────────────────────────────────────────
-// Devices placed from the CMOS palette. PMOS/NMOS become `mosfet` elements,
-// VDD/VSS become `supply` elements.
+// Categorized component library for Mixed-Signal & Analog CMOS diagrams.
+export const CMOS_CATEGORIES = [
+  { id: 'active',  label: 'Active',  title: 'Active & Switching Devices' },
+  { id: 'passive', label: 'Passive', title: 'Passives: Resistors, Capacitors, Inductors' },
+  { id: 'protect', label: 'Protect', title: 'Protection & Interface: Diodes, Clamps, SCR, Pads' },
+  { id: 'power',   label: 'Power',   title: 'Power Rails, Grounds, Well Taps, I/O Ports' },
+  { id: 'gates',   label: 'Gates',   title: 'Static CMOS Logic Gate Presets' },
+];
+
 export const CMOS_DEVICES = {
-  pmos: { label: 'PMOS', title: 'PMOS transistor (P)', text: 'P' },
-  nmos: { label: 'NMOS', title: 'NMOS transistor (N)', text: 'N' },
-  vdd:  { label: 'VDD',  title: 'VDD supply rail',     text: 'VDD' },
-  vss:  { label: 'VSS',  title: 'VSS / ground',        text: 'VSS' },
+  // Active & Switching
+  nmos:      { label: 'NMOS',     title: 'NMOS Transistor (3-term or 4-term with Bulk)', category: 'active', defaultType: 'mosfet', text: 'N' },
+  pmos:      { label: 'PMOS',     title: 'PMOS Transistor (3-term or 4-term with Bulk)', category: 'active', defaultType: 'mosfet', text: 'P' },
+  tgate:     { label: 'T-Gate',   title: 'Transmission Gate / Pass Gate (PMOS + NMOS)', category: 'active', defaultType: 'tgate',  text: 'TG' },
+  bjt:       { label: 'BJT',      title: 'Parasitic / Substrate BJT (NPN / PNP)',        category: 'active', defaultType: 'bjt',    text: 'Q' },
+  varactor:  { label: 'Varactor', title: 'MOS / Junction Varactor (Variable Cap)',       category: 'active', defaultType: 'varactor', text: 'Cv' },
+
+  // Passive Components
+  resistor:  { label: 'Resistor',  title: 'Resistor (Poly, Diffusion, Thin-Film)',       category: 'passive', defaultType: 'resistor', text: 'R' },
+  capacitor: { label: 'Capacitor', title: 'Capacitor (MIM, MOM, MOS-cap)',              category: 'passive', defaultType: 'capacitor', text: 'C' },
+  inductor:  { label: 'Inductor',  title: 'Inductor (Planar Spiral, Center-Tapped)',     category: 'passive', defaultType: 'inductor', text: 'L' },
+
+  // Protection & Interface
+  diode:     { label: 'PN Diode',  title: 'PN Junction Diode (Clamping, Bandgap)',       category: 'protect', defaultType: 'diode', text: 'D' },
+  esd_diode: { label: 'ESD Diode', title: 'Dedicated ESD Clamp Diode',                   category: 'protect', defaultType: 'esd_diode', text: 'ESD' },
+  scr:       { label: 'SCR',       title: 'SCR / Thyristor (High-Current ESD Shunt)',    category: 'protect', defaultType: 'scr', text: 'SCR' },
+  pad:       { label: 'Bond Pad',  title: 'I/O Bond Pad (Wirebond / Flip-Chip)',         category: 'protect', defaultType: 'pad', text: 'PAD' },
+
+  // Power & References
+  vdd:       { label: 'VDD Rail',  title: 'VDD Power Rail (Core, Analog, I/O)',          category: 'power', defaultType: 'supply', kind: 'vdd', text: 'VDD' },
+  vss:       { label: 'Ground',    title: 'Ground Node (VSS, AGND, Substrate)',          category: 'power', defaultType: 'supply', kind: 'vss', text: 'VSS' },
+  well_tap:  { label: 'Well Tap',  title: 'Bulk / Well Tap (NTAP VDD / PTAP VSS)',       category: 'power', defaultType: 'well_tap', text: 'TAP' },
+  port:      { label: 'Port Pin',  title: 'Terminal Pin (Input, Output, InOut, Clock)',  category: 'power', defaultType: 'port', text: 'PIN' },
 };
+
+export const RESISTOR_SUBTYPES = {
+  poly_unsil: { label: 'Poly (Un-silicided)', code: 'RNPO', title: 'Precision analog un-silicided poly resistor' },
+  poly_sil:   { label: 'Poly (Silicided)',   code: 'RPOLY', title: 'Low sheet resistance silicided poly resistor' },
+  nwell:      { label: 'N-Well Diff',        code: 'RNWELL', title: 'N-Well bulk diffusion resistor' },
+  pwell:      { label: 'P-Well Diff',        code: 'RPWELL', title: 'P-Well diffusion resistor' },
+  metal:      { label: 'Metal Thin-Film',    code: 'RMETAL', title: 'Precision thin-film metal resistor' },
+};
+
+export const CAPACITOR_SUBTYPES = {
+  mim:    { label: 'MIM Cap', title: 'Metal-Insulator-Metal high-linearity precision capacitor' },
+  mom:    { label: 'MOM Cap', title: 'Metal-Oxide-Metal interdigitated fringe capacitor' },
+  moscap: { label: 'MOS Cap', title: 'MOS gate-oxide capacitor' },
+};
+
+export const INDUCTOR_SUBTYPES = {
+  spiral:        { label: 'Planar Spiral',      title: 'Planar spiral on-chip inductor' },
+  center_tapped: { label: 'Center-Tapped Diff', title: 'Symmetrical differential center-tapped inductor' },
+};
+
+export const BJT_SUBTYPES = {
+  vpnp: { label: 'Vertical PNP', title: 'CMOS vertical PNP substrate BJT (bandgap voltage ref)' },
+  lpnp: { label: 'Lateral PNP',  title: 'Lateral PNP transistor' },
+  npn:  { label: 'NPN BJT',      title: 'NPN BJT transistor' },
+};
+
+export const VARACTOR_SUBTYPES = {
+  mos_varactor:      { label: 'MOS Varactor',      title: 'Accumulation / inversion mode MOS varactor' },
+  junction_varactor: { label: 'Junction Varactor', title: 'PN junction diode variable capacitor' },
+};
+
+export const DIODE_SUBTYPES = {
+  pn:        { label: 'PN Junction',     title: 'Standard PN junction diode' },
+  esd_clamp: { label: 'ESD Clamp Diode', title: 'Oversized ESD rail clamp diode' },
+  esd_dual:  { label: 'Dual Rail Clamp', title: 'Dual clamp to VDD & VSS with I/O tap' },
+};
+
+export const POWER_DOMAINS = [
+  { value: 'vdd',   label: 'VDD',   domain: 'Core VDD' },
+  { value: 'vdda',  label: 'VDDA',  domain: 'Analog VDD' },
+  { value: 'vddio', label: 'VDDIO', domain: 'I/O VDD (3.3V)' },
+  { value: 'vref',  label: 'VREF',  domain: 'Voltage Reference' },
+];
+
+export const GROUND_TYPES = [
+  { value: 'vss',  label: 'VSS',  desc: 'Digital Ground' },
+  { value: 'agnd', label: 'AGND', desc: 'Analog Ground' },
+  { value: 'sub',  label: 'SUB',  desc: 'Substrate Ground' },
+];
+
+export const WELL_TAP_TYPES = [
+  { value: 'ntap', label: 'N-Well (VDD)', title: 'N-Well tie-high tap' },
+  { value: 'ptap', label: 'P-Sub (VSS)',  title: 'P-Substrate tie-low tap' },
+];
+
+export const PORT_TYPES = [
+  { value: 'in',    label: 'Input',    title: 'Input signal port' },
+  { value: 'out',   label: 'Output',   title: 'Output signal port' },
+  { value: 'inout', label: 'Bidirect', title: 'Bidirectional I/O port' },
+  { value: 'clk',   label: 'Clock',    title: 'Clock input port' },
+];
 
 // Connection-dot radii, in canvas pixels.
 export const JUNCTION_SIZES = { small: 3, medium: 4, large: 5.5 };

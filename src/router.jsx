@@ -4,12 +4,30 @@ import { useState, useEffect } from 'react';
 // Clean URLs via the History API. Works with the Vercel SPA rewrite so
 // refresh / deep-links resolve to index.html.
 
+export const KNOWN_ROUTES = [
+  '/',
+  '/stick-diagram',
+  '/cmos-diagram',
+  '/cmos',
+  '/floor-planning',
+  '/floorplan',
+  '/landing',
+  '/landing.html'
+];
+
+export function isKnownRoute(pathname) {
+  const p = (pathname || '/').replace(/\/+$/, '') || '/';
+  return KNOWN_ROUTES.includes(p);
+}
+
 export function getTitleForPath(pathname) {
   const p = (pathname || '/').replace(/\/+$/, '') || '/';
   if (p === '/stick-diagram') return 'Stick Diagram — StickOut';
   if (p === '/cmos-diagram' || p === '/cmos') return 'CMOS Schematic — StickOut';
   if (p === '/floor-planning' || p === '/floorplan') return 'Floor Planning — StickOut';
-  return 'StickOut — VLSI CAD Suite';
+  if (p === '/' || p === '/landing.html' || p === '/landing') return 'StickOut — VLSI CAD Suite';
+  if (p === '/test-error' || p === '/__test_error__') return '500: Test Fault — StickOut';
+  return '404: Net Not Found — StickOut';
 }
 
 export function navigate(to) {

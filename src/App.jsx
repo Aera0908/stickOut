@@ -49,7 +49,9 @@ import {
   createCmosElement,
   createCmosTemplateElements,
   getJunctionRadius,
-  isPointType
+  isPointType,
+  isSchematicDevice,
+  SCHEMATIC_DEVICE_TYPES
 } from './helpers';
 
 import { createGateElements, GATE_PRESETS, GATES_NEEDING_COMPLEMENTS } from './cmos/gates';
@@ -64,7 +66,7 @@ import Modals from './components/Modals';
 import BooleanModal from './components/BooleanModal';
 
 // Element types the "Rotate 90°" action understands.
-const ROTATABLE_TYPES = ['line', 'measure', 'rect', 'mosfet', 'supply'];
+const ROTATABLE_TYPES = ['line', 'measure', 'rect', ...SCHEMATIC_DEVICE_TYPES];
 
 // ─── Main App ────────────────────────────────────────────────────────
 export default function App({ mode = 'stick' }) {
@@ -273,7 +275,7 @@ export default function App({ mode = 'stick' }) {
   }, []);
 
   // Support & Feedback Toast
-  const [showSupportToast, setShowSupportToast] = useState(false);
+  const [showSupportToast, setShowSupportToast] = useState(true);
   const supportTimerRef = useRef(null);
 
   const startSupportTimer = useCallback((delay = 300000) => {
@@ -523,7 +525,7 @@ export default function App({ mode = 'stick' }) {
       } else if (el.type === 'label') {
         const bounds = getElementBounds(el);
         if (pointInRect(wx, wy, bounds.x - 4, bounds.y - 4, bounds.w + 8, bounds.h + 8)) return el;
-      } else if (el.type === 'image' || el.type === 'rect' || el.type === 'mosfet' || el.type === 'supply') {
+      } else if (el.type === 'image' || el.type === 'rect' || isSchematicDevice(el)) {
         const bounds = getElementBounds(el);
         if (pointInRect(wx, wy, bounds.x, bounds.y, bounds.w, bounds.h)) return el;
       } else if (el.type === 'junction') {
@@ -655,14 +657,14 @@ export default function App({ mode = 'stick' }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const isDark = theme === 'dark';
-    ctx.fillStyle = isDark ? '#121214' : '#FAF9F6';
+    ctx.fillStyle = isDark ? '#0A0B0E' : '#F8F9FA';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
     // Draw grid
     if (showGrid) {
       const pitch = GRID_PITCH * zoom;
       if (pitch >= 4) {
-        ctx.strokeStyle = isDark ? '#222226' : '#E6E2D8';
+        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.035)' : '#E2E4E9';
         ctx.lineWidth = 1;
         const startX = pan.x % pitch;
         const startY = pan.y % pitch;
@@ -678,7 +680,7 @@ export default function App({ mode = 'stick' }) {
         ctx.stroke();
 
         const origin = worldToScreen(0, 0, pan, zoom);
-        ctx.strokeStyle = isDark ? '#3A3A40' : '#C2BEB5';
+        ctx.strokeStyle = isDark ? '#2E323D' : '#C2BEB5';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(Math.round(origin.x) + 0.5, 0);
@@ -1705,7 +1707,7 @@ export default function App({ mode = 'stick' }) {
         const dx2 = el.x2 - cx, dy2 = el.y2 - cy;
         return { ...el, x1: cx - dy1, y1: cy + dx1, x2: cx - dy2, y2: cy + dx2 };
       }
-      if (el.type === 'mosfet' || el.type === 'supply') {
+      if (isSchematicDevice(el)) {
         return { ...el, rotation: ((el.rotation || 0) + 90) % 360 };
       }
       if (el.type === 'rect') {
@@ -1748,7 +1750,7 @@ export default function App({ mode = 'stick' }) {
           return { ...el, x1: snapToGrid(2 * cx - el.x1), x2: snapToGrid(2 * cx - el.x2) };
         }
         if (isPointType(el.type)) {
-          return { ...el, x: snapToGrid(2 * cx - el.x), mirror: ['mosfet', 'supply', 'rect'].includes(el.type) ? !el.mirror : el.mirror };
+          return { ...el, x: snapToGrid(2 * cx - el.x), mirror: (isSchematicDevice(el) || el.type === 'rect') ? !el.mirror : el.mirror };
         }
         return el;
       }));
@@ -1776,7 +1778,7 @@ export default function App({ mode = 'stick' }) {
           return { ...el, y1: snapToGrid(2 * cy - el.y1), y2: snapToGrid(2 * cy - el.y2) };
         }
         if (isPointType(el.type)) {
-          return { ...el, y: snapToGrid(2 * cy - el.y), flipY: ['mosfet', 'supply', 'rect'].includes(el.type) ? !el.flipY : el.flipY };
+          return { ...el, y: snapToGrid(2 * cy - el.y), flipY: (isSchematicDevice(el) || el.type === 'rect') ? !el.flipY : el.flipY };
         }
         return el;
       }));
@@ -3019,23 +3021,23 @@ export default function App({ mode = 'stick' }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
           <div className="support-toast-content">
-            <h4 className="support-toast-title">Enjoying StickOut? 🎨</h4>
+            <h4 className="support-toast-title">Enjoying StickOut?</h4>
             <p className="support-toast-text">
-              Help keep the project alive — leave a review on AppBuildersPH, share feedback, or donate on Gank!
+              Help keep the project alive. Leave a review on AppBuildersPH, share feedback, or donate on Gank.
             </p>
           </div>
           <div className="support-toast-actions">
-            <button className="support-btn-action review" onClick={handleSupportReview}>
-              Leave a Review
+            <button className="support-btn-action review" onClick={handleSupportReview} title="Leave a review on AppBuildersPH">
+              Review
             </button>
-            <button className="support-btn-action feedback" onClick={handleSupportFeedback}>
+            <button className="support-btn-action feedback" onClick={handleSupportFeedback} title="Share feedback or report an issue">
               Feedback
             </button>
-            <button className="support-btn-action gank" onClick={handleSupportGank}>
-              Donate on Gank
+            <button className="support-btn-action gank" onClick={handleSupportGank} title="Donate on Gank">
+              Donate
             </button>
-            <button className="support-btn-action remind" onClick={handleSupportRemindLater}>
-              Remind later
+            <button className="support-btn-action remind" onClick={handleSupportRemindLater} title="Remind later">
+              Later
             </button>
           </div>
         </div>

@@ -1,4 +1,11 @@
-import { GRID_PITCH, LINE_WIDTH, WIRE_THICKNESS, JUNCTION_SIZES, SYMBOL_STROKE_WIDTH } from './constants.js';
+import {
+  GRID_PITCH,
+  LINE_WIDTH,
+  WIRE_THICKNESS,
+  JUNCTION_SIZES,
+  SYMBOL_STROKE_WIDTH,
+  RESISTOR_SUBTYPES
+} from './constants.js';
 
 let nextId = 1;
 export const uid = () => `el-${nextId++}`;
@@ -45,9 +52,22 @@ let nextLayerId = 1;
 export const layerUid = () => `layer_${nextLayerId++}`;
 export const setNextLayerId = (id) => { nextLayerId = id; };
 
+// Schematic mixed-signal & analog component types
+export const SCHEMATIC_DEVICE_TYPES = [
+  'mosfet', 'supply', 'tgate', 'bjt', 'varactor',
+  'resistor', 'capacitor', 'inductor',
+  'diode', 'esd_diode', 'scr', 'pad',
+  'well_tap', 'port'
+];
+export const isSchematicDevice = (el) => SCHEMATIC_DEVICE_TYPES.includes(el?.type);
+
 // Element types anchored by a single (x, y) point — everything except lines and
 // measures, which carry two endpoints. Used wherever elements are translated.
-export const POINT_TYPES = ['contact', 'via', 'label', 'image', 'brush', 'rect', 'mosfet', 'supply', 'junction'];
+export const POINT_TYPES = [
+  'contact', 'via', 'label', 'image', 'brush', 'rect',
+  ...SCHEMATIC_DEVICE_TYPES,
+  'junction'
+];
 export const isPointType = (type) => POINT_TYPES.includes(type);
 
 export function snapToGrid(val, pitch) {
@@ -134,33 +154,117 @@ function transformExtents(ext, el) {
   }
 }
 
-// Terminal positions, named by device type: an NMOS sinks to VSS (drain up),
-// a PMOS hangs off VDD (source up).
-export function getMosfetTerminals(el) {
-  const gate = transformSymbolPoint(el, -2 * GRID_PITCH, 0);
-  const top = transformSymbolPoint(el, 0, -2 * GRID_PITCH);
-  const bottom = transformSymbolPoint(el, 0, 2 * GRID_PITCH);
-  return el.device === 'pmos'
-    ? { gate, source: top, drain: bottom }
-    : { gate, drain: top, source: bottom };
+// Terminal positions for all schematic devices. Wires drawn with snapping
+// land exactly on these coordinates.
+export function getDeviceTerminals(el) {
+  const G = GRID_PITCH;
+  if (el.type === 'mosfet') {
+    const gate = transformSymbolPoint(el, -2 * G, 0);
+    const top = transformSymbolPoint(el, 0, -2 * G);
+    const bottom = transformSymbolPoint(el, 0, 2 * G);
+    const res = el.device === 'pmos'
+      ? { gate, source: top, drain: bottom }
+      : { gate, drain: top, source: bottom };
+    if (el.fourTerminal) {
+      res.bulk = transformSymbolPoint(el, 2 * G, 0);
+    }
+    return res;
+  }
+  if (el.type === 'tgate') {
+    return {
+      in: transformSymbolPoint(el, -2 * G, 0),
+      out: transformSymbolPoint(el, 2 * G, 0),
+      enb: transformSymbolPoint(el, 0, -2 * G),
+      en: transformSymbolPoint(el, 0, 2 * G),
+    };
+  }
+  if (el.type === 'bjt') {
+    return {
+      base: transformSymbolPoint(el, -2 * G, 0),
+      collector: transformSymbolPoint(el, 0, -2 * G),
+      emitter: transformSymbolPoint(el, 0, 2 * G),
+    };
+  }
+  if (el.type === 'scr') {
+    return {
+      anode: transformSymbolPoint(el, 0, -2 * G),
+      cathode: transformSymbolPoint(el, 0, 2 * G),
+      gate: transformSymbolPoint(el, -2 * G, G),
+    };
+  }
+  if (el.type === 'inductor' && el.subtype === 'center_tapped') {
+    return {
+      port1: transformSymbolPoint(el, 0, -2 * G),
+      port2: transformSymbolPoint(el, 0, 2 * G),
+      ct: transformSymbolPoint(el, 2 * G, 0),
+    };
+  }
+  if (el.type === 'esd_diode' && el.subtype === 'esd_dual') {
+    return {
+      vdd: transformSymbolPoint(el, 0, -2 * G),
+      vss: transformSymbolPoint(el, 0, 2 * G),
+      io: transformSymbolPoint(el, -2 * G, 0),
+    };
+  }
+  if (['resistor', 'capacitor', 'inductor', 'diode', 'esd_diode', 'varactor'].includes(el.type)) {
+    return {
+      t1: transformSymbolPoint(el, 0, -2 * G),
+      t2: transformSymbolPoint(el, 0, 2 * G),
+    };
+  }
+  if (el.type === 'pad') {
+    return { pad: transformSymbolPoint(el, 0, 2 * G) };
+  }
+  if (['supply', 'well_tap', 'port'].includes(el.type)) {
+    return { pin: { x: el.x, y: el.y } };
+  }
+  return {};
 }
 
-export function getSupplyTerminal(el) {
-  return { x: el.x, y: el.y };
-}
+// Backward-compatible aliases
+export function getMosfetTerminals(el) { return getDeviceTerminals(el); }
+export function getSupplyTerminal(el) { return { x: el.x, y: el.y }; }
 
 function getSymbolExtents(el) {
   const G = GRID_PITCH;
+  const labelLen = (el.label?.length || 0) * 7;
+  const valLen = (el.value?.length || el.wl?.length || el.multiplier?.length || el.cRange?.length || el.clampVoltage?.length || 0) * 6;
+  const textMaxW = Math.max(labelLen, valLen);
+
   if (el.type === 'mosfet') {
-    const labelW = el.label ? 0.4 * G + el.label.length * 7 : 0;
-    const wlW = el.wl ? 0.4 * G + el.wl.length * 6 : 0;
-    return transformExtents({ minX: -2 * G, minY: -2 * G, maxX: Math.max(labelW, wlW), maxY: 2 * G }, el);
+    const maxX = el.fourTerminal ? Math.max(2.4 * G, 0.4 * G + textMaxW) : Math.max(1.2 * G, 0.4 * G + textMaxW);
+    return transformExtents({ minX: -2.2 * G, minY: -2.2 * G, maxX, maxY: 2.2 * G }, el);
   }
-  // Supply: stem + bar on one side of the terminal, with room for the caption.
+  if (el.type === 'tgate') {
+    return transformExtents({ minX: -2.2 * G, minY: -2.2 * G, maxX: Math.max(2.2 * G, 0.8 * G + textMaxW), maxY: 2.2 * G }, el);
+  }
+  if (el.type === 'bjt') {
+    return transformExtents({ minX: -2.2 * G, minY: -2.2 * G, maxX: Math.max(1.5 * G, 0.4 * G + textMaxW), maxY: 2.2 * G }, el);
+  }
+  if (el.type === 'resistor' || el.type === 'capacitor' || el.type === 'inductor' || el.type === 'varactor' || el.type === 'diode' || el.type === 'esd_diode') {
+    const maxX = el.type === 'inductor' && el.subtype === 'center_tapped'
+      ? Math.max(2.4 * G, 1.2 * G + textMaxW)
+      : Math.max(1.2 * G, 0.8 * G + textMaxW);
+    const minX = (el.type === 'esd_diode' && el.subtype === 'esd_dual') ? -2.2 * G : -1.4 * G;
+    return transformExtents({ minX, minY: -2.2 * G, maxX, maxY: 2.2 * G }, el);
+  }
+  if (el.type === 'scr') {
+    return transformExtents({ minX: -2.2 * G, minY: -2.2 * G, maxX: Math.max(1.4 * G, 0.6 * G + textMaxW), maxY: 2.2 * G }, el);
+  }
+  if (el.type === 'pad') {
+    return transformExtents({ minX: -1.6 * G, minY: -1.6 * G, maxX: Math.max(1.6 * G, 0.4 * G + textMaxW), maxY: 2.4 * G }, el);
+  }
+  if (el.type === 'well_tap') {
+    return transformExtents({ minX: -1.2 * G, minY: -1.2 * G, maxX: Math.max(1.2 * G, 0.8 * G + textMaxW), maxY: 1.2 * G }, el);
+  }
+  if (el.type === 'port') {
+    return transformExtents({ minX: -1.8 * G, minY: -1.2 * G, maxX: Math.max(1.8 * G, 0.8 * G + textMaxW), maxY: 1.2 * G }, el);
+  }
+  // Supply: stem + bar or ground symbols
   const isVdd = (el.kind || 'vdd') === 'vdd';
   const local = isVdd
-    ? { minX: -0.8 * G, minY: -2 * G, maxX: 0.8 * G, maxY: 0 }
-    : { minX: -0.8 * G, minY: 0, maxX: 0.8 * G, maxY: 2.4 * G };
+    ? { minX: -1.0 * G, minY: -2.2 * G, maxX: Math.max(1.0 * G, 0.4 * G + textMaxW), maxY: 0 }
+    : { minX: -1.0 * G, minY: 0, maxX: Math.max(1.0 * G, 0.4 * G + textMaxW), maxY: 2.5 * G };
   return transformExtents(local, el);
 }
 
@@ -171,16 +275,228 @@ export function getJunctionRadius(el) {
 // Build a CMOS palette element at (x, y). Shared by placement and the
 // drag-in ghost preview, so both always agree.
 export function createCmosElement(kind, x, y, extra = {}) {
-  // `extra.id` short-circuits the id generator so ghost previews don't burn ids.
+  const base = { x, y, rotation: 0, mirror: false, ...extra, id: extra.id || uid() };
+
+  // MOSFETs
   if (kind === 'pmos' || kind === 'nmos') {
-    return { type: 'mosfet', device: kind, x, y, rotation: 0, mirror: false, label: '', wl: '', ...extra, id: extra.id || uid() };
+    return {
+      type: 'mosfet',
+      device: kind,
+      label: kind === 'pmos' ? 'MP1' : 'MN1',
+      wl: '2u/180n',
+      fourTerminal: false,
+      showPins: false,
+      ...base,
+    };
   }
-  if (kind === 'vdd' || kind === 'vss') {
-    return { type: 'supply', kind, x, y, rotation: 0, label: kind === 'vdd' ? 'VDD' : 'VSS', ...extra, id: extra.id || uid() };
+
+  // Transmission Gate
+  if (kind === 'tgate') {
+    return {
+      type: 'tgate',
+      label: 'TG1',
+      size: '2u/180n',
+      showPins: false,
+      ...base,
+    };
   }
+
+  // BJT (Parasitic / Substrate)
+  if (kind === 'bjt') {
+    return {
+      type: 'bjt',
+      subtype: 'vpnp',
+      label: 'Q1',
+      multiplier: '1x',
+      showPins: false,
+      ...base,
+    };
+  }
+
+  // Varactor
+  if (kind === 'varactor') {
+    return {
+      type: 'varactor',
+      subtype: 'mos_varactor',
+      label: 'CVAR1',
+      cRange: '100f-500fF',
+      ...base,
+    };
+  }
+
+  // Resistor
+  if (kind === 'resistor') {
+    return {
+      type: 'resistor',
+      subtype: 'poly_unsil',
+      label: 'R1',
+      value: '10kΩ',
+      ...base,
+    };
+  }
+
+  // Capacitor
+  if (kind === 'capacitor') {
+    return {
+      type: 'capacitor',
+      subtype: 'mim',
+      label: 'C1',
+      value: '1.0pF',
+      ...base,
+    };
+  }
+
+  // Inductor
+  if (kind === 'inductor') {
+    return {
+      type: 'inductor',
+      subtype: 'spiral',
+      label: 'L1',
+      value: '2.5nH',
+      ...base,
+    };
+  }
+
+  // PN Diode
+  if (kind === 'diode') {
+    return {
+      type: 'diode',
+      subtype: 'pn',
+      label: 'D1',
+      ...base,
+    };
+  }
+
+  // ESD Clamp Diode
+  if (kind === 'esd_diode') {
+    return {
+      type: 'esd_diode',
+      subtype: 'esd_clamp',
+      label: 'DESD1',
+      clampVoltage: '5.5V',
+      ...base,
+    };
+  }
+
+  // SCR / Thyristor
+  if (kind === 'scr') {
+    return {
+      type: 'scr',
+      label: 'SCR1',
+      showPins: false,
+      ...base,
+    };
+  }
+
+  // I/O Bond Pad
+  if (kind === 'pad') {
+    return {
+      type: 'pad',
+      label: 'PAD_IO',
+      padType: 'wirebond',
+      ...base,
+    };
+  }
+
+  // VDD Supply
+  if (kind === 'vdd') {
+    return {
+      type: 'supply',
+      kind: 'vdd',
+      domain: 'vdd',
+      label: 'VDD',
+      ...base,
+    };
+  }
+
+  // VSS / Ground
+  if (kind === 'vss') {
+    return {
+      type: 'supply',
+      kind: 'vss',
+      groundType: 'vss',
+      label: 'VSS',
+      ...base,
+    };
+  }
+
+  // Bulk / Well Tap
+  if (kind === 'well_tap') {
+    return {
+      type: 'well_tap',
+      tapType: 'ntap',
+      label: 'NTAP',
+      ...base,
+    };
+  }
+
+  // Terminal Port Pin
+  if (kind === 'port') {
+    return {
+      type: 'port',
+      portType: 'in',
+      label: 'IN',
+      ...base,
+    };
+  }
+
   return null;
 }
 
+// ─── Vector Symbol Drawing Functions ────────────────────────────────────────
+
+// Helper to draw text captions in schematic symbols
+function drawSymbolCaptions(ctx, el, P, topText, bottomText, defaultOffset = 0.6) {
+  if (!topText && !bottomText) return;
+  const G = GRID_PITCH;
+  const rot = normalizeRotation(el.rotation);
+  const pos = P(defaultOffset * G, 0);
+
+  ctx.font = '11px "Roboto Mono", monospace';
+  if (rot === 0 || rot === 180) {
+    ctx.textAlign = pos.x >= el.x ? 'left' : 'right';
+    ctx.textBaseline = 'middle';
+    if (topText && bottomText) {
+      ctx.fillText(topText, pos.x, pos.y - 0.35 * G);
+      ctx.font = '10px "Roboto Mono", monospace';
+      ctx.fillText(bottomText, pos.x, pos.y + 0.35 * G);
+    } else if (topText) {
+      ctx.fillText(topText, pos.x, pos.y);
+    } else if (bottomText) {
+      ctx.font = '10px "Roboto Mono", monospace';
+      ctx.fillText(bottomText, pos.x, pos.y);
+    }
+  } else {
+    ctx.textAlign = 'center';
+    if (pos.y >= el.y) {
+      ctx.textBaseline = 'top';
+      if (topText && bottomText) {
+        ctx.fillText(topText, pos.x, pos.y + 4);
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.fillText(bottomText, pos.x, pos.y + 17);
+      } else if (topText) {
+        ctx.fillText(topText, pos.x, pos.y + 4);
+      } else if (bottomText) {
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.fillText(bottomText, pos.x, pos.y + 4);
+      }
+    } else {
+      ctx.textBaseline = 'bottom';
+      if (topText && bottomText) {
+        ctx.fillText(topText, pos.x, pos.y - 17);
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.fillText(bottomText, pos.x, pos.y - 4);
+      } else if (topText) {
+        ctx.fillText(topText, pos.x, pos.y - 4);
+      } else if (bottomText) {
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.fillText(bottomText, pos.x, pos.y - 4);
+      }
+    }
+  }
+}
+
+// 1. MOSFET (NMOS / PMOS - 3-terminal or 4-terminal with Bulk)
 function drawMosfetSymbol(ctx, el, options) {
   const G = GRID_PITCH;
   const ink = schematicInk(el, options);
@@ -200,16 +516,29 @@ function drawMosfetSymbol(ctx, el, options) {
   ctx.setLineDash([]);
 
   ctx.beginPath();
-  // Gate lead — stops short of the inversion bubble on a PMOS.
+  // Gate lead — stops short of inversion bubble on PMOS
   seg(-2 * G, 0, isP ? -1.6 * G : -G, 0);
   // Gate plate and channel bar
   seg(-G, -G, -G, G);
   seg(-0.5 * G, -G, -0.5 * G, G);
-  // Top and bottom leads out to the drain / source terminals
+  // Drain & Source leads
   seg(-0.5 * G, -G, 0, -G);
   seg(0, -G, 0, -2 * G);
   seg(-0.5 * G, G, 0, G);
   seg(0, G, 0, 2 * G);
+
+  // 4-terminal Bulk body lead & arrow
+  if (el.fourTerminal) {
+    seg(-0.5 * G, 0, 2 * G, 0);
+    // Arrow on bulk terminal: NMOS arrow points inward (P-substrate to N-channel)
+    // PMOS arrow points outward (N-well to P-channel)
+    const arrowX = isP ? 1.0 * G : 0.6 * G;
+    const dir = isP ? 1 : -1;
+    const aTip = P(arrowX, 0);
+    const aW1 = P(arrowX - dir * 0.35 * G, -0.22 * G);
+    const aW2 = P(arrowX - dir * 0.35 * G, 0.22 * G);
+    ctx.moveTo(aW1.x, aW1.y); ctx.lineTo(aTip.x, aTip.y); ctx.lineTo(aW2.x, aW2.y);
+  }
   ctx.stroke();
 
   if (isP) {
@@ -219,65 +548,15 @@ function drawMosfetSymbol(ctx, el, options) {
     ctx.stroke();
   }
 
-  // Captions sit on the open side opposite the gate and adjust position/alignment dynamically based on rotation & mirror.
-  if (el.label || el.wl) {
-    const rot = normalizeRotation(el.rotation);
-    const pos = P(0.6 * G, 0);
+  // Captions
+  drawSymbolCaptions(ctx, el, P, el.label, el.wl, el.fourTerminal ? 1.0 : 0.6);
 
-    ctx.font = '11px "Roboto Mono", monospace';
-    if (rot === 0 || rot === 180) {
-      ctx.textAlign = pos.x >= el.x ? 'left' : 'right';
-      ctx.textBaseline = 'middle';
-      if (el.label && el.wl) {
-        ctx.fillText(el.label, pos.x, pos.y - 0.35 * G);
-        ctx.font = '10px "Roboto Mono", monospace';
-        ctx.fillText(el.wl, pos.x, pos.y + 0.35 * G);
-      } else if (el.label) {
-        ctx.fillText(el.label, pos.x, pos.y);
-      } else if (el.wl) {
-        ctx.font = '10px "Roboto Mono", monospace';
-        ctx.fillText(el.wl, pos.x, pos.y);
-      }
-    } else {
-      // rot === 90 or rot === 270
-      ctx.textAlign = 'center';
-      if (pos.y >= el.y) {
-        // Text is below the transistor
-        ctx.textBaseline = 'top';
-        if (el.label && el.wl) {
-          ctx.fillText(el.label, pos.x, pos.y + 4);
-          ctx.font = '10px "Roboto Mono", monospace';
-          ctx.fillText(el.wl, pos.x, pos.y + 17);
-        } else if (el.label) {
-          ctx.fillText(el.label, pos.x, pos.y + 4);
-        } else if (el.wl) {
-          ctx.font = '10px "Roboto Mono", monospace';
-          ctx.fillText(el.wl, pos.x, pos.y + 4);
-        }
-      } else {
-        // Text is above the transistor
-        ctx.textBaseline = 'bottom';
-        if (el.label && el.wl) {
-          ctx.fillText(el.label, pos.x, pos.y - 17);
-          ctx.font = '10px "Roboto Mono", monospace';
-          ctx.fillText(el.wl, pos.x, pos.y - 4);
-        } else if (el.label) {
-          ctx.fillText(el.label, pos.x, pos.y - 4);
-        } else if (el.wl) {
-          ctx.font = '10px "Roboto Mono", monospace';
-          ctx.fillText(el.wl, pos.x, pos.y - 4);
-        }
-      }
-    }
-  }
-
-  // Optional G / D / S terminal markers
+  // Optional pin markers
   if (el.showPins) {
     ctx.font = '9px "Roboto Mono", monospace';
-    const drawPinMarker = (label, localX, localY) => {
-      const pos = P(localX, localY);
-      const dx = pos.x - el.x;
-      const dy = pos.y - el.y;
+    const drawPin = (lbl, lx, ly) => {
+      const pt = P(lx, ly);
+      const dx = pt.x - el.x, dy = pt.y - el.y;
       if (Math.abs(dx) > Math.abs(dy)) {
         ctx.textAlign = dx > 0 ? 'left' : 'right';
         ctx.textBaseline = 'middle';
@@ -285,20 +564,20 @@ function drawMosfetSymbol(ctx, el, options) {
         ctx.textAlign = 'center';
         ctx.textBaseline = dy > 0 ? 'top' : 'bottom';
       }
-      ctx.fillText(label, pos.x, pos.y);
+      ctx.fillText(lbl, pt.x, pt.y);
     };
-
-    drawPinMarker('G', -2.35 * G, 0);
-    drawPinMarker(isP ? 'S' : 'D', 0, -2.35 * G);
-    drawPinMarker(isP ? 'D' : 'S', 0, 2.35 * G);
+    drawPin('G', -2.35 * G, 0);
+    drawPin(isP ? 'S' : 'D', 0, -2.35 * G);
+    drawPin(isP ? 'D' : 'S', 0, 2.35 * G);
+    if (el.fourTerminal) drawPin('B', 2.35 * G, 0);
   }
   ctx.restore();
 }
 
-function drawSupplySymbol(ctx, el, options) {
+// 2. Transmission Gate (T-Gate: Parallel PMOS + NMOS)
+function drawTGateSymbol(ctx, el, options) {
   const G = GRID_PITCH;
   const ink = schematicInk(el, options);
-  const isVdd = (el.kind || 'vdd') === 'vdd';
   const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
   const seg = (ax, ay, bx, by) => {
     const a = P(ax, ay), b = P(bx, by);
@@ -310,24 +589,570 @@ function drawSupplySymbol(ctx, el, options) {
   ctx.fillStyle = ink;
   ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Input lead and split
+  seg(-2 * G, 0, -G, 0);
+  seg(-G, 0, -0.6 * G, -G);
+  seg(-G, 0, -0.6 * G, G);
+
+  // Output rejoin and lead
+  seg(0.6 * G, -G, G, 0);
+  seg(0.6 * G, G, G, 0);
+  seg(G, 0, 2 * G, 0);
+
+  // Top PMOS branch
+  seg(-0.6 * G, -G, 0.6 * G, -G);
+  seg(-0.6 * G, -1.35 * G, 0.6 * G, -1.35 * G);
+  seg(0, -1.75 * G, 0, -2 * G);
+
+  // Bottom NMOS branch
+  seg(-0.6 * G, G, 0.6 * G, G);
+  seg(-0.6 * G, 1.35 * G, 0.6 * G, 1.35 * G);
+  seg(0, 1.35 * G, 0, 2 * G);
+  ctx.stroke();
+
+  // Inversion bubble on PMOS gate
+  const bubble = P(0, -1.55 * G);
+  ctx.beginPath();
+  ctx.arc(bubble.x, bubble.y, 0.2 * G, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Captions
+  drawSymbolCaptions(ctx, el, P, el.label, el.size, 1.2);
+
+  if (el.showPins) {
+    ctx.font = '9px "Roboto Mono", monospace';
+    const drawPin = (lbl, lx, ly, align, baseline) => {
+      const pt = P(lx, ly);
+      ctx.textAlign = align;
+      ctx.textBaseline = baseline;
+      ctx.fillText(lbl, pt.x, pt.y);
+    };
+    drawPin('IN', -2.35 * G, 0, 'right', 'middle');
+    drawPin('OUT', 2.35 * G, 0, 'left', 'middle');
+    drawPin('ENB', 0, -2.35 * G, 'center', 'bottom');
+    drawPin('EN', 0, 2.35 * G, 'center', 'top');
+  }
+  ctx.restore();
+}
+
+// 3. Parasitic / Substrate BJT (NPN / PNP / Vertical PNP / Lateral PNP)
+function drawBjtSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const isPnp = el.subtype === 'vpnp' || el.subtype === 'lpnp' || el.subtype === 'pnp';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Base lead & bar
+  seg(-2 * G, 0, -0.8 * G, 0);
+  seg(-0.8 * G, -1.2 * G, -0.8 * G, 1.2 * G);
+
+  // Collector branch
+  seg(-0.8 * G, -0.6 * G, 0, -1.2 * G);
+  seg(0, -1.2 * G, 0, -2 * G);
+
+  // Emitter branch
+  seg(-0.8 * G, 0.6 * G, 0, 1.2 * G);
+  seg(0, 1.2 * G, 0, 2 * G);
+
+  // Substrate collector tie mark for Vertical PNP
+  if (el.subtype === 'vpnp') {
+    seg(-0.4 * G, -2 * G, 0.4 * G, -2 * G);
+  }
+  ctx.stroke();
+
+  // Emitter arrow
+  ctx.beginPath();
+  if (isPnp) {
+    // Arrow points IN towards base: tip at (-0.8G + 0.35G, 0.6G - 0.26G)
+    const tip = P(-0.45 * G, 0.86 * G);
+    const w1 = P(-0.35 * G, 0.55 * G);
+    const w2 = P(-0.15 * G, 0.85 * G);
+    ctx.moveTo(w1.x, w1.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(w2.x, w2.y);
+  } else {
+    // NPN: Arrow points OUT towards emitter lead: tip at (0, 1.2G)
+    const tip = P(0, 1.2 * G);
+    const w1 = P(-0.1 * G, 0.85 * G);
+    const w2 = P(-0.35 * G, 1.05 * G);
+    ctx.moveTo(w1.x, w1.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(w2.x, w2.y);
+  }
+  ctx.stroke();
+
+  // Subtype badge e.g. [VPNP], [NPN]
+  const badge = el.subtype ? el.subtype.toUpperCase() : (isPnp ? 'PNP' : 'NPN');
+  drawSymbolCaptions(ctx, el, P, el.label || 'Q1', `${badge} ${el.multiplier || '1x'}`, 0.7);
+
+  if (el.showPins) {
+    ctx.font = '9px "Roboto Mono", monospace';
+    const drawPin = (lbl, lx, ly, align, baseline) => {
+      const pt = P(lx, ly);
+      ctx.textAlign = align; ctx.textBaseline = baseline;
+      ctx.fillText(lbl, pt.x, pt.y);
+    };
+    drawPin('B', -2.35 * G, 0, 'right', 'middle');
+    drawPin('C', 0, -2.35 * G, 'center', 'bottom');
+    drawPin('E', 0, 2.35 * G, 'center', 'top');
+  }
+  ctx.restore();
+}
+
+// 4. Varactor (Variable Capacitor / MOS Varactor)
+function drawVaractorSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Top lead and plate
+  seg(0, -2 * G, 0, -0.4 * G);
+  seg(-0.8 * G, -0.4 * G, 0.8 * G, -0.4 * G);
+
+  // Bottom lead and plate
+  seg(-0.8 * G, 0.4 * G, 0.8 * G, 0.4 * G);
+  seg(0, 0.4 * G, 0, 2 * G);
+
+  // If MOS varactor, draw gate-oxide channel indicator
+  if (el.subtype === 'mos_varactor') {
+    seg(-0.6 * G, 0.65 * G, 0.6 * G, 0.65 * G);
+  }
+
+  // Diagonal tuning arrow
+  seg(-1.1 * G, 0.8 * G, 1.1 * G, -0.8 * G);
+  // Arrowhead at (1.1G, -0.8G)
+  const tip = P(1.1 * G, -0.8 * G);
+  const a1 = P(0.75 * G, -0.85 * G);
+  const a2 = P(1.05 * G, -0.55 * G);
+  ctx.moveTo(a1.x, a1.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(a2.x, a2.y);
+  ctx.stroke();
+
+  drawSymbolCaptions(ctx, el, P, el.label, el.cRange || 'Varactor', 1.0);
+  ctx.restore();
+}
+
+// 5. Resistor (Poly, Diffusion, Thin-Film Metal)
+function drawResistorSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Top lead
+  seg(0, -2 * G, 0, -1.2 * G);
+
+  // Zigzag body (6 segments)
+  seg(0, -1.2 * G, 0.45 * G, -0.8 * G);
+  seg(0.45 * G, -0.8 * G, -0.45 * G, -0.4 * G);
+  seg(-0.45 * G, -0.4 * G, 0.45 * G, 0);
+  seg(0.45 * G, 0, -0.45 * G, 0.4 * G);
+  seg(-0.45 * G, 0.4 * G, 0.45 * G, 0.8 * G);
+  seg(0.45 * G, 0.8 * G, 0, 1.2 * G);
+
+  // Bottom lead
+  seg(0, 1.2 * G, 0, 2 * G);
+  ctx.stroke();
+
+  // Subtype badge
+  const subCode = RESISTOR_SUBTYPES[el.subtype]?.code || 'RES';
+  drawSymbolCaptions(ctx, el, P, el.label, `${el.value || '10kΩ'} [${subCode}]`, 0.8);
+  ctx.restore();
+}
+
+// 6. Capacitor (MIM, MOM, MOS-cap)
+function drawCapacitorSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Top lead & plate
+  seg(0, -2 * G, 0, -0.35 * G);
+  seg(-0.8 * G, -0.35 * G, 0.8 * G, -0.35 * G);
+
+  // Bottom plate & lead
+  seg(-0.8 * G, 0.35 * G, 0.8 * G, 0.35 * G);
+  seg(0, 0.35 * G, 0, 2 * G);
+
+  // Subtype nuances: MOM has interdigitated teeth; MOS-cap has channel bar
+  if (el.subtype === 'mom') {
+    // Interdigitated teeth
+    seg(-0.5 * G, -0.35 * G, -0.5 * G, 0.15 * G);
+    seg(0.5 * G, -0.35 * G, 0.5 * G, 0.15 * G);
+    seg(0, 0.35 * G, 0, -0.15 * G);
+  } else if (el.subtype === 'moscap') {
+    seg(-0.6 * G, 0.65 * G, 0.6 * G, 0.65 * G);
+  }
+  ctx.stroke();
+
+  const subLabel = el.subtype ? el.subtype.toUpperCase() : 'MIM';
+  drawSymbolCaptions(ctx, el, P, el.label, `${el.value || '1.0pF'} [${subLabel}]`, 0.9);
+  ctx.restore();
+}
+
+// 7. Inductor (Planar Spiral, Differential Center-Tapped)
+function drawInductorSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const isCenterTapped = el.subtype === 'center_tapped';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Leads
+  seg(0, -2 * G, 0, -1.2 * G);
+  seg(0, 1.2 * G, 0, 2 * G);
+
+  // If center-tapped, lead from middle out to (2G, 0)
+  if (isCenterTapped) {
+    seg(0, 0, 2 * G, 0);
+  }
+  ctx.stroke();
+
+  // 4 coil loops stacked along the vertical lead
+  const loopCenters = [-0.9, -0.3, 0.3, 0.9];
+  loopCenters.forEach(cy => {
+    const center = P(0, cy * G);
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, 0.3 * G, -Math.PI / 2, Math.PI / 2, false);
+    ctx.stroke();
+  });
+
+  const subLabel = isCenterTapped ? 'DIFF' : 'SPIRAL';
+  drawSymbolCaptions(ctx, el, P, el.label, `${el.value || '2.5nH'} [${subLabel}]`, isCenterTapped ? 1.4 : 0.8);
+
+  if (isCenterTapped && el.showPins) {
+    ctx.font = '9px "Roboto Mono", monospace';
+    const ct = P(2.35 * G, 0);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('CT', ct.x, ct.y);
+  }
+  ctx.restore();
+}
+
+// 8. PN Junction Diode
+function drawDiodeSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Anode lead (top)
+  seg(0, -2 * G, 0, -0.6 * G);
+  // Cathode lead (bottom)
+  seg(0, 0.6 * G, 0, 2 * G);
+  // Cathode bar
+  seg(-0.6 * G, 0.6 * G, 0.6 * G, 0.6 * G);
+  ctx.stroke();
+
+  // Triangle body
+  const a1 = P(-0.6 * G, -0.6 * G);
+  const a2 = P(0.6 * G, -0.6 * G);
+  const tip = P(0, 0.6 * G);
+  ctx.beginPath();
+  ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.lineTo(tip.x, tip.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  drawSymbolCaptions(ctx, el, P, el.label, 'PN Diode', 0.8);
+  ctx.restore();
+}
+
+// 9. ESD Protection Clamp Diode (Single or Dual Rail Clamp)
+function drawEsdDiodeSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const isDual = el.subtype === 'esd_dual';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  if (isDual) {
+    // Dual Rail ESD Clamp: VDD on top, VSS on bottom, IO on left
+    seg(0, -2 * G, 0, -1.0 * G);
+    seg(0, 1.0 * G, 0, 2 * G);
+    seg(-2 * G, 0, 0, 0);
+
+    // Top Diode (IO -> VDD clamp)
+    seg(-0.5 * G, -1.0 * G, 0.5 * G, -1.0 * G); // cathode bar
+    ctx.stroke();
+
+    const t1 = P(-0.5 * G, -0.2 * G), t2 = P(0.5 * G, -0.2 * G), tipTop = P(0, -1.0 * G);
+    ctx.beginPath();
+    ctx.moveTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(tipTop.x, tipTop.y);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Bottom Diode (VSS -> IO clamp)
+    ctx.beginPath();
+    seg(-0.5 * G, 0.2 * G, 0.5 * G, 0.2 * G); // cathode bar
+    ctx.stroke();
+
+    const b1 = P(-0.5 * G, 1.0 * G), b2 = P(0.5 * G, 1.0 * G), tipBot = P(0, 0.2 * G);
+    ctx.beginPath();
+    ctx.moveTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(tipBot.x, tipBot.y);
+    ctx.closePath();
+    ctx.stroke();
+  } else {
+    // Single Oversized Clamp Diode with breakdown zener wings
+    seg(0, -2 * G, 0, -0.6 * G);
+    seg(0, 0.6 * G, 0, 2 * G);
+    // Cathode bar with breakdown wings
+    seg(-0.6 * G, 0.6 * G, 0.6 * G, 0.6 * G);
+    seg(-0.6 * G, 0.6 * G, -0.6 * G, 0.85 * G);
+    seg(0.6 * G, 0.6 * G, 0.6 * G, 0.35 * G);
+    ctx.stroke();
+
+    const a1 = P(-0.6 * G, -0.6 * G), a2 = P(0.6 * G, -0.6 * G), tip = P(0, 0.6 * G);
+    ctx.beginPath();
+    ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.lineTo(tip.x, tip.y);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  drawSymbolCaptions(ctx, el, P, el.label, `ESD [${el.clampVoltage || '5.5V'}]`, 0.8);
+  ctx.restore();
+}
+
+// 10. SCR / Thyristor (High-Current ESD Shunt)
+function drawScrSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  // Anode & Cathode leads
+  seg(0, -2 * G, 0, -0.6 * G);
+  seg(0, 0.6 * G, 0, 2 * G);
+  // Cathode bar
+  seg(-0.6 * G, 0.6 * G, 0.6 * G, 0.6 * G);
+  // Gate lead coming into cathode
+  seg(-2 * G, G, -0.8 * G, G);
+  seg(-0.8 * G, G, -0.3 * G, 0.6 * G);
+  ctx.stroke();
+
+  // Triangle body
+  const a1 = P(-0.6 * G, -0.6 * G), a2 = P(0.6 * G, -0.6 * G), tip = P(0, 0.6 * G);
+  ctx.beginPath();
+  ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.lineTo(tip.x, tip.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  drawSymbolCaptions(ctx, el, P, el.label, 'SCR Shunt', 0.8);
+
+  if (el.showPins) {
+    ctx.font = '9px "Roboto Mono", monospace';
+    const drawPin = (lbl, lx, ly, align, baseline) => {
+      const pt = P(lx, ly);
+      ctx.textAlign = align; ctx.textBaseline = baseline;
+      ctx.fillText(lbl, pt.x, pt.y);
+    };
+    drawPin('A', 0, -2.35 * G, 'center', 'bottom');
+    drawPin('K', 0, 2.35 * G, 'center', 'top');
+    drawPin('G', -2.35 * G, G, 'right', 'middle');
+  }
+  ctx.restore();
+}
+
+// 11. I/O Bond Pad (Wirebond / Flip-Chip)
+function drawPadSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  // Square pad with chamfered corners
+  const w = 1.1 * G, ch = 0.25 * G;
+  const p1 = P(-w + ch, -w);
+  const p2 = P(w - ch, -w);
+  const p3 = P(w, -w + ch);
+  const p4 = P(w, w - ch);
+  const p5 = P(w - ch, w);
+  const p6 = P(-w + ch, w);
+  const p7 = P(-w, w - ch);
+  const p8 = P(-w, -w + ch);
+
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+  ctx.lineTo(p5.x, p5.y); ctx.lineTo(p6.x, p6.y); ctx.lineTo(p7.x, p7.y); ctx.lineTo(p8.x, p8.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Concentric bond target
+  const center = P(0, 0);
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, 0.45 * G, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Bottom lead to connection terminal
+  ctx.beginPath();
+  seg(0, w, 0, 2 * G);
+  ctx.stroke();
+
+  drawSymbolCaptions(ctx, el, P, el.label || 'PAD_IO', el.padType === 'flipchip' ? 'FLIP-CHIP' : 'WIRE-BOND', 1.3);
+  ctx.restore();
+}
+
+// 12. Power & Ground Supply Rails (Multi-domain VDD / VSS / AGND / SUB)
+function drawSupplySymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const isVdd = (el.kind || 'vdd') === 'vdd';
+  const groundType = el.groundType || 'vss';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   ctx.setLineDash([]);
 
   ctx.beginPath();
   if (isVdd) {
-    // Stem up to a single supply bar.
+    // Stem up to horizontal supply bar
     seg(0, 0, 0, -G);
-    seg(-0.7 * G, -G, 0.7 * G, -G);
+    seg(-0.8 * G, -G, 0.8 * G, -G);
   } else {
-    // Stem down to a three-bar earth symbol.
-    seg(0, 0, 0, G);
-    seg(-0.7 * G, G, 0.7 * G, G);
-    seg(-0.42 * G, 1.28 * G, 0.42 * G, 1.28 * G);
-    seg(-0.16 * G, 1.56 * G, 0.16 * G, 1.56 * G);
+    // Stem down
+    seg(0, 0, 0, 0.8 * G);
+
+    if (groundType === 'agnd') {
+      // Analog Ground: Triangular shield
+      const b = P(-0.75 * G, 0.8 * G);
+      const c = P(0.75 * G, 0.8 * G);
+      const d = P(0, 1.8 * G);
+      ctx.moveTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y);
+      ctx.closePath();
+    } else if (groundType === 'sub') {
+      // Substrate Ground: Angled chassis rake hatch
+      seg(-0.8 * G, 0.8 * G, 0.8 * G, 0.8 * G);
+      seg(-0.6 * G, 0.8 * G, -0.9 * G, 1.4 * G);
+      seg(-0.1 * G, 0.8 * G, -0.4 * G, 1.4 * G);
+      seg(0.4 * G, 0.8 * G, 0.1 * G, 1.4 * G);
+    } else {
+      // Digital VSS: 3 descending horizontal bars
+      seg(-0.75 * G, 0.8 * G, 0.75 * G, 0.8 * G);
+      seg(-0.45 * G, 1.15 * G, 0.45 * G, 1.15 * G);
+      seg(-0.18 * G, 1.5 * G, 0.18 * G, 1.5 * G);
+    }
   }
   ctx.stroke();
 
   if (el.label) {
-    const at = P(0, isVdd ? -1.6 * G : 2.05 * G);
+    const at = P(0, isVdd ? -1.6 * G : 2.1 * G);
     ctx.font = '11px "Roboto Mono", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -336,8 +1161,135 @@ function drawSupplySymbol(ctx, el, options) {
   ctx.restore();
 }
 
+// 13. Bulk / Well Tap (NTAP VDD / PTAP VSS)
+function drawTapSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const isPtap = el.tapType === 'ptap';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+  const seg = (ax, ay, bx, by) => {
+    const a = P(ax, ay), b = P(bx, by);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  // Well boundary square
+  const s = 0.7 * G;
+  const p1 = P(-s, -s), p2 = P(s, -s), p3 = P(s, s), p4 = P(-s, s);
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Ohmic contact cross [X]
+  ctx.beginPath();
+  seg(-s * 0.7, -s * 0.7, s * 0.7, s * 0.7);
+  seg(-s * 0.7, s * 0.7, s * 0.7, -s * 0.7);
+  ctx.stroke();
+
+  drawSymbolCaptions(ctx, el, P, el.label || (isPtap ? 'PTAP' : 'NTAP'), isPtap ? 'P-SUB' : 'N-WELL', 1.0);
+  ctx.restore();
+}
+
+// 14. Terminal Port Pin (Input, Output, InOut, Clock)
+function drawPortSymbol(ctx, el, options) {
+  const G = GRID_PITCH;
+  const ink = schematicInk(el, options);
+  const pType = el.portType || 'in';
+  const P = (lx, ly) => transformSymbolPoint(el, lx, ly);
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = el.strokeWidth || SYMBOL_STROKE_WIDTH;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  if (pType === 'in') {
+    // Right-pointing chevron towards terminal at (0, 0)
+    const p1 = P(-1.4 * G, -0.55 * G);
+    const p2 = P(-0.4 * G, -0.55 * G);
+    const p3 = P(0, 0);
+    const p4 = P(-0.4 * G, 0.55 * G);
+    const p5 = P(-1.4 * G, 0.55 * G);
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y); ctx.lineTo(p5.x, p5.y); ctx.closePath();
+  } else if (pType === 'out') {
+    // Pointing outwards from terminal at (0, 0)
+    const p1 = P(0, 0);
+    const p2 = P(0.4 * G, -0.55 * G);
+    const p3 = P(1.4 * G, -0.55 * G);
+    const p4 = P(1.4 * G, 0.55 * G);
+    const p5 = P(0.4 * G, 0.55 * G);
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y); ctx.lineTo(p5.x, p5.y); ctx.closePath();
+  } else if (pType === 'inout') {
+    // Diamond bidirectional port
+    const p1 = P(-1.4 * G, 0);
+    const p2 = P(-0.7 * G, -0.55 * G);
+    const p3 = P(0, 0);
+    const p4 = P(-0.7 * G, 0.55 * G);
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y); ctx.closePath();
+  } else {
+    // Clock input pin with dynamic triangle clock chevron
+    const p1 = P(-1.4 * G, -0.55 * G);
+    const p2 = P(-0.4 * G, -0.55 * G);
+    const p3 = P(0, 0);
+    const p4 = P(-0.4 * G, 0.55 * G);
+    const p5 = P(-1.4 * G, 0.55 * G);
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y); ctx.lineTo(p5.x, p5.y); ctx.closePath();
+
+    // Clock chevron inside
+    const c1 = P(-1.2 * G, -0.35 * G);
+    const c2 = P(-0.8 * G, 0);
+    const c3 = P(-1.2 * G, 0.35 * G);
+    ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
+  }
+  ctx.stroke();
+
+  // Port name label
+  const labelPos = P(pType === 'out' ? 1.7 * G : -1.6 * G, 0);
+  ctx.font = '11px "Roboto Mono", monospace';
+  ctx.textAlign = pType === 'out' ? 'left' : 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(el.label || 'PORT', labelPos.x, labelPos.y);
+  ctx.restore();
+}
+
+// Unified dispatcher for all schematic device types
+export function drawSchematicDevice(ctx, el, options) {
+  switch (el.type) {
+    case 'mosfet':     drawMosfetSymbol(ctx, el, options); break;
+    case 'supply':     drawSupplySymbol(ctx, el, options); break;
+    case 'tgate':      drawTGateSymbol(ctx, el, options); break;
+    case 'bjt':        drawBjtSymbol(ctx, el, options); break;
+    case 'varactor':   drawVaractorSymbol(ctx, el, options); break;
+    case 'resistor':   drawResistorSymbol(ctx, el, options); break;
+    case 'capacitor':  drawCapacitorSymbol(ctx, el, options); break;
+    case 'inductor':   drawInductorSymbol(ctx, el, options); break;
+    case 'diode':      drawDiodeSymbol(ctx, el, options); break;
+    case 'esd_diode':  drawEsdDiodeSymbol(ctx, el, options); break;
+    case 'scr':        drawScrSymbol(ctx, el, options); break;
+    case 'pad':        drawPadSymbol(ctx, el, options); break;
+    case 'well_tap':   drawTapSymbol(ctx, el, options); break;
+    case 'port':       drawPortSymbol(ctx, el, options); break;
+    default: break;
+  }
+}
+
 export function getElementBounds(el) {
-  if (el.type === 'mosfet' || el.type === 'supply') {
+  if (isSchematicDevice(el)) {
     const e = getSymbolExtents(el);
     return { x: el.x + e.minX, y: el.y + e.minY, w: e.maxX - e.minX, h: e.maxY - e.minY };
   }
@@ -430,9 +1382,9 @@ export function drawLabelOnContext(ctx, el, isSelected, options = {}) {
 
   ctx.save();
 
-  let tw = 0;
-  let baseWidth = 0;
-  let subWidth = 0;
+  let tw;
+  let baseWidth;
+  let subWidth;
 
   const baseFontSize = Math.round(14 * scale);
   const subFontSize = Math.round(10 * scale);
@@ -940,9 +1892,8 @@ export function drawElement(ctx, el, isSelected, options = {}) {
       ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
       ctx.restore();
     }
-  } else if (el.type === 'mosfet' || el.type === 'supply') {
-    if (el.type === 'mosfet') drawMosfetSymbol(ctx, el, options);
-    else drawSupplySymbol(ctx, el, options);
+  } else if (isSchematicDevice(el)) {
+    drawSchematicDevice(ctx, el, options);
 
     if (isSelected && !isExport) {
       ctx.save();
@@ -1034,7 +1985,8 @@ export function computeRectResize(rs, worldPos) {
   return { x, y, w, h };
 }
 
-export function createTemplateElements(defaultCanvasLayerId) {
+export function createTemplateElements(_defaultCanvasLayerId) {
+  void _defaultCanvasLayerId;
   // A correct 2-input CMOS gate stick diagram:
   //   VDD / VSS rails (metal1, blue), P-diffusion (yellow) and N-diffusion
   //   (green) rows, two poly gate inputs A & B (purple), metal routing to an

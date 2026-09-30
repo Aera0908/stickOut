@@ -69,7 +69,9 @@ export default function Modals({
       let data = null;
       try {
         data = await res.json();
-      } catch (_) {}
+      } catch {
+        /* ignore non-json response */
+      }
 
       if (res.ok && data && (data.success === 'true' || data.success === true)) {
         setFeedbackStatus('success');
@@ -203,16 +205,16 @@ export default function Modals({
                   </div>
                 )}
                 <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Name (Optional)</label>
-                  <input type="text" value={feedbackName} onChange={e => setFeedbackName(e.target.value)} placeholder="e.g. John Doe" disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '13px' }} />
+                  <label style={{ display: 'block', fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Name (Optional)</label>
+                  <input type="text" value={feedbackName} onChange={e => setFeedbackName(e.target.value)} placeholder="e.g. John Doe" disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '2px', border: '1px solid var(--ui-border)', background: '#0A0B0E', color: 'var(--text-primary)', fontSize: '13px' }} />
                 </div>
                 <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Title <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input type="text" value={feedbackTitle} onChange={e => setFeedbackTitle(e.target.value)} placeholder="Short summary" required disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '13px' }} />
+                  <label style={{ display: 'block', fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '4px' }}>Title <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input type="text" value={feedbackTitle} onChange={e => setFeedbackTitle(e.target.value)} placeholder="Short summary" required disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '2px', border: '1px solid var(--ui-border)', background: '#0A0B0E', color: 'var(--text-primary)', fontSize: '13px' }} />
                 </div>
                 <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }}>Description <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <textarea value={feedbackDesc} onChange={e => setFeedbackDesc(e.target.value)} placeholder="Describe the issue..." rows="4" required disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '13px', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }} />
+                  <label style={{ display: 'block', fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '4px' }}>Description <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <textarea value={feedbackDesc} onChange={e => setFeedbackDesc(e.target.value)} placeholder="Describe the issue..." rows="4" required disabled={feedbackStatus === 'sending'} style={{ width: '100%', padding: '8px 12px', borderRadius: '2px', border: '1px solid var(--ui-border)', background: '#0A0B0E', color: 'var(--text-primary)', fontSize: '13px', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
                   <button type="button" onClick={handleMailtoFallback} disabled={feedbackStatus === 'sending' || !feedbackTitle.trim() || !feedbackDesc.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline', opacity: (!feedbackTitle.trim() || !feedbackDesc.trim()) ? 0.5 : 1 }}>

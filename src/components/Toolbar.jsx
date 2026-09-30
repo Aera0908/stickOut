@@ -1,5 +1,6 @@
-import { MousePointer2, Minus, Square, Type, Paintbrush, Eraser, Image as ImageIcon, Plus, Pencil, X as XIcon, FunctionSquare, Ruler, Circle } from 'lucide-react';
-import { TOOLS, CMOS_DEVICES } from '../constants';
+import { useState } from 'react';
+import { MousePointer2, Minus, Square, Type, Paintbrush, Eraser, Image as ImageIcon, Plus, X as XIcon, FunctionSquare, Ruler, Circle, ChevronDown } from 'lucide-react';
+import { TOOLS, CMOS_DEVICES, CMOS_CATEGORIES } from '../constants';
 import { GATE_PRESETS } from '../cmos/gates';
 
 // Miniature previews for the CMOS palette buttons.
@@ -17,6 +18,110 @@ function DeviceGlyph({ kind }) {
       </svg>
     );
   }
+  if (kind === 'tgate') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.5" strokeLinecap="round">
+        <line x1="2" y1="12" x2="6" y2="12" />
+        <path d="M6 12 L9 6 H15 L18 12" />
+        <path d="M6 12 L9 18 H15 L18 12" />
+        <line x1="18" y1="12" x2="22" y2="12" />
+        <circle cx="12" cy="4" r="1.2" />
+        <line x1="12" y1="2" x2="12" y2="2.8" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+      </svg>
+    );
+  }
+  if (kind === 'bjt') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="3" y1="12" x2="8" y2="12" />
+        <line x1="8" y1="5" x2="8" y2="19" />
+        <line x1="8" y1="8" x2="16" y2="3" />
+        <line x1="8" y1="16" x2="16" y2="21" />
+        <path d="M13 18 L16 21 L13 22" fill={stroke} />
+      </svg>
+    );
+  }
+  if (kind === 'varactor') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="2" x2="12" y2="8" />
+        <line x1="6" y1="8" x2="18" y2="8" />
+        <line x1="6" y1="12" x2="18" y2="12" />
+        <line x1="12" y1="12" x2="12" y2="22" />
+        <line x1="5" y1="19" x2="19" y2="5" />
+        <path d="M15 5 H19 V9" />
+      </svg>
+    );
+  }
+  if (kind === 'resistor') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="2" x2="12" y2="6" />
+        <path d="M12 6 L16 8 L8 11 L16 14 L8 17 L12 19" />
+        <line x1="12" y1="19" x2="12" y2="22" />
+      </svg>
+    );
+  }
+  if (kind === 'capacitor') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="2" x2="12" y2="9" />
+        <line x1="6" y1="9" x2="18" y2="9" />
+        <line x1="6" y1="15" x2="18" y2="15" />
+        <line x1="12" y1="15" x2="12" y2="22" />
+      </svg>
+    );
+  }
+  if (kind === 'inductor') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="2" x2="12" y2="5" />
+        <path d="M12 5 C17 5 17 9 12 9 C17 9 17 13 12 13 C17 13 17 17 12 17 C17 17 17 21 12 21" />
+        <line x1="12" y1="21" x2="12" y2="22" />
+      </svg>
+    );
+  }
+  if (kind === 'diode') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="2" x2="12" y2="7" />
+        <path d="M6 7 H18 L12 16 Z" />
+        <line x1="6" y1="16" x2="18" y2="16" />
+        <line x1="12" y1="16" x2="12" y2="22" />
+      </svg>
+    );
+  }
+  if (kind === 'esd_diode') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="2" x2="12" y2="7" />
+        <path d="M6 7 H18 L12 16 Z" />
+        <path d="M6 18 V16 H18 V14" />
+        <line x1="12" y1="16" x2="12" y2="22" />
+      </svg>
+    );
+  }
+  if (kind === 'scr') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="2" x2="12" y2="7" />
+        <path d="M6 7 H18 L12 16 Z" />
+        <line x1="6" y1="16" x2="18" y2="16" />
+        <path d="M5 20 L9 16" />
+        <line x1="12" y1="16" x2="12" y2="22" />
+      </svg>
+    );
+  }
+  if (kind === 'pad') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <rect x="5" y="4" width="14" height="14" rx="2" />
+        <circle cx="12" cy="11" r="3" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+      </svg>
+    );
+  }
   if (kind === 'vdd') {
     return (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
@@ -25,14 +130,33 @@ function DeviceGlyph({ kind }) {
       </svg>
     );
   }
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
-      <line x1="12" y1="4" x2="12" y2="13" />
-      <line x1="5" y1="13" x2="19" y2="13" />
-      <line x1="8" y1="17" x2="16" y2="17" />
-      <line x1="10.5" y1="20.5" x2="13.5" y2="20.5" />
-    </svg>
-  );
+  if (kind === 'vss') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="4" x2="12" y2="13" />
+        <line x1="5" y1="13" x2="19" y2="13" />
+        <line x1="8" y1="17" x2="16" y2="17" />
+        <line x1="10.5" y1="20.5" x2="13.5" y2="20.5" />
+      </svg>
+    );
+  }
+  if (kind === 'well_tap') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <rect x="4" y="4" width="16" height="16" />
+        <line x1="7" y1="7" x2="17" y2="17" />
+        <line x1="17" y1="7" x2="7" y2="17" />
+      </svg>
+    );
+  }
+  if (kind === 'port') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.6" strokeLinecap="round">
+        <path d="M4 6 H14 L20 12 L14 18 H4 Z" />
+      </svg>
+    );
+  }
+  return <Circle size={14} />;
 }
 
 export default function Toolbar({
@@ -50,7 +174,6 @@ export default function Toolbar({
   activeLayerId,
   selectLayerFromPalette,
   customLayerColors,
-  setCustomLayerColors,
   paletteItems,
   removeMetalLayer,
   addMetalLayer,
@@ -60,7 +183,17 @@ export default function Toolbar({
   triggerImageImport,
   openBooleanModal
 }) {
+  const [cmosCategory, setCmosCategory] = useState('all');
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+
   if (mode === 'cmos') {
+    const categoryOptions = [
+      { id: 'all', label: 'All', title: 'All Mixed-Signal Components' },
+      ...CMOS_CATEGORIES
+    ];
+    const currentCategory = categoryOptions.find(c => c.id === cmosCategory) || categoryOptions[0];
+    const triggerLabel = cmosCategory === 'all' ? 'ALL' : currentCategory.label.substring(0, 4).toUpperCase();
+
     return (
       <div className="left-toolbar">
         <button className={`tool-btn ${activeTool === TOOLS.select ? 'active' : ''}`} onClick={() => setActiveTool(TOOLS.select)} title="Select (V)"><MousePointer2 size={18} /></button>
@@ -74,35 +207,145 @@ export default function Toolbar({
 
         <div className="toolbar-divider" />
 
-        <div className="layer-palette-scroll" style={{ alignItems: 'center' }}>
-          <div className="palette-divider-label" style={{ fontSize: '6px', marginBottom: '4px' }}>PLACE</div>
-          {Object.keys(CMOS_DEVICES).map(kind => {
-            const armed = activeTool === TOOLS.device && deviceKind === kind;
-            return (
-              <button
-                key={kind}
-                className={`tool-btn ${armed ? 'active' : ''}`}
-                title={CMOS_DEVICES[kind].title}
-                onClick={() => armCmosDevice && armCmosDevice(kind)}
-                style={{ marginBottom: '4px' }}
-              >
-                <DeviceGlyph kind={kind} />
-              </button>
-            );
-          })}
+        {/* Category Filter Selector with Flyout Menu */}
+        <div
+          className="cmos-category-wrapper"
+          onMouseEnter={() => setShowCategoryMenu(true)}
+          onMouseLeave={() => setShowCategoryMenu(false)}
+        >
+          <button
+            className={`cmos-cat-trigger ${cmosCategory !== 'all' ? 'active' : ''}`}
+            onClick={() => setShowCategoryMenu(prev => !prev)}
+            title={`Filter Component Category: ${currentCategory.title} (Click or hover to change)`}
+          >
+            <span>{triggerLabel}</span>
+            <ChevronDown size={8} style={{ opacity: 0.8 }} />
+          </button>
 
-          <div className="palette-divider-label" style={{ fontSize: '6px', marginTop: '8px', marginBottom: '4px' }}>GATES</div>
-          {GATE_PRESETS.map(gate => (
-            <button
-              key={gate.id}
-              className="tool-btn gate-preset-btn"
-              title={gate.title}
-              onClick={() => insertGatePreset && insertGatePreset(gate.id)}
-              style={{ marginBottom: '4px', fontSize: '9px', fontWeight: 700, letterSpacing: '-0.02em' }}
-            >
-              {gate.label}
-            </button>
-          ))}
+          {showCategoryMenu && (
+            <div className="cmos-cat-popup">
+              <div style={{ fontSize: '8px', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '2px 8px 4px' }}>
+                Filter Library
+              </div>
+              {categoryOptions.map(cat => (
+                <button
+                  key={cat.id}
+                  className={`cmos-cat-popup-item ${cmosCategory === cat.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setCmosCategory(cat.id);
+                    setShowCategoryMenu(false);
+                  }}
+                >
+                  <span>{cat.title}</span>
+                  {cmosCategory === cat.id && <span style={{ fontSize: '10px' }}>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="layer-palette-scroll" style={{ alignItems: 'center', marginTop: '4px' }}>
+          {/* Active Devices */}
+          {(cmosCategory === 'all' || cmosCategory === 'active') && (
+            <>
+              <div className="palette-divider-label" style={{ fontSize: '6px', marginBottom: '4px', textAlign: 'center' }}>ACTIVE</div>
+              {Object.keys(CMOS_DEVICES).filter(k => CMOS_DEVICES[k].category === 'active').map(kind => {
+                const armed = activeTool === TOOLS.device && deviceKind === kind;
+                return (
+                  <button
+                    key={kind}
+                    className={`tool-btn ${armed ? 'active' : ''}`}
+                    title={CMOS_DEVICES[kind].title}
+                    onClick={() => armCmosDevice && armCmosDevice(kind)}
+                    style={{ marginBottom: '4px' }}
+                  >
+                    <DeviceGlyph kind={kind} />
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* Passive Devices */}
+          {(cmosCategory === 'all' || cmosCategory === 'passive') && (
+            <>
+              <div className="palette-divider-label" style={{ fontSize: '6px', marginTop: cmosCategory === 'all' ? '6px' : '0', marginBottom: '4px', textAlign: 'center' }}>PASSIVE</div>
+              {Object.keys(CMOS_DEVICES).filter(k => CMOS_DEVICES[k].category === 'passive').map(kind => {
+                const armed = activeTool === TOOLS.device && deviceKind === kind;
+                return (
+                  <button
+                    key={kind}
+                    className={`tool-btn ${armed ? 'active' : ''}`}
+                    title={CMOS_DEVICES[kind].title}
+                    onClick={() => armCmosDevice && armCmosDevice(kind)}
+                    style={{ marginBottom: '4px' }}
+                  >
+                    <DeviceGlyph kind={kind} />
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* Protection & Interface Devices */}
+          {(cmosCategory === 'all' || cmosCategory === 'protect') && (
+            <>
+              <div className="palette-divider-label" style={{ fontSize: '6px', marginTop: cmosCategory === 'all' ? '6px' : '0', marginBottom: '4px', textAlign: 'center' }}>PROTECT</div>
+              {Object.keys(CMOS_DEVICES).filter(k => CMOS_DEVICES[k].category === 'protect').map(kind => {
+                const armed = activeTool === TOOLS.device && deviceKind === kind;
+                return (
+                  <button
+                    key={kind}
+                    className={`tool-btn ${armed ? 'active' : ''}`}
+                    title={CMOS_DEVICES[kind].title}
+                    onClick={() => armCmosDevice && armCmosDevice(kind)}
+                    style={{ marginBottom: '4px' }}
+                  >
+                    <DeviceGlyph kind={kind} />
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* Power & References */}
+          {(cmosCategory === 'all' || cmosCategory === 'power') && (
+            <>
+              <div className="palette-divider-label" style={{ fontSize: '6px', marginTop: cmosCategory === 'all' ? '6px' : '0', marginBottom: '4px', textAlign: 'center' }}>POWER</div>
+              {Object.keys(CMOS_DEVICES).filter(k => CMOS_DEVICES[k].category === 'power').map(kind => {
+                const armed = activeTool === TOOLS.device && deviceKind === kind;
+                return (
+                  <button
+                    key={kind}
+                    className={`tool-btn ${armed ? 'active' : ''}`}
+                    title={CMOS_DEVICES[kind].title}
+                    onClick={() => armCmosDevice && armCmosDevice(kind)}
+                    style={{ marginBottom: '4px' }}
+                  >
+                    <DeviceGlyph kind={kind} />
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* Logic Gate Presets */}
+          {(cmosCategory === 'all' || cmosCategory === 'gates') && (
+            <>
+              <div className="palette-divider-label" style={{ fontSize: '6px', marginTop: cmosCategory === 'all' ? '6px' : '0', marginBottom: '4px', textAlign: 'center' }}>GATES</div>
+              {GATE_PRESETS.map(gate => (
+                <button
+                  key={gate.id}
+                  className="tool-btn gate-preset-btn"
+                  title={gate.title}
+                  onClick={() => insertGatePreset && insertGatePreset(gate.id)}
+                  style={{ marginBottom: '4px', fontSize: '9px', fontWeight: 700, letterSpacing: '-0.02em' }}
+                >
+                  {gate.label}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
     );
@@ -137,14 +380,15 @@ export default function Toolbar({
               className="fp-insert-btn"
               title={item.label}
               onClick={() => insertFloorplanShape && insertFloorplanShape(item.kind)}
-              style={{ width: '30px', height: '30px', marginBottom: '6px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--ui-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+              style={{ width: '30px', height: '30px', marginBottom: '6px', borderRadius: '2px', border: '1px solid var(--ui-border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
             >
               <span style={{
                 width: '24px', height: '18px', borderRadius: '2px',
                 background: item.color === 'transparent' ? 'transparent' : item.color,
                 border: `1.5px solid ${item.border}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '6px', fontWeight: 'bold',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '7px', fontWeight: 'bold',
                 color: item.color === 'transparent' ? 'var(--text-primary)' : '#111'
               }}>{item.text}</span>
             </button>
@@ -203,7 +447,7 @@ export default function Toolbar({
               position: 'relative',
               width: '28px',
               height: '28px',
-              borderRadius: '4px',
+              borderRadius: '2px',
               border: '1px solid var(--ui-border)',
               cursor: 'pointer',
               display: 'flex',

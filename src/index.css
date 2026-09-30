@@ -1,48 +1,54 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --font-mono: 'Roboto Mono', 'Consolas', 'Monaco', monospace;
+  --font-mono: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Dark Mode (Default) */
+/* Dark Mode (Default) — Minimalist Industrial VLSI CAD (matches Index/Landing) */
 :root, [data-theme="dark"] {
-  --canvas-bg: #121214;          /* Deep matte dark charcoal */
-  --grid-color: #222226;         /* Subtle dark grid lines */
-  --ui-bg: #1A1A1E;              /* Dark panel background */
-  --ui-border: #2E2E35;          /* Clean, flat dark border */
-  --accent: #2F6FED;             /* Primary Blue */
-  --text-primary: #FFFFFF;       /* Clean white text */
-  --text-secondary: #A0A0A5;     /* Medium gray secondary text */
-  --text-muted: #606065;         /* Muted gray text */
-  --danger: #FF453A;             /* Clean iOS-style red */
-  --success: #30D158;            /* Crisp green for success */
-  --warning: #FF9F0A;            /* Warm orange-yellow */
-  --surface: #24242A;            /* Surface bg for hover/active/inputs */
-  --surface-hover: #2C2C34;      /* Subtle dark hover */
-  --surface-active: #2F6FED;     /* Highlight with orange when active */
-  --selection: rgba(47, 111, 237, 0.22); /* Light blue selection highlight */
-  --shadow-color: rgba(0, 0, 0, 0.4);
+  --canvas-bg: #0A0B0E;          /* Deep rich CAD canvas black */
+  --grid-color: rgba(255, 255, 255, 0.035); /* Crisp engineering grid */
+  --ui-bg: #0E0F12;              /* Industrial dark background */
+  --ui-border: #23262E;          /* Industrial slate border */
+  --border-subtle: #1C1E25;
+  --border-hover: #383D4A;
+  --accent: #3B82F6;             /* Industrial engineering blue */
+  --accent-hover: #2563EB;
+  --text-primary: #EDEDF2;       /* High-contrast crisp text */
+  --text-secondary: #8E93A0;     /* Cool slate secondary */
+  --text-muted: #575B66;         /* Precision muted gray */
+  --danger: #EF4444;             /* Sharp red */
+  --success: #10B981;            /* Precision emerald green */
+  --warning: #F59E0B;            /* Precision amber */
+  --surface: #14161B;            /* Clean surface background */
+  --surface-hover: #1A1D23;      /* Subtle slate surface hover */
+  --surface-active: #3B82F6;     /* Active blue */
+  --selection: rgba(59, 130, 246, 0.22);
+  --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 /* Light Mode */
 [data-theme="light"] {
-  --canvas-bg: #FAF9F6;          /* Warm designer off-white */
-  --grid-color: #E6E2D8;         /* Subtle warm gray grid lines */
-  --ui-bg: #FFFFFF;              /* Clean white panel backgrounds */
-  --ui-border: #E0E0E6;          /* Clean, thin light gray border */
-  --accent: #2F6FED;             /* Primary Blue */
-  --text-primary: #111111;       /* Solid near-pitch-black text */
-  --text-secondary: #555558;     /* Slate gray secondary text */
-  --text-muted: #8E8E93;         /* Light gray muted text */
-  --danger: #FF3B30;             /* Bright clean red */
-  --success: #34C759;            /* Clean green success */
-  --warning: #FF9500;            /* Bright warning orange */
-  --surface: #F5F5F7;            /* Light gray surface */
-  --surface-hover: #EBEBEF;      /* Subtle hover */
-  --surface-active: #2F6FED;     /* Orange highlight active */
-  --selection: rgba(47, 111, 237, 0.15);
-  --shadow-color: rgba(0, 0, 0, 0.06);
+  --canvas-bg: #F8F9FA;
+  --grid-color: #E2E4E9;
+  --ui-bg: #FFFFFF;
+  --ui-border: #E1E4EA;
+  --border-subtle: #ECEEF2;
+  --border-hover: #CBD0D8;
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --text-primary: #0E0F12;
+  --text-secondary: #575B66;
+  --text-muted: #8E93A0;
+  --danger: #DC2626;
+  --success: #059669;
+  --warning: #D97706;
+  --surface: #F4F5F7;
+  --surface-hover: #EAECEF;
+  --surface-active: #2563EB;
+  --selection: rgba(37, 99, 235, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.08);
 }
 
 * {

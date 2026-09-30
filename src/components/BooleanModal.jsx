@@ -34,7 +34,7 @@ export default function BooleanModal({ show, onClose, onInsert }) {
               placeholder="e.g.  Y = (A.B + C)'"
               autoFocus
               spellCheck={false}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '14px', fontFamily: '"Roboto Mono", monospace', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '2px', border: '1px solid var(--ui-border)', background: '#0A0B0E', color: 'var(--text-primary)', fontSize: '13px', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
             />
           </div>
 
@@ -42,12 +42,12 @@ export default function BooleanModal({ show, onClose, onInsert }) {
             Single-letter inputs (A, B, S0…). AND: <code>.</code> <code>&amp;</code> or adjacency (<code>AB</code>) · OR: <code>+</code> <code>|</code> · NOT: <code>A'</code> or <code>!A</code> · optional <code>Y = …</code> names the output.
           </div>
 
-          <div style={{ minHeight: '72px', padding: '10px 12px', borderRadius: '4px', border: '1px solid var(--ui-border)', background: 'var(--surface)', fontSize: '12px', lineHeight: 1.7 }}>
+          <div style={{ minHeight: '72px', padding: '10px 12px', borderRadius: '2px', border: '1px solid var(--ui-border)', background: 'var(--surface)', fontSize: '12px', lineHeight: 1.7 }}>
             {!analysis && <span style={{ color: 'var(--text-secondary)' }}>The expression is minimized, then synthesized as a single static CMOS complex gate (editable after insertion).</span>}
             {analysis && !analysis.ok && <span style={{ color: 'var(--danger)' }}>{analysis.error}</span>}
             {analysis && analysis.ok && (
               <>
-                <div style={{ color: 'var(--text-primary)', fontFamily: '"Roboto Mono", monospace' }}>
+                <div style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                   Minimized: <strong>{analysis.minimizedString}</strong>
                 </div>
                 <div style={{ color: 'var(--text-secondary)' }}>

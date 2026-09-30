@@ -1,5 +1,22 @@
 import { RotateCw, Trash2, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, Pipette, Group, Ungroup, FlipHorizontal2, FlipVertical2 } from 'lucide-react';
-import { TOOLS, HIGHER_METAL_COLORS, FP_WIRE_TYPES, CMOS_DEVICES, JUNCTION_SIZES } from '../constants';
+import {
+  TOOLS,
+  HIGHER_METAL_COLORS,
+  FP_WIRE_TYPES,
+  CMOS_DEVICES,
+  JUNCTION_SIZES,
+  RESISTOR_SUBTYPES,
+  CAPACITOR_SUBTYPES,
+  INDUCTOR_SUBTYPES,
+  BJT_SUBTYPES,
+  VARACTOR_SUBTYPES,
+  DIODE_SUBTYPES,
+  POWER_DOMAINS,
+  GROUND_TYPES,
+  WELL_TAP_TYPES,
+  PORT_TYPES
+} from '../constants';
+import { isSchematicDevice } from '../helpers';
 
 export default function PropertiesPanel({
   isFloorplan = false,
@@ -98,7 +115,9 @@ export default function PropertiesPanel({
         const dropper = new window.EyeDropper();
         const result = await dropper.open();
         if (result?.sRGBHex) onChangeHandler(result.sRGBHex);
-      } catch {}
+      } catch (e) {
+        void e;
+      }
     };
 
     return (
@@ -256,24 +275,36 @@ export default function PropertiesPanel({
         </div>
       );
     } else if (isCmos && activeTool === TOOLS.device) {
+      const devMeta = CMOS_DEVICES[deviceKind] || {};
       return (
         <div className="panel-content">
           <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>Place Device</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '12px' }}>Click on the canvas to drop the device. Terminals always land on grid points, so wires snap straight onto them.</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '12px' }}>
+            {devMeta.desc || 'Click on the canvas to drop the device. Terminals snap cleanly to grid points.'}
+          </div>
           <div className="prop-group">
             <span className="prop-label">Device</span>
-            {renderChoiceRow(Object.keys(CMOS_DEVICES).map(k => ({ value: k, label: CMOS_DEVICES[k].label })), deviceKind, setDeviceKind)}
+            <select
+              className="prop-select"
+              value={deviceKind}
+              onChange={e => setDeviceKind(e.target.value)}
+              style={{ width: '100%', height: '28px', background: 'var(--surface)', border: '1px solid var(--ui-border)', color: 'var(--text-primary)', padding: '0 8px', fontSize: '11px', borderRadius: '3px' }}
+            >
+              {Object.keys(CMOS_DEVICES).map(k => (
+                <option key={k} value={k}>
+                  {CMOS_DEVICES[k].label} — {CMOS_DEVICES[k].title}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="prop-group">
             <span className="prop-label">Rotation</span>
             {renderChoiceRow(ROTATION_OPTS, deviceRotation, setDeviceRotation)}
           </div>
-          {(deviceKind === 'pmos' || deviceKind === 'nmos') && (
-            <div className="prop-group">
-              <span className="prop-label">Gate Side</span>
-              {renderChoiceRow([{ value: false, label: 'Left' }, { value: true, label: 'Right' }], deviceMirror, setDeviceMirror)}
-            </div>
-          )}
+          <div className="prop-group">
+            <span className="prop-label">Flip</span>
+            {renderChoiceRow([{ value: false, label: 'Normal' }, { value: true, label: 'Mirrored' }], deviceMirror, setDeviceMirror)}
+          </div>
         </div>
       );
     } else if (isCmos && activeTool === TOOLS.junction) {
@@ -480,6 +511,10 @@ export default function PropertiesPanel({
                 (d) => updateProp('device', d)
               )}
             </div>
+            <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+              <input type="checkbox" id="mosfet-4term" checked={!!dev.fourTerminal} onChange={e => updateProp('fourTerminal', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+              <label htmlFor="mosfet-4term" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>4-Terminal (Explicit Bulk / Body)</label>
+            </div>
             {selectedElements.length === 1 && (
               <>
                 <div className="prop-group">
@@ -499,27 +534,392 @@ export default function PropertiesPanel({
             <div className="prop-group">
               <span className="prop-label">Flip</span>
               <div className="prop-btn-row">
-                <button
-                  className="prop-btn"
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  onClick={flipSelectedHorizontal}
-                  title="Flip Horizontally"
-                >
-                  <FlipHorizontal2 size={14} />
-                </button>
-                <button
-                  className="prop-btn"
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  onClick={flipSelectedVertical}
-                  title="Flip Vertically"
-                >
-                  <FlipVertical2 size={14} />
-                </button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
               </div>
             </div>
             <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
               <input type="checkbox" id="mosfet-show-pins" checked={!!dev.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
-              <label htmlFor="mosfet-show-pins" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Show G / D / S markers</label>
+              <label htmlFor="mosfet-show-pins" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Show Pin Markers</label>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'tgate') && (() => {
+        const tg = selectedElements[0];
+        return (
+          <>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Name</span>
+                  <input className="prop-input" value={tg.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. TG1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">W / L</span>
+                  <input className="prop-input" value={tg.size || ''} onChange={e => updateProp('size', e.target.value)} placeholder="e.g. 2u/180n" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (tg.rotation || 0)) ? (tg.rotation || 0) : null, (r) => updateProp('rotation', r))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+            <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <input type="checkbox" id="tgate-show-pins" checked={!!tg.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+              <label htmlFor="tgate-show-pins" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Show IN / OUT / EN markers</label>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'bjt') && (() => {
+        const b = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Subtype / Polarity</span>
+              {renderChoiceRow(
+                Object.keys(BJT_SUBTYPES).map(k => ({ value: k, label: BJT_SUBTYPES[k].label })),
+                selectedElements.every(el => (el.subtype || 'vpnp') === (b.subtype || 'vpnp')) ? (b.subtype || 'vpnp') : null,
+                (st) => updateProp('subtype', st)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Designator</span>
+                  <input className="prop-input" value={b.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. Q1, QP1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Area Multiplier</span>
+                  <input className="prop-input" value={b.multiplier || ''} onChange={e => updateProp('multiplier', e.target.value)} placeholder="e.g. 1x, 8x" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (b.rotation || 0)) ? (b.rotation || 0) : null, (r) => updateProp('rotation', r))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+            <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <input type="checkbox" id="bjt-show-pins" checked={!!b.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+              <label htmlFor="bjt-show-pins" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Show B / C / E markers</label>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'varactor') && (() => {
+        const v = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Varactor Type</span>
+              {renderChoiceRow(
+                Object.keys(VARACTOR_SUBTYPES).map(k => ({ value: k, label: VARACTOR_SUBTYPES[k].label })),
+                selectedElements.every(el => (el.subtype || 'mos_varactor') === (v.subtype || 'mos_varactor')) ? (v.subtype || 'mos_varactor') : null,
+                (st) => updateProp('subtype', st)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Designator</span>
+                  <input className="prop-input" value={v.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. CVAR1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Capacitance Range</span>
+                  <input className="prop-input" value={v.cRange || ''} onChange={e => updateProp('cRange', e.target.value)} placeholder="e.g. 100f-500fF" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (v.rotation || 0)) ? (v.rotation || 0) : null, (r) => updateProp('rotation', r))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'resistor') && (() => {
+        const r = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Material / Type</span>
+              <select
+                className="prop-select"
+                value={r.subtype || 'poly_unsil'}
+                onChange={e => updateProp('subtype', e.target.value)}
+                style={{ width: '100%', height: '26px', background: 'var(--surface)', border: '1px solid var(--ui-border)', color: 'var(--text-primary)', padding: '0 6px', fontSize: '11px', borderRadius: '3px' }}
+              >
+                {Object.keys(RESISTOR_SUBTYPES).map(k => (
+                  <option key={k} value={k}>{RESISTOR_SUBTYPES[k].label} ({RESISTOR_SUBTYPES[k].code})</option>
+                ))}
+              </select>
+            </div>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Designator</span>
+                  <input className="prop-input" value={r.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. R1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Resistance</span>
+                  <input className="prop-input" value={r.value || ''} onChange={e => updateProp('value', e.target.value)} placeholder="e.g. 10kΩ, 1k, 500Ω" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (r.rotation || 0)) ? (r.rotation || 0) : null, (rot) => updateProp('rotation', rot))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'capacitor') && (() => {
+        const c = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Dielectric / Type</span>
+              {renderChoiceRow(
+                Object.keys(CAPACITOR_SUBTYPES).map(k => ({ value: k, label: CAPACITOR_SUBTYPES[k].label })),
+                selectedElements.every(el => (el.subtype || 'mim') === (c.subtype || 'mim')) ? (c.subtype || 'mim') : null,
+                (st) => updateProp('subtype', st)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Designator</span>
+                  <input className="prop-input" value={c.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. C1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Capacitance</span>
+                  <input className="prop-input" value={c.value || ''} onChange={e => updateProp('value', e.target.value)} placeholder="e.g. 1.0pF, 250fF" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (c.rotation || 0)) ? (c.rotation || 0) : null, (rot) => updateProp('rotation', rot))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'inductor') && (() => {
+        const ind = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Structure / Type</span>
+              {renderChoiceRow(
+                Object.keys(INDUCTOR_SUBTYPES).map(k => ({ value: k, label: INDUCTOR_SUBTYPES[k].label })),
+                selectedElements.every(el => (el.subtype || 'spiral') === (ind.subtype || 'spiral')) ? (ind.subtype || 'spiral') : null,
+                (st) => updateProp('subtype', st)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Designator</span>
+                  <input className="prop-input" value={ind.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. L1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Inductance</span>
+                  <input className="prop-input" value={ind.value || ''} onChange={e => updateProp('value', e.target.value)} placeholder="e.g. 2.5nH, 1.0nH" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (ind.rotation || 0)) ? (ind.rotation || 0) : null, (rot) => updateProp('rotation', rot))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+            {ind.subtype === 'center_tapped' && (
+              <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                <input type="checkbox" id="ind-show-pins" checked={!!ind.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+                <label htmlFor="ind-show-pins" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Show CT marker</label>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'diode') && (() => {
+        const d = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Diode Type</span>
+              {renderChoiceRow(
+                Object.keys(DIODE_SUBTYPES).map(k => ({ value: k, label: DIODE_SUBTYPES[k].label })),
+                selectedElements.every(el => (el.subtype || 'pn') === (d.subtype || 'pn')) ? (d.subtype || 'pn') : null,
+                (st) => updateProp('subtype', st)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <div className="prop-group">
+                <span className="prop-label">Designator</span>
+                <input className="prop-input" value={d.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. D1" />
+              </div>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (d.rotation || 0)) ? (d.rotation || 0) : null, (rot) => updateProp('rotation', rot))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'esd_diode') && (() => {
+        const esd = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Clamp Topology</span>
+              {renderChoiceRow(
+                [{ value: 'esd_clamp', label: 'Single Clamp' }, { value: 'esd_dual', label: 'Dual Rail Clamp' }],
+                selectedElements.every(el => (el.subtype || 'esd_clamp') === (esd.subtype || 'esd_clamp')) ? (esd.subtype || 'esd_clamp') : null,
+                (st) => updateProp('subtype', st)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <>
+                <div className="prop-group">
+                  <span className="prop-label">Designator</span>
+                  <input className="prop-input" value={esd.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. DESD1" />
+                </div>
+                <div className="prop-group">
+                  <span className="prop-label">Clamp Voltage</span>
+                  <input className="prop-input" value={esd.clampVoltage || ''} onChange={e => updateProp('clampVoltage', e.target.value)} placeholder="e.g. 5.5V, 3.3V" />
+                </div>
+              </>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (esd.rotation || 0)) ? (esd.rotation || 0) : null, (rot) => updateProp('rotation', rot))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'scr') && (() => {
+        const scr = selectedElements[0];
+        return (
+          <>
+            {selectedElements.length === 1 && (
+              <div className="prop-group">
+                <span className="prop-label">Designator</span>
+                <input className="prop-input" value={scr.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. SCR1" />
+              </div>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (scr.rotation || 0)) ? (scr.rotation || 0) : null, (rot) => updateProp('rotation', rot))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+            <div className="prop-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <input type="checkbox" id="scr-show-pins" checked={!!scr.showPins} onChange={e => updateProp('showPins', e.target.checked)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+              <label htmlFor="scr-show-pins" style={{ fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>Show A / K / G markers</label>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'pad') && (() => {
+        const pad = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Pad Style</span>
+              {renderChoiceRow(
+                [{ value: 'wirebond', label: 'Wire-Bond' }, { value: 'flipchip', label: 'Flip-Chip' }],
+                selectedElements.every(el => (el.padType || 'wirebond') === (pad.padType || 'wirebond')) ? (pad.padType || 'wirebond') : null,
+                (pt) => updateProp('padType', pt)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <div className="prop-group">
+                <span className="prop-label">Pad Name</span>
+                <input className="prop-input" value={pad.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. PAD_IO, PAD_CLK" />
+              </div>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (pad.rotation || 0)) ? (pad.rotation || 0) : null, (rot) => updateProp('rotation', rot))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
             </div>
           </>
         );
@@ -527,20 +927,40 @@ export default function PropertiesPanel({
 
       {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'supply') && (() => {
         const sup = selectedElements[0];
+        const isVdd = (sup.kind || 'vdd') === 'vdd';
         return (
           <>
             <div className="prop-group">
-              <span className="prop-label">Rail</span>
+              <span className="prop-label">Rail Type</span>
               {renderChoiceRow(
-                [{ value: 'vdd', label: 'VDD' }, { value: 'vss', label: 'VSS' }],
+                [{ value: 'vdd', label: 'VDD' }, { value: 'vss', label: 'Ground' }],
                 selectedElements.every(el => (el.kind || 'vdd') === (sup.kind || 'vdd')) ? (sup.kind || 'vdd') : null,
                 (k) => { updateProp('kind', k); updateProp('label', k === 'vdd' ? 'VDD' : 'VSS'); }
               )}
             </div>
+            {isVdd ? (
+              <div className="prop-group">
+                <span className="prop-label">Power Domain Preset</span>
+                {renderChoiceRow(
+                  POWER_DOMAINS.map(d => ({ value: d.value, label: d.label })),
+                  sup.domain || 'vdd',
+                  (dom) => { updateProp('domain', dom); updateProp('label', dom.toUpperCase()); }
+                )}
+              </div>
+            ) : (
+              <div className="prop-group">
+                <span className="prop-label">Ground Standard</span>
+                {renderChoiceRow(
+                  GROUND_TYPES.map(g => ({ value: g.value, label: g.label })),
+                  sup.groundType || 'vss',
+                  (gt) => { updateProp('groundType', gt); updateProp('label', gt.toUpperCase()); }
+                )}
+              </div>
+            )}
             {selectedElements.length === 1 && (
               <div className="prop-group">
                 <span className="prop-label">Caption</span>
-                <input className="prop-input" value={sup.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. VDD, 1.8V, GND" />
+                <input className="prop-input" value={sup.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. VDD, 1.8V, AGND, GND" />
               </div>
             )}
             <div className="prop-group">
@@ -550,22 +970,67 @@ export default function PropertiesPanel({
             <div className="prop-group">
               <span className="prop-label">Flip</span>
               <div className="prop-btn-row">
-                <button
-                  className="prop-btn"
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  onClick={flipSelectedHorizontal}
-                  title="Flip Horizontally"
-                >
-                  <FlipHorizontal2 size={14} />
-                </button>
-                <button
-                  className="prop-btn"
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  onClick={flipSelectedVertical}
-                  title="Flip Vertically"
-                >
-                  <FlipVertical2 size={14} />
-                </button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'well_tap') && (() => {
+        const tap = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Tap Connection</span>
+              {renderChoiceRow(
+                WELL_TAP_TYPES.map(t => ({ value: t.value, label: t.label })),
+                selectedElements.every(el => (el.tapType || 'ntap') === (tap.tapType || 'ntap')) ? (tap.tapType || 'ntap') : null,
+                (tt) => { updateProp('tapType', tt); updateProp('label', tt.toUpperCase()); }
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <div className="prop-group">
+                <span className="prop-label">Label</span>
+                <input className="prop-input" value={tap.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. NTAP, PTAP" />
+              </div>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (tap.rotation || 0)) ? (tap.rotation || 0) : null, (r) => updateProp('rotation', r))}
+            </div>
+          </>
+        );
+      })()}
+
+      {selectedElements.length >= 1 && selectedElements.every(el => el.type === 'port') && (() => {
+        const port = selectedElements[0];
+        return (
+          <>
+            <div className="prop-group">
+              <span className="prop-label">Port Direction</span>
+              {renderChoiceRow(
+                PORT_TYPES.map(p => ({ value: p.value, label: p.label })),
+                selectedElements.every(el => (el.portType || 'in') === (port.portType || 'in')) ? (port.portType || 'in') : null,
+                (pt) => updateProp('portType', pt)
+              )}
+            </div>
+            {selectedElements.length === 1 && (
+              <div className="prop-group">
+                <span className="prop-label">Signal Name</span>
+                <input className="prop-input" value={port.label || ''} onChange={e => updateProp('label', e.target.value)} placeholder="e.g. IN, OUT, CLK, DATA[7:0]" />
+              </div>
+            )}
+            <div className="prop-group">
+              <span className="prop-label">Rotation</span>
+              {renderChoiceRow(ROTATION_OPTS, selectedElements.every(el => (el.rotation || 0) === (port.rotation || 0)) ? (port.rotation || 0) : null, (r) => updateProp('rotation', r))}
+            </div>
+            <div className="prop-group">
+              <span className="prop-label">Flip</span>
+              <div className="prop-btn-row">
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedHorizontal} title="Flip Horizontally"><FlipHorizontal2 size={14} /></button>
+                <button className="prop-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={flipSelectedVertical} title="Flip Vertically"><FlipVertical2 size={14} /></button>
               </div>
             </div>
           </>
@@ -579,7 +1044,7 @@ export default function PropertiesPanel({
         </div>
       )}
 
-      {isCmos && selectedElements.some(el => el.type === 'line' || el.type === 'mosfet' || el.type === 'supply' || el.type === 'junction') && (
+      {isCmos && selectedElements.some(el => el.type === 'line' || isSchematicDevice(el) || el.type === 'junction') && (
         <div className="prop-group">
           <span className="prop-label">Ink Color</span>
           {renderInlineColorPicker(selectedElements[0].color || '#E6E2D8', (c) => updateProp('color', c))}
