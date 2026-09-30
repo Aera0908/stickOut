@@ -26,8 +26,8 @@ export function getTitleForPath(pathname) {
   if (p === '/cmos-diagram' || p === '/cmos') return 'CMOS Schematic — StickOut';
   if (p === '/floor-planning' || p === '/floorplan') return 'Floor Planning — StickOut';
   if (p === '/' || p === '/landing.html' || p === '/landing') return 'StickOut — VLSI CAD Suite';
-  if (p === '/test-error' || p === '/__test_error__') return '500: Test Fault — StickOut';
-  return '404: Net Not Found — StickOut';
+  if (p === '/test-error' || p === '/__test_error__') return 'Application Error — StickOut';
+  return 'Page Not Found — StickOut';
 }
 
 export function navigate(to) {
