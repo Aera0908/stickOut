@@ -311,6 +311,7 @@ export default function App({ mode = 'stick' }) {
     setFeedbackName('');
     setFeedbackTitle('');
     setFeedbackDesc('');
+    setFeedbackStatus('idle');
     setShowFeedbackModal(true);
   }, []);
 
@@ -2808,6 +2809,7 @@ export default function App({ mode = 'stick' }) {
         setFeedbackName={setFeedbackName}
         setFeedbackTitle={setFeedbackTitle}
         setFeedbackDesc={setFeedbackDesc}
+        setFeedbackStatus={setFeedbackStatus}
       />
 
       {/* Main Area */}

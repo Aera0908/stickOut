@@ -23,7 +23,8 @@ export default function MenuBar({
   setShowFeedbackModal,
   setFeedbackName,
   setFeedbackTitle,
-  setFeedbackDesc
+  setFeedbackDesc,
+  setFeedbackStatus
 }) {
   return (
     <div className="menu-bar">
@@ -70,7 +71,7 @@ export default function MenuBar({
         )}
       </div>
 
-      <button className="feedback-btn" onClick={() => { setFeedbackName(''); setFeedbackTitle(''); setFeedbackDesc(''); setShowFeedbackModal(true); }} title="Report Bug / Send Feedback"><Bug size={16} /></button>
+      <button className="feedback-btn" onClick={() => { setFeedbackName(''); setFeedbackTitle(''); setFeedbackDesc(''); if (setFeedbackStatus) setFeedbackStatus('idle'); setShowFeedbackModal(true); }} title="Report Bug / Send Feedback"><Bug size={16} /></button>
       <button className="gank-btn" onClick={() => window.open('https://ganknow.com/Aera0908', '_blank', 'noopener,noreferrer')} title="Support Creator on Gank"><Heart size={16} /></button>
       <button className="theme-toggle-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
     </div>
