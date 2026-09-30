@@ -127,21 +127,22 @@ export default function Modals({
     setFeedbackStatus('sending');
     setFeedbackErrorMsg('');
 
-    // Strict 6-second timeout so button never hangs or gets stuck indefinitely
+    // Strict 8-second timeout so button never hangs or gets stuck indefinitely
     const controller = new AbortController();
-    const timeoutTimer = setTimeout(() => controller.abort(), 6000);
+    const timeoutTimer = setTimeout(() => controller.abort(), 8000);
 
     const payload = {
       name: feedbackName.trim() || 'Anonymous',
+      email: BUG_REPORT_EMAIL,
       _subject: getSubject(),
-      _captcha: 'false',
-      _template: 'table',
-      date: new Date().toLocaleString(),
-      message: getFormattedBody()
+      title: feedbackTitle.trim(),
+      message: feedbackDesc.trim(),
+      diagnostics: getFormattedBody()
     };
 
     try {
-      const res = await fetch(`https://formsubmit.co/ajax/${BUG_REPORT_EMAIL}`, {
+      // 1. Primary delivery via ShipMyForm (fast, full CORS support, direct inbox forwarding)
+      const res = await fetch(`https://shipmyform.com/to/${BUG_REPORT_EMAIL}`, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -150,16 +151,14 @@ export default function Modals({
         body: JSON.stringify(payload),
         signal: controller.signal
       });
-      clearTimeout(timeoutTimer);
 
       let data = null;
       try {
         data = await res.json();
-      } catch {
-        /* non-json response */
-      }
+      } catch {}
 
-      if (res.ok && data && (data.success === 'true' || data.success === true)) {
+      if (res.ok && (data?.ok === true || data?.success === true || res.status === 200)) {
+        clearTimeout(timeoutTimer);
         setFeedbackStatus('success');
         setFeedbackName('');
         setFeedbackTitle('');
@@ -168,12 +167,49 @@ export default function Modals({
         setTimeout(() => {
           setShowFeedbackModal(false);
           setFeedbackStatus('idle');
-        }, 2200);
-      } else {
-        const serverMsg = data?.message || 'Online relay is unavailable (server issue).';
-        setFeedbackErrorMsg(serverMsg);
-        setFeedbackStatus('error');
+        }, 2500);
+        return;
       }
+
+      // 2. Secondary fallback via FormSubmit if primary fails
+      try {
+        const fallbackPayload = {
+          name: feedbackName.trim() || 'Anonymous',
+          _subject: getSubject(),
+          _captcha: 'false',
+          _template: 'table',
+          date: new Date().toLocaleString(),
+          message: getFormattedBody()
+        };
+        const fbRes = await fetch(`https://formsubmit.co/ajax/${BUG_REPORT_EMAIL}`, {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(fallbackPayload),
+          signal: controller.signal
+        });
+        const fbData = await fbRes.json().catch(() => null);
+        if (fbRes.ok && (fbData?.success === 'true' || fbData?.success === true)) {
+          clearTimeout(timeoutTimer);
+          setFeedbackStatus('success');
+          setFeedbackName('');
+          setFeedbackTitle('');
+          setFeedbackDesc('');
+          setFeedbackErrorMsg('');
+          setTimeout(() => {
+            setShowFeedbackModal(false);
+            setFeedbackStatus('idle');
+          }, 2500);
+          return;
+        }
+      } catch {}
+
+      clearTimeout(timeoutTimer);
+      const serverMsg = data?.message || 'Online delivery relay is temporarily unavailable.';
+      setFeedbackErrorMsg(serverMsg);
+      setFeedbackStatus('error');
     } catch (err) {
       clearTimeout(timeoutTimer);
       const isTimeout = err?.name === 'AbortError';
