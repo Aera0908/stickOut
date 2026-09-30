@@ -554,10 +554,51 @@ export default function App({ mode = 'stick' }) {
     } catch {}
   }, [theme]);
 
+  // ─── Auto-save refs ─────────────────────────────────────────
+  const autosaveTimerRef = useRef(null);
+  const saveDataRef = useRef(null);
+
+  // Synchronous flush function: writes latest in-memory state to localStorage immediately
+  const flushAutosave = useCallback(() => {
+    if (showModal) return;
+    const data = saveDataRef.current;
+    if (!data) return;
+    try {
+      if (data.elements && data.elements.length > 0) {
+        localStorage.setItem(autosaveKey, JSON.stringify({ ...data, timestamp: Date.now() }));
+        setHasAutosave(true);
+      } else {
+        localStorage.removeItem(autosaveKey);
+        setHasAutosave(false);
+      }
+    } catch {}
+  }, [autosaveKey, showModal]);
+
+  // Keep saveDataRef updated whenever diagram state changes
+  useEffect(() => {
+    saveDataRef.current = {
+      format: 'stickout', version: 2, timestamp: Date.now(),
+      elements, jumpOverrides: [...jumpOverrides],
+      canvasLayers, extraMetalLayers, customLayerColors,
+      pan, zoom,
+    };
+  }, [elements, jumpOverrides, canvasLayers, extraMetalLayers, customLayerColors, pan, zoom]);
+
   // ─── Auto-save: detect on mount (show modal with resume option) ──
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(autosaveKey) || (isFloorplan ? null : localStorage.getItem('stickdiagram-autosave'));
+      let saved = localStorage.getItem(autosaveKey);
+      if (!saved && !isFloorplan && !isCmos) {
+        const legacy = localStorage.getItem('stickdiagram-autosave');
+        if (legacy) {
+          saved = legacy;
+          try {
+            localStorage.setItem(autosaveKey, legacy);
+            localStorage.removeItem('stickdiagram-autosave');
+          } catch {}
+        }
+      }
+
       if (saved) {
         const data = JSON.parse(saved);
         const age = Date.now() - (data.timestamp || 0);
@@ -577,23 +618,45 @@ export default function App({ mode = 'stick' }) {
     }
     // If we get here, no valid autosave — show modal without resume option
     setHasAutosave(false);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autosaveKey, isFloorplan, isCmos]);
 
-  // ─── Auto-save: persist (debounced 500ms) ───────────────────
+  // Lifecycle listeners to flush immediately on tab close, page refresh, hide, or unmount
+  useEffect(() => {
+    const handleUnloadOrHide = () => {
+      flushAutosave();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushAutosave();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleUnloadOrHide);
+    window.addEventListener('pagehide', handleUnloadOrHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnloadOrHide);
+      window.removeEventListener('pagehide', handleUnloadOrHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      flushAutosave();
+    };
+  }, [flushAutosave]);
+
+  // Auto-save: debounced persist (350ms)
   useEffect(() => {
     if (showModal) return;
-    const timer = setTimeout(() => {
-      try {
-        const data = {
-          format: 'stickout', version: 2, timestamp: Date.now(),
-          elements, jumpOverrides: [...jumpOverrides],
-          canvasLayers, extraMetalLayers, customLayerColors,
-        };
-        localStorage.setItem(autosaveKey, JSON.stringify(data));
-      } catch {}
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [elements, jumpOverrides, canvasLayers, extraMetalLayers, customLayerColors, showModal, autosaveKey]);
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      flushAutosave();
+    }, 350);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [elements, jumpOverrides, canvasLayers, extraMetalLayers, customLayerColors, pan, zoom, showModal, flushAutosave]);
 
   // Support & Feedback Timer Effect
   useEffect(() => {
@@ -2101,8 +2164,12 @@ export default function App({ mode = 'stick' }) {
     setElements([]);
     setCanvasLayers([{ id: 'layer_1', name: 'Layer 1', visible: true, opacity: 1.0, isCustom: true }]);
     setActiveCanvasLayerId('layer_1');
-    setUndoStack([]); setRedoStack([]); setSelectedIds(new Set()); setShowModal(false);
-  }, []);
+    setUndoStack([]); setRedoStack([]); setSelectedIds(new Set());
+    saveDataRef.current = null;
+    try { localStorage.removeItem(autosaveKey); } catch {}
+    setHasAutosave(false);
+    setShowModal(false);
+  }, [autosaveKey]);
 
   const startTemplate = useCallback(() => {
     const templateEls = createTemplateElements('canvas_vlsi_metal1');
@@ -2210,8 +2277,32 @@ export default function App({ mode = 'stick' }) {
     showToast(`Generated ${analysis.minimizedString} — ${analysis.transistorCount} transistors`);
   }, [pushUndoSnapshot, allLayers, pan, zoom, showToast]);
 
-  const handleNew = useCallback(() => { setShowModal(true); setOpenMenu(null); }, []);
-  const handleClear = useCallback(() => { pushUndoSnapshot(); setElements([]); setSelectedIds(new Set()); setOpenMenu(null); try { localStorage.removeItem(autosaveKey); } catch {} }, [pushUndoSnapshot, autosaveKey]);
+  const handleNew = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(autosaveKey);
+      if (saved) {
+        const data = JSON.parse(saved);
+        setHasAutosave(Boolean(data?.elements && data.elements.length > 0));
+      } else {
+        setHasAutosave(false);
+      }
+    } catch {
+      setHasAutosave(false);
+    }
+    setShowModal(true);
+    setOpenMenu(null);
+  }, [autosaveKey]);
+
+  const handleClear = useCallback(() => {
+    pushUndoSnapshot();
+    setElements([]);
+    setSelectedIds(new Set());
+    setOpenMenu(null);
+    saveDataRef.current = null;
+    try { localStorage.removeItem(autosaveKey); } catch {}
+    setHasAutosave(false);
+    showToast('Canvas cleared');
+  }, [pushUndoSnapshot, autosaveKey, showToast]);
 
   const handleSaveProject = useCallback(() => {
     const data = {
@@ -2281,7 +2372,10 @@ export default function App({ mode = 'stick' }) {
 
   const resumeAutosave = useCallback(() => {
     try {
-      const saved = localStorage.getItem(autosaveKey);
+      let saved = localStorage.getItem(autosaveKey);
+      if (!saved && !isFloorplan && !isCmos) {
+        saved = localStorage.getItem('stickdiagram-autosave');
+      }
       if (saved) {
         const data = JSON.parse(saved);
         
@@ -2309,18 +2403,45 @@ export default function App({ mode = 'stick' }) {
           return isNaN(num) ? max : Math.max(max, num);
         }, 0);
         setNextId(maxId + 1);
+
+        const maxLayerNum = finalCanvasLayers.reduce((max, l) => {
+          const match = (l.id || '').match(/^layer_(\d+)$/);
+          return match ? Math.max(max, parseInt(match[1], 10)) : max;
+        }, 1);
+        setNextLayerId(maxLayerNum + 1);
+
         setUndoStack([]); setRedoStack([]); setSelectedIds(new Set());
-        const container = containerRef.current;
-        if (container && data.elements && data.elements.length > 0) {
-          const rect = container.getBoundingClientRect();
-          const bounds = getContentBounds(data.elements);
-          setPan({ x: rect.width / 2 - (bounds.x + bounds.w / 2), y: rect.height / 2 - (bounds.y + bounds.h / 2) });
+
+        let targetPan = data.pan;
+        let targetZoom = data.zoom !== undefined ? data.zoom : 1;
+        if (!targetPan) {
+          const container = containerRef.current;
+          if (container && data.elements && data.elements.length > 0) {
+            const rect = container.getBoundingClientRect();
+            const bounds = getContentBounds(data.elements);
+            targetPan = { x: rect.width / 2 - (bounds.x + bounds.w / 2), y: rect.height / 2 - (bounds.y + bounds.h / 2) };
+          } else {
+            targetPan = { x: 0, y: 0 };
+          }
         }
-        setZoom(1);
+        setPan(targetPan);
+        setZoom(targetZoom);
+
+        saveDataRef.current = {
+          format: 'stickout', version: 2, timestamp: Date.now(),
+          elements: elementsMapped, jumpOverrides: [...(data.jumpOverrides || [])],
+          canvasLayers: finalCanvasLayers, extraMetalLayers: data.extraMetalLayers || [],
+          customLayerColors: data.customLayerColors || {},
+          pan: targetPan,
+          zoom: targetZoom,
+        };
+
+        showToast('Resumed previous session');
       }
     } catch {}
-    setShowModal(false); setHasAutosave(false);
-  }, [restoreCanvasLayers, autosaveKey]);
+    setShowModal(false);
+    setHasAutosave(true);
+  }, [restoreCanvasLayers, autosaveKey, isFloorplan, isCmos, showToast]);
 
   const triggerImageImport = useCallback(() => {
     const input = document.createElement('input');
