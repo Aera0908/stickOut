@@ -2,7 +2,7 @@
 
 Browser-based Electronic Design Automation (EDA) suite for drawing, synthesizing, and editing VLSI stick diagrams and CMOS layout topologies.
 
-Live Application: [stickout.vercel.app](https://stickout.vercel.app) | Repository: [github.com/Aera0908/stick-diagram](https://github.com/Aera0908/stick-diagram) | License: MIT
+Live Application: [stickout.vercel.app](https://stickout.vercel.app) | Repository: [github.com/Aera0908/stickOut](https://github.com/Aera0908/stickOut) | License: MIT
 
 ---
 
@@ -174,8 +174,8 @@ Ensure you have [Node.js](https://nodejs.org/) (version 18 or higher) and npm in
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Aera0908/stick-diagram.git
-   cd stick-diagram
+   git clone https://github.com/Aera0908/stickOut.git
+   cd stickOut
    ```
 
 2. Install dependencies:
