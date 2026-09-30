@@ -47,7 +47,7 @@ export default function CanvasArea({
       </div>
 
       {lineStart && (
-        <button className="canvas-floating-btn" onClick={(e) => { e.stopPropagation(); setLineStart(null); setLinePreview(null); }} title="Finish Wire Drawing (Esc)">Done / Finish Wire</button>
+        <button className="canvas-floating-btn" onClick={(e) => { e.stopPropagation(); setLineStart(null); setLinePreview(null); }} title="Cancel Wire (Esc)">Cancel</button>
       )}
 
       {labelInput && (
