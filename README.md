@@ -1,194 +1,218 @@
-# StickOut — VLSI Stick Diagram Editor
+# StickOut
 
-StickOut is an open-source, professional-grade, interactive, browser-based EDA (Electronic Design Automation) tool designed for drawing and editing VLSI stick diagrams. Featuring a modern dark-mode interface, a highly responsive pannable/zoomable canvas, and comprehensive layer management, it allows hardware engineers, researchers, and students to quickly map out silicon-level layouts, manage connectivity, and export publication-ready high-resolution assets.
+Browser-based Electronic Design Automation (EDA) suite for drawing, synthesizing, and editing VLSI stick diagrams and CMOS layout topologies.
 
-⚡ **Try it online**: [stickout.vercel.app](https://stickout.vercel.app)
-
-![Hero Banner](src/assets/hero.png)
+Live Application: [stickout.vercel.app](https://stickout.vercel.app) | Repository: [github.com/Aera0908/stick-diagram](https://github.com/Aera0908/stick-diagram) | License: MIT
 
 ---
 
-## ✨ Features
+## Overview
 
-### 🎨 Premium Dark-Mode User Experience
-- Designed with a clean glassmorphism palette, harmonious slate gradients, and sleek transitions.
-- Interactive, responsive toolbar buttons, collapsible HUD overlays, and sidebar controls.
-
-### 📐 Canvas Workspace & Grid Control
-- **Pannable & Zoomable**: Left-click and drag while holding `Space` (or use middle-mouse button) to pan; mouse wheel to zoom dynamically centered on the cursor.
-- **Grid & Snapping**: Optional visual grid pitch (`G` to toggle) with precise grid snapping (`S` to toggle) to keep wiring aligned.
-- **Interactive Ghosting**: Dragging selected components displays a semi-transparent "ghost" of their original position to help visualize grid offsets before release.
-
-### 🔌 Intelligent Wire Jumps & Connections
-- **Same-Layer Jumps**: When orthogonal lines of the *same layer/color* cross, the horizontal line automatically draws a curved bridge arc ("jump") to indicate they are not electrically connected. PMOS and NMOS wires crossing poly, for example, will cross normally (different layers).
-- **Right-Click Connection Overrides**: Right-clicking any active jump point dynamically toggles its electrical state. Overridden crossovers render as solid line intersections (normal crossings), indicating a connection. Right-click again to restore the jump.
-
-### 🌈 Layer Control Sidebar & Reordering
-Supports full independent control over all standard VLSI layout layers:
-- 🔵 **Metal 1 (M1)**: Blue solid line (`#4A90E2`) for standard metal interconnects.
-- 🔴 **Metal 2 (M2)**: Red solid line (`#C0392B`) for secondary orthogonal routing.
-- 🟡 **P-Diffusion (P-Active)**: Yellow solid line (`#F1C40F`) representing PMOS source/drain regions.
-- 🟢 **N-Diffusion (N-Active)**: Green solid line (`#27AE60`) representing NMOS source/drain regions.
-- 🟣 **Polysilicon (Poly)**: Purple (`#9B59B6`) by default, toggleable to Red (`#E74C3C`) in the Properties panel, representing transistor gate layers.
-- 🔲 **Contacts**: Black outline (light theme) or White outline (dark theme) for M1 to Silicon/Poly connections.
-- 🔲 **Vias**: Magenta solid square (`#FF00FF`) for Metal-to-Metal (M1↔M2) connections.
-- 🟫 **N-Well / P-Well**: Brown dashed boundary (`#795548`) for bulk isolation regions.
-- 🟫 **Demarcation Line**: Thin brown dashed line (`#8D6E63`) separating NMOS and PMOS regions.
-- 🟢 **N+ Implant / P+ Implant**: Dashed green (`#43A047`) and yellow (`#F9A825`) outlines for region doping.
-- 🔲 **Buried Contact**: Specialized silicon-to-gate connection layer (`#111111`).
-- 🔘 **Silicide Block**: Gray dashed pattern (`#9E9E9E`) for resistor/ESD structures.
-- 🟠 **Thick Oxide (High-V)**: Orange dashed outline (`#FF6D00`) for high-voltage transistors.
-- 🎨 **Dynamic Higher Metals (M3, M4, etc.)**: Dynamically add higher metal layers with customizable colors.
-
-#### Photoshop-Style Layer Operations
-- **Visibility (Eye Icon)**: Toggle layer rendering on/off. Hidden elements are immune to selection, dragging, and are skipped in PNG exports.
-- **Locking (Lock Icon)**: Toggle selection lock. Locked elements remain visible but cannot be modified, moved, or deleted.
-- **Opacity Slider**: Control drawing opacity (10% to 100%) dynamically reflected on the canvas and in export images.
-- **Drag-and-Drop Reordering**: Drag and drop layers to rearrange their rendering stack order (bottom to top).
-- **Custom Canvas Layers**: Add, rename, or delete custom drawing layers to group annotation and design elements.
-
-### 💾 Local Auto-Save (localStorage)
-- Automatically saves the complete workspace layout, layer properties, and canvas state to browser localStorage on any modification.
-- Debounced auto-save triggers silently to prevent performance stutter, and auto-restores state cleanly on app mount with a UI toast notification.
-
-### 🔀 Stacked Via + Contact Connections
-- Placing a **Via** directly on top of a **Contact** at the same grid point automatically converts both to standard **Square** shapes and applies a small visual offset (1.5px).
-- This creates the industry-standard "stacked squares" visual style used to represent direct Metal 2 to Polysilicon connections.
-
-### 🧪 Custom Color Swatch
-- Select the custom color swatch to draw wires in any custom color.
-- Houses a native HTML5 color picker to choose any custom color.
-- Automatically places custom-colored elements on the **Custom Layer** for easy grouping.
-
-### 📝 Mathematical Text Subscript Rendering
-- Text labels automatically parse LaTeX-style math subscript formatting. For example, inputs like `V_{DD}`, `V_DD`, `V_{SS}`, and `V_SS` render as elegant, publication-quality serif italic subscript text.
-- Supports left and center alignment toggles, as well as toggling the background pill container off for clean, plain text labeling directly on rails.
-
-### 💾 Content-Aware PNG Export
-- Under **File -> Export PNG...**, crops output dimensions exactly to the boundary of the elements drawn (plus padding).
-- Adjustable margin size (4 grid units, 3 grid units, or none).
-- Background options: **Transparent**, **White**, or **Dark**.
-- Customizable label text styles: Dark text, Light text, or Pill background.
-- Crisp **2x high-resolution** scaling suitable for reports, papers, and presentations.
-
-### 🖌️ Freehand Paintbrush & Eraser
-- Switch to the Paintbrush tool to draw freehand markups and annotations directly onto the canvas.
-- Features adjustable brush stroke sizes and opacity percentages.
-- Use the Eraser tool to cleanly erase brush stroke segments.
-
-### 📋 Clipboard & Duplication Operations
-- Full support for standard clipboard commands: **Copy** (`Ctrl + C`), **Cut** (`Ctrl + X`), and **Paste** (`Ctrl + V`).
-- **Duplicate** (`Ctrl + D`) replicates the selected elements with a 1-grid-pitch diagonal offset for modular cell replication.
-
-### 🗂️ Keyboard-Driven Layer Reordering
-- Reorder layer rendering stack on the fly using hotkeys.
-- Selected elements' canvas layers can be sent upward (`Ctrl + ]`), downward (`Ctrl + [`), all the way to the top (`Ctrl + Shift + ]`), or all the way to the bottom (`Ctrl + Shift + [`).
-
-### 📐 Proportional Group Scaling
-- Dragging the endpoint of a selected wire when multiple wires are selected scales all selected wires proportionally.
-- Constrain modifications to clean integer grid multiples by holding the `Shift` key while scaling.
+StickOut is a specialized CAD environment tailored for VLSI designers, researchers, and computer engineering students. It translates schematic logic and transistor placement into structured silicon stick diagrams, modeling physical mask layers, diffusion intersections, jumper bridge arcs, and stacked interconnect vias directly in the browser.
 
 ---
 
-## 🛠️ Technology Stack
-- **Framework**: [React](https://react.dev/) + [Vite](https://vite.dev/) (HMR enabled)
-- **Canvas API**: HTML5 Canvas for high-performance interactive rendering.
-- **Styling**: Pure CSS3 with custom variables for full theme flexibility.
-- **Icons**: [Lucide React](https://lucide.dev/) for crisp, scalable vector graphics.
+## Core Capabilities
+
+### 1. Canvas Engine & Drafting Modes
+
+- **Infinite Workspace**: Smooth pan and zoom centered on cursor coordinates via middle-mouse drag or `Space` + left-click.
+- **Snapping & Alignment**: Configurable grid pitch with strict coordinate snapping (`S`) and visual grid toggle (`G`).
+- **Interactive Ghosting**: Real-time semi-transparent position preview while transforming or dragging elements.
+- **Three Dedicated Modes**:
+  - **Stick Diagram Mode**: Orthogonal routing, standard VLSI layer conventions, and jumper crossovers.
+  - **CMOS Gate Mode**: Automated pull-up (PMOS) and pull-down (NMOS) network layout with Euler path diffusion sharing.
+  - **Floorplan & Annotation Mode**: Substrate wells, guard rings, demarcation boundaries, and freehand markup.
+
+### 2. Intelligent Interconnect Routing
+
+- **Automatic Wire Jumpers**: When orthogonal wires of the *same layer* cross, the horizontal segment renders a bridge arc indicating no electrical connection. Dissimilar layers (e.g., Poly over Diffusion) intersect flatly as active FET junctions.
+- **Crossover State Override**: Right-clicking any active jump point toggles electrical connection on or off, switching dynamically between a bridge arc and a solid electrical junction.
+- **Stacked Via & Contact Merging**: Aligning a Via directly over a Contact automatically configures stacked square geometries with sub-pixel offsets, reflecting M2-to-Silicon interconnect standards.
+
+### 3. Layer Management & Photoshop-Style Controls
+
+- **Visibility & Locking**: Per-layer eye and lock toggles to hide layers or protect elements from accidental selection.
+- **Variable Opacity**: Real-time layer opacity sliders (10% to 100%) applied across both canvas rendering and exported media.
+- **Stack Reordering**: Drag-and-drop layer reordering in the sidebar, with keyboard shortcuts to elevate or demote z-indices.
+- **Custom Layers & Palettes**: Create, rename, and color-code user-defined layout layers with integrated HTML5 color selection.
+
+### 4. Boolean Synthesis & Optimization
+
+- **Expression Parser**: Accepts arbitrary Boolean logic equations using standard operators (`AND`, `OR`, `NOT`, `XOR`, `NAND`, `NOR`, `XNOR`).
+- **Logic Minimization**: Integrated logic reducer producing simplified sum-of-products representations.
+- **Euler Path Routing**: Automatically determines optimal transistor ordering to maximize unbroken diffusion strips.
+
+### 5. Export & Project Serialization
+
+- **Content-Aware PNG Export**: Dynamically calculates the bounding box of drawn components with selectable margin padding (0, 3, or 4 grid units).
+- **High-Resolution Output**: 2x pixel density export optimized for IEEE publications, laboratory reports, and presentation slides.
+- **Background Control**: Choose between Transparent, Pure White, or Dark Theme canvas backgrounds.
+- **LaTeX Math Subscript Rendering**: Text labels format expressions such as `V_{DD}`, `V_DD`, `V_{SS}`, and `V_IN` into serif italic typography.
+- **JSON Project Storage (`.stk`)**: Save and load complete project states, including custom layers, undo histories, and viewport configurations.
+- **Local Persistence**: Debounced `localStorage` auto-saves the active design session across browser refreshes.
 
 ---
 
-## 🚀 Getting Started
+## Silicon Layer Specification
 
-### Prerequisites
-Make sure you have Node.js (version 16 or higher) and npm installed.
+The editor conforms to standard VLSI color-coding and design rule conventions:
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Aera0908/stickOut.git
-   cd stickOut
-   ```
-2. Install the dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the local development server:
-   ```bash
-   npm run dev
-   ```
-4. Open your browser and navigate to `http://localhost:5173/`.
-
-### Building for Production
-To build the application for deployment:
-```bash
-npm run build
-```
-The compiled static assets will be located in the `dist/` directory.
+| Layer Name | Layer Key | Silicon Mask / Function | Standard Color | Rendering Behavior |
+|---|---|---|---|---|
+| Polysilicon | `poly` | Transistor Gate Electrode | Purple (`#9B59B6`) / Red (`#E74C3C`) | Intersects diffusion to form active channel |
+| N-Diffusion | `ndiff` | NMOS Active Region (Source/Drain) | Green (`#27AE60`) | Conductive channel when gate is high |
+| P-Diffusion | `pdiff` | PMOS Active Region (Source/Drain) | Yellow (`#F1C40F`) | Conductive channel when gate is low |
+| Metal 1 | `metal1` | Primary Intra-Cell Routing Rail | Blue (`#4A90E2`) | Standard interconnect rail |
+| Metal 2 | `metal2` | Secondary Interconnect Layer | Red (`#C0392B`) | Orthogonal cross-cell routing |
+| Contact | `contact` | Metal 1 to Silicon/Poly Contact | Monochrome square | Joins M1 to active or polysilicon |
+| Via | `via` | Metal 1 to Metal 2 Interconnect | Magenta square (`#FF00FF`) | Stacks with Contact for direct M2 connection |
+| N-Well | `nwell` | PMOS Bulk Substrate Region | Brown dashed boundary (`#795548`) | Substrate tub demarcation |
+| Demarcation | `demarcation` | N-Well / P-Well Split Line | Brown dashed line (`#8D6E63`) | Physical layout separation boundary |
+| N+ / P+ Implant | `nimplant` / `pimplant` | Source/Drain Doping Profile | Dashed Green / Yellow outline | Mask region for ion implantation |
+| Buried Contact | `buriedcontact` | Direct Gate-to-Diffusion Joint | Dark Charcoal (`#111111`) | Direct poly-diffusion junction |
+| Silicide Block | `silicideblock` | Salicide Prevention for Resistors | Gray dashed boundary (`#9E9E9E`) | Prevents low-resistance silicide formation |
+| Thick Oxide | `thickoxide` | High-Voltage Dielectric Mask | Orange dashed boundary (`#FF6D00`) | Identifies thick oxide I/O devices |
+| Dynamic Metals | `metal3`, `metal4`+ | Multi-Level Metal Interconnects | User-configurable | Additional metallization layers |
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## Keyboard Shortcuts
 
-The floating Shortcuts HUD in the bottom-left corner of the canvas displays the active hotkeys:
-
-| Key | Action |
-|---|---|
-| <kbd>V</kbd> | Activate Select / Pointer Tool |
-| <kbd>W</kbd> | Activate Wire / Line Tool |
-| <kbd>P</kbd> | Activate Via / Contact Tool |
-| <kbd>L</kbd> or <kbd>T</kbd> | Activate Label / Text Tool |
-| <kbd>B</kbd> | Activate Freehand Paintbrush Tool |
-| <kbd>E</kbd> | Activate Eraser Tool |
-| <kbd>G</kbd> | Toggle Canvas Grid Visibility |
-| <kbd>S</kbd> | Toggle Grid Snapping |
-| <kbd>Space</kbd> + Drag | Pan Canvas (or drag with middle-mouse wheel click) |
-| <kbd>Del</kbd> / <kbd>Backspace</kbd> | Delete Selected Element(s) |
-| <kbd>Ctrl</kbd> + <kbd>Z</kbd> | Undo |
-| <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Redo |
-| <kbd>Ctrl</kbd> + <kbd>S</kbd> | Save Project (`.stk` file) |
-| <kbd>Ctrl</kbd> + <kbd>O</kbd> | Open Project (`.stk` file) |
-| <kbd>Ctrl</kbd> + <kbd>A</kbd> | Select All Unlocked Elements |
-| <kbd>Ctrl</kbd> + <kbd>C</kbd> | Copy selected elements |
-| <kbd>Ctrl</kbd> + <kbd>X</kbd> | Cut selected elements |
-| <kbd>Ctrl</kbd> + <kbd>V</kbd> | Paste clipboard contents |
-| <kbd>Ctrl</kbd> + <kbd>D</kbd> | Duplicate selection (offset by 1 grid pitch) |
-| <kbd>Ctrl</kbd> + <kbd>[</kbd> | Move selected element's layer down one step |
-| <kbd>Ctrl</kbd> + <kbd>]</kbd> | Move selected element's layer up one step |
-| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>[</kbd> | Move layer to bottom of rendering stack |
-| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>]</kbd> | Move layer to top of rendering stack |
-| <kbd>Esc</kbd> | Cancel current wire draw or clear selections |
+| Shortcut | Scope | Action |
+|---|---|---|
+| `V` | Tool | Select / Transform pointer |
+| `W` | Tool | Wire / Interconnect line tool |
+| `P` | Tool | Contact / Via placement tool |
+| `L` or `T` | Tool | Text label with math subscript support |
+| `B` | Tool | Freehand markup paintbrush |
+| `E` | Tool | Brush eraser |
+| `G` | Canvas | Toggle grid visibility |
+| `S` | Canvas | Toggle grid snapping |
+| `Space` + Drag | Canvas | Pan viewport (or Middle-Mouse Drag) |
+| `Del` / `Backspace` | Edit | Delete selected element(s) |
+| `Ctrl` + `Z` | History | Undo previous action |
+| `Ctrl` + `Y` | History | Redo action |
+| `Ctrl` + `C` | Clipboard | Copy selected elements |
+| `Ctrl` + `X` | Clipboard | Cut selected elements |
+| `Ctrl` + `V` | Clipboard | Paste clipboard contents |
+| `Ctrl` + `D` | Clipboard | Duplicate selection with 1-pitch offset |
+| `Ctrl` + `A` | Selection | Select all unlocked elements |
+| `Ctrl` + `[` | Layers | Send selected layer down one step |
+| `Ctrl` + `]` | Layers | Bring selected layer up one step |
+| `Ctrl` + `Shift` + `[` | Layers | Send layer to bottom of stack |
+| `Ctrl` + `Shift` + `]` | Layers | Bring layer to top of stack |
+| `Ctrl` + `S` | File | Export project to `.stk` JSON file |
+| `Ctrl` + `O` | File | Open existing `.stk` project file |
+| `Esc` | General | Cancel active drawing or deselect all |
 
 ---
 
-## 🗃️ Project Structure
+## Project Structure
 
 ```
 stick-diagram/
-├── public/                 # Static assets (Favicons, SVG graphics)
+├── public/                 # Static web assets, manifest, and icons
+│   ├── 404.html            # Standalone SPA 404 fallback
+│   ├── favicon.svg         # Application icon
+│   ├── llm.txt / llms.txt  # LLM system context files
+│   ├── manifest.json       # Progressive Web App manifest
+│   ├── robots.txt          # Search engine crawlers policy
+│   └── sitemap.xml         # XML sitemap
 ├── src/
-│   ├── assets/             # Images, logos, and verification media
-│   ├── App.css             # Modular layout and styling definitions
-│   ├── App.jsx             # React logic, Canvas rendering, and event handlers
-│   ├── index.css           # Global resets and CSS variables (UI themes)
-│   └── main.jsx            # React root application entrypoint
-├── index.html              # HTML5 template wrapper
-├── package.json            # Scripts and dependencies
-└── vite.config.js          # Vite configurations
+│   ├── boolean/            # Boolean synthesis engine
+│   │   ├── generate.js     # Dual-rail transistor network synthesis
+│   │   ├── minimize.js     # Logic reduction and simplification
+│   │   └── parser.js       # Equation tokenization and AST generation
+│   ├── cmos/               # Standard CMOS logic cells
+│   │   └── gates.js        # Gate topology definitions and Euler algorithms
+│   ├── components/         # Modular React UI components
+│   │   ├── BooleanModal.jsx      # Equation synthesis dialog
+│   │   ├── CanvasArea.jsx        # HTML5 canvas rendering engine & event handling
+│   │   ├── ErrorBoundary.jsx     # Global error catching with diagnostic reporting
+│   │   ├── ErrorPages.css        # Styling for error and status views
+│   │   ├── Landing.jsx           # Documentation and feature showcase page
+│   │   ├── LayersPanel.jsx       # Photoshop-style layer stack and reordering
+│   │   ├── MenuBar.jsx           # Top application command bar
+│   │   ├── Modals.jsx            # Export, settings, help, and feedback dialogs
+│   │   ├── NotFoundPage.jsx      # In-app 404 fallback page
+│   │   ├── PropertiesPanel.jsx   # Inspector for active selections and coordinates
+│   │   ├── StatusBar.jsx         # Bottom status, grid metrics, and diagnostics
+│   │   └── Toolbar.jsx           # Expandable left tool and layer palette
+│   ├── constants.js        # Default layer configurations and tool enumerations
+│   ├── helpers.js          # Geometric calculations, jumper math, and snapping logic
+│   ├── router.jsx          # Client-side hash routing handler
+│   ├── App.css             # Main workspace styling
+│   ├── App.jsx             # Core state coordinator and history management
+│   ├── index.css           # Design tokens, variables, and typography
+│   └── main.jsx            # React root application bootstrap
+├── index.html              # HTML entrypoint and SEO metadata
+├── package.json            # Package dependencies and npm scripts
+├── vercel.json             # Vercel deployment and routing rules
+└── vite.config.js          # Vite build configuration
 ```
 
 ---
 
-## 👤 Author & Credits
+## Technology Stack
 
-Developed with ❤️ by **Aira Josh Ynte**:
-- 🌐 **LinkedIn**: [aira-josh-ynte](https://www.linkedin.com/in/aira-josh-ynte/)
-- 📄 **Web Resume**: [aera0908.github.io](https://aera0908.github.io)
-- 💻 **GitHub**: [@Aera0908](https://github.com/Aera0908)
-- 🐦 **X (Twitter)**: [@aera0908](https://x.com/aera0908)
-- 💬 **Discord**: [aeradynamics](https://discord.com/users/aeradynamics)
+- **Framework**: React 19 + Vite 8
+- **Graphics Pipeline**: HTML5 Canvas 2D Context API with sub-pixel rendering
+- **Styling**: Pure CSS3 with custom variables and glassmorphism design tokens
+- **Vector Icons**: Lucide React
+- **Logic Processing**: Native JavaScript Boolean minimization and graph traversal
 
 ---
 
-## 📜 License
-This project is open-source and licensed under the MIT License.
+## Getting Started
+
+### Prerequisites
+
+Ensure you have [Node.js](https://nodejs.org/) (version 18 or higher) and npm installed.
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Aera0908/stick-diagram.git
+   cd stick-diagram
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Launch development server:
+   ```bash
+   npm run dev
+   ```
+   The local application will be available at `http://localhost:5173/`.
+
+### Production Build
+
+Compile optimized static assets:
+```bash
+npm run build
+```
+
+Preview production build locally:
+```bash
+npm run preview
+```
+
+---
+
+## Author
+
+Developed by **Aira Josh Ynte**:
+- Web Resume: [aera0908.github.io](https://aera0908.github.io)
+- GitHub: [@Aera0908](https://github.com/Aera0908)
+- X (Twitter): [@aera0908](https://x.com/aera0908)
+- Discord: `aeradynamics`
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
