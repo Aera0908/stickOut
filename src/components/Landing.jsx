@@ -715,7 +715,7 @@ const LANDING_HTML = `
       <div class="footer-content">
         <div>
           <span>StickOut — Open-source VLSI stick diagram and CMOS layout tool.</span>
-          <span style="margin-left:8px;">Created by <a href="https://github.com/Aera0908" target="_blank" rel="noopener" style="color:var(--text-secondary);">Aira Josh Ynte</a>.</span>
+          <span style="margin-left:8px;">Created by Aira Josh Ynte.</span>
         </div>
         <div class="footer-links">
           <a href="https://github.com/Aera0908/stick-diagram" target="_blank" rel="noopener">GitHub</a>

@@ -863,6 +863,11 @@ button, input, select, textarea {
   color: var(--text-muted);
 }
 
+.credit-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .credit-link {
   color: var(--text-primary);
   text-decoration: none;

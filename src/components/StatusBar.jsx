@@ -39,7 +39,7 @@ export default function StatusBar({
         )}
       </div>
       <div className="status-right">
-        <span className="credit-author">Created by <a href="https://www.linkedin.com/in/aira-josh-ynte/" target="_blank" rel="noopener noreferrer" className="credit-link">Aira Josh Ynte</a></span>
+        <span className="credit-author">Created by <span className="credit-name">Aira Josh Ynte</span></span>
         <span className="status-separator credit-author-sep" />
         
         <a href="https://aera0908.github.io" target="_blank" rel="noopener noreferrer" className="credit-icon" title="Web Resume">
